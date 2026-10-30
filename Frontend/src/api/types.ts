@@ -413,6 +413,8 @@ export interface ResumenClientesVendedor {
   excluidos: number
   /** Cuántos tienen `sugerencia: "excluir"`. */
   sugeridos: number
+  /** Cuántos están marcados como Vitales. */
+  vitales: number
 }
 
 /**
@@ -448,6 +450,18 @@ export interface ClienteAdmin {
   /** Solo para los no excluidos; el motivo viene redactado («No compra hace 4 meses»). */
   sugerencia: SugerenciaCliente | null
   motivoSugerencia: string | null
+  /** Clasificación (30/10): el admin lo marcó como Vital. Por ahora es solo una marca: no cambia ningún cálculo. */
+  vital: boolean
+  vitalPor: string | null
+  vitalEn: string | null
+}
+
+/** `PUT /api/admin/clientes/{id}/vital`: la marca (si ya era Vital, la que tenía). */
+export interface MarcaVital {
+  idCliente: number
+  razonSocial: string
+  marcadoPor: string
+  marcadoEn: string
 }
 
 export interface Pagina<T> {

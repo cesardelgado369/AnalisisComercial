@@ -69,6 +69,8 @@ p { margin: 0; }
   -webkit-font-feature-settings: 'liga'; font-feature-settings: 'liga'; user-select: none;
 }
 .icono-chico { font-size: 16px; }
+/* El ícono relleno (la estrella de Vital): la fuente se baja con el eje FILL de 0 a 1 */
+.icono-lleno { font-variation-settings: 'FILL' 1; }
 
 .enlace { color: var(--acento); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 2px; }
 .enlace:hover { text-decoration: underline; }

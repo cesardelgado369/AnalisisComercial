@@ -81,6 +81,19 @@
 .adm-grupo-sugeridos, .adm-grupo-excluidos { display: inline-flex; align-items: center; gap: 4px; color: #fff; }
 .adm-grupo-cuenta .adm-ic-sugerencia { color: var(--cabecera-claro); }
 .adm-grupo-excluidos .icono { color: #ff9e9e; }
+.adm-grupo-vitales { display: inline-flex; align-items: center; gap: 4px; color: #fff; }
+.adm-grupo-vitales .icono { color: #fcd34d; }
+
+/* Clasificación: Vital con una estrella dorada (la fila apenas resaltada); el botón es un interruptor de un click */
+.adm-tabla-clientes tr.adm-vital { background: #fffbeb; }
+.adm-tabla-clientes tr.adm-vital .celda-secundaria { color: var(--texto-2); }
+.adm-marca-vital { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--texto); }
+.adm-marca-vital .icono, .adm-barra .icono-lleno { color: #d97706; }
+.adm-boton-vital { min-width: 92px; justify-content: center; }
+.adm-boton-vital .icono { color: var(--texto-3); }
+.adm-boton-vital.activo { border-color: #f59e0b; background: #fef3c7; color: #78350f; }
+.adm-boton-vital.activo .icono { color: #d97706; }
+.adm-boton-vital:disabled { cursor: progress; opacity: .7; }
 
 /* Formularios de los modales */
 .adm-form { display: flex; flex-direction: column; gap: 16px; }

@@ -140,6 +140,7 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   const metodo = req.method ?? 'GET'
   const acceso = ruta.match(/^\/api\/admin\/usuarios\/(\d+)$/)
   const exclusion = ruta.match(/^\/api\/admin\/exclusiones\/(\d+)$/)
+  const vital = ruta.match(/^\/api\/admin\/clientes\/(\d+)\/vital$/)
   // Con «sincuentas» en el usuario, /admin/cuentas responde 404 sin cuerpo, como la API real de hoy (sin ese endpoint)
   if (ruta.startsWith('/api/admin/cuentas') && /sincuentas/i.test(email)) return responder(res, 404)
   if (metodo === 'GET' && ruta === '/api/admin/cuentas') return responder(res, 200, admi.listarCuentas())
@@ -159,6 +160,11 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   if (metodo === 'POST' && ruta === '/api/admin/exclusiones') return responder(res, 201, admi.excluir(await leerCuerpo(req), email))
   if (metodo === 'DELETE' && exclusion) {
     admi.incluir(Number(exclusion[1]))
+    return responder(res, 204)
+  }
+  if (metodo === 'PUT' && vital) return responder(res, 200, admi.marcarVital(Number(vital[1]), email))
+  if (metodo === 'DELETE' && vital) {
+    admi.quitarVital(Number(vital[1]))
     return responder(res, 204)
   }
   return responder(res, 503, { status: 503, title: 'Esta parte de la API todavía no está en el modo de prueba.' })

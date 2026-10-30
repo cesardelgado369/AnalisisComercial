@@ -1,6 +1,7 @@
 /**
  * TODO testing — Administración fake para `npm run dev:mock`: cuentas de Madomi con su acceso, vendedores de Chess
- * (también uno dado de baja, el caso de un renombre) y la base de clientes por vendedor con sus exclusiones. Sigue la
+ * (también uno dado de baja, el caso de un renombre) y la base de clientes por vendedor con sus exclusiones y sus
+ * Vitales (CONTRATO_API.md, «Clasificación de clientes: Vital», 30/10). Sigue la
  * forma propuesta al backend el 29/10 (todavía sin confirmar en CONTRATO_API.md). Todo vive en memoria: reiniciar el
  * servidor de prueba vuelve al estado inicial.
  */
@@ -229,8 +230,16 @@ function estadistica(c: ReturnType<typeof datos>[number]) {
   return { estados, diasSinComprar, sugerencia, motivoSugerencia }
 }
 
+/** Los clientes Vitales (30/10): el admin los marca con un click. Arranca con algunos marcados para ver la pantalla. */
+const vitales = new Map<number, { por: string; en: string }>(
+  datos()
+    .filter((_, i) => i % 23 === 0)
+    .map((c) => [c.idCliente, { por: 'checho@madomi', en: '2026-10-30T12:00:00Z' }]),
+)
+
 function fila(c: ReturnType<typeof datos>[number]) {
   const ex = excluidos.get(c.idCliente)
+  const vital = vitales.get(c.idCliente)
   return {
     ...estadistica(c),
     idCliente: c.idCliente,
@@ -244,6 +253,9 @@ function fila(c: ReturnType<typeof datos>[number]) {
     motivo: ex?.motivo ?? null,
     excluidoPor: ex?.por ?? null,
     excluidoEn: ex?.en ?? null,
+    vital: !!vital,
+    vitalPor: vital?.por ?? null,
+    vitalEn: vital?.en ?? null,
   }
 }
 
@@ -258,15 +270,19 @@ export function resumenClientes() {
       clientes: suyos.length,
       excluidos: suyos.filter((c) => excluidos.has(c.idCliente)).length,
       sugeridos: suyos.filter((c) => estadistica(c).sugerencia === 'excluir').length,
+      vitales: suyos.filter((c) => vitales.has(c.idCliente)).length,
     }
   }).filter((r) => r.clientes > 0)
 }
 
-/** `GET /api/admin/clientes?vendedor=&texto=&excluidos=todos|solo|sin&pagina=&tamano=`. */
+/** `GET /api/admin/clientes?vendedor=&texto=&excluidos=todos|solo|sin&vitales=todos|solo|sin&pagina=&tamano=`. */
 export function buscarClientes(p: URLSearchParams) {
   const vendedor = p.get('vendedor') ? Number(p.get('vendedor')) : null
   const texto = sinTildes(p.get('texto')?.trim() ?? '')
   const filtro = p.get('excluidos') ?? 'todos'
+  const filtroVitales = p.get('vitales') ?? 'todos'
+  if (!['todos', 'solo', 'sin'].includes(filtroVitales))
+    throw new ErrorMock(400, 'El filtro de Vitales no es válido.', { vitales: ['Tiene que ser «todos», «solo» o «sin».'] })
   const sugerencia = p.get('sugerencia')
   if (sugerencia && sugerencia !== 'excluir' && sugerencia !== 'revisar')
     throw new ErrorMock(400, 'La sugerencia no es válida.', { sugerencia: ['Tiene que ser «excluir» o «revisar».'] })
@@ -277,6 +293,7 @@ export function buscarClientes(p: URLSearchParams) {
     .filter((c) => !texto || String(c.idCliente) === texto || sinTildes(c.razonSocial).includes(texto))
     .filter((c) => (filtro === 'solo' ? excluidos.has(c.idCliente) : filtro === 'sin' ? !excluidos.has(c.idCliente) : true))
     .filter((c) => !sugerencia || estadistica(c).sugerencia === sugerencia)
+    .filter((c) => (filtroVitales === 'solo' ? vitales.has(c.idCliente) : filtroVitales === 'sin' ? !vitales.has(c.idCliente) : true))
     .sort((a, b) => a.razonSocial.localeCompare(b.razonSocial, 'es'))
   return { pagina, tamano, total: lista.length, meses: ultimosMeses(), filas: lista.slice((pagina - 1) * tamano, pagina * tamano).map(fila) }
 }
@@ -297,4 +314,18 @@ export function excluir(cuerpo: Record<string, unknown>, por: string) {
 /** `DELETE /api/admin/exclusiones/{idCliente}`. */
 export function incluir(id: number) {
   if (!excluidos.delete(id)) throw new ErrorMock(404, 'Ese cliente no estaba excluido.')
+}
+
+/** `PUT /api/admin/clientes/{id}/vital`: si ya era Vital, la marca que tenía; 404 si el cliente no existe. */
+export function marcarVital(id: number, por: string) {
+  const cliente = datos().find((c) => c.idCliente === id)
+  if (!cliente) throw new ErrorMock(404, 'El cliente no existe.')
+  if (!vitales.has(id)) vitales.set(id, { por, en: new Date().toISOString() })
+  const marca = vitales.get(id)!
+  return { idCliente: id, razonSocial: cliente.razonSocial, marcadoPor: marca.por, marcadoEn: marca.en }
+}
+
+/** `DELETE /api/admin/clientes/{id}/vital`: 204 aunque no fuera Vital. */
+export function quitarVital(id: number) {
+  vitales.delete(id)
 }

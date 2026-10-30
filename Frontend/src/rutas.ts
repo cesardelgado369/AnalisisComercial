@@ -14,6 +14,7 @@ const cargas = {
   tablero: () => import('./resumen/TableroPage'),
   cuentas: () => import('./admin/CuentasPage'),
   exclusiones: () => import('./admin/ClientesExcluidosPage'),
+  clasificacion: () => import('./admin/ClasificacionClientesPage'),
 }
 
 export const FichaPage = lazy(() => cargas.ficha().then((m) => ({ default: m.FichaPage })))
@@ -23,13 +24,14 @@ export const PerfilPage = lazy(() => cargas.perfil().then((m) => ({ default: m.P
 export const TableroPage = lazy(() => cargas.tablero().then((m) => ({ default: m.TableroPage })))
 export const CuentasPage = lazy(() => cargas.cuentas().then((m) => ({ default: m.CuentasPage })))
 export const ClientesExcluidosPage = lazy(() => cargas.exclusiones().then((m) => ({ default: m.ClientesExcluidosPage })))
+export const ClasificacionClientesPage = lazy(() => cargas.clasificacion().then((m) => ({ default: m.ClasificacionClientesPage })))
 
 const DE_TODOS = [cargas.ficha, cargas.volumen, cargas.devoluciones]
 const POR_ROL: Record<Rol, (() => Promise<unknown>)[]> = {
   operario: DE_TODOS,
   // El Tablero está oculto por ahora (30/10): no se adelanta
   supervisor: DE_TODOS,
-  admin: [...DE_TODOS, cargas.cuentas, cargas.exclusiones],
+  admin: [...DE_TODOS, cargas.cuentas, cargas.exclusiones, cargas.clasificacion],
 }
 
 /**
