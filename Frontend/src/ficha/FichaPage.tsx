@@ -37,7 +37,9 @@ export function FichaPage() {
   const esOperario = sesion.rol === 'operario'
   const deCartera = sesion.rol !== 'admin'
   const pestanaUrl = params.get('pestana') as Pestana | null
-  const pestana: Pestana = PESTANAS.some((p) => p.valor === pestanaUrl) ? pestanaUrl! : 'compras'
+  // Sin `veBultos` (hoy, el operario) la ficha es solo «Qué compró»: Volumen y Devoluciones le darían 403
+  const pestanas = sesion.veBultos ? PESTANAS : PESTANAS.filter((p) => p.valor === 'compras')
+  const pestana: Pestana = pestanas.some((p) => p.valor === pestanaUrl) ? pestanaUrl! : 'compras'
   const idCliente = Number(id)
   const { mes: mesRef, ventana } = useMesReferencia()
   const rango = `mesDesde=${ventana[0]}&mesHasta=${mesRef}`
@@ -178,14 +180,21 @@ export function FichaPage() {
       </header>
 
       <div className="tarjeta ficha-cuerpo">
-        <div className="pestanas ficha-pestanas" role="group" aria-label="Qué ver del cliente">
-          {PESTANAS.map((p) => (
-            <button key={p.valor} type="button" aria-pressed={pestana === p.valor} onClick={() => cambiar('pestana', p.valor === 'compras' ? null : p.valor)}>
-              <span className="icono icono-chico" aria-hidden>{p.icono}</span>
-              {p.texto}
-            </button>
-          ))}
-        </div>
+        {pestanas.length > 1 ? (
+          <div className="pestanas ficha-pestanas" role="group" aria-label="Qué ver del cliente">
+            {pestanas.map((p) => (
+              <button key={p.valor} type="button" aria-pressed={pestana === p.valor} onClick={() => cambiar('pestana', p.valor === 'compras' ? null : p.valor)}>
+                <span className="icono icono-chico" aria-hidden>{p.icono}</span>
+                {p.texto}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <h2 className="ficha-cuerpo-titulo">
+            <span className="icono icono-chico" aria-hidden>{PESTANAS[0].icono}</span>
+            {PESTANAS[0].texto}
+          </h2>
+        )}
 
         {pestana === 'volumen' ? (
           mesVol === PRIMER_MES ? (

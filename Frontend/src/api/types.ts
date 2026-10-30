@@ -79,6 +79,11 @@ export interface SesionApp {
   /** «Hoy» en Argentina. */
   hoy: string
   mesEnCurso: string
+  /**
+   * false = solo Cobertura y la ficha (Cesar, 30/10, la 1.2 para vendedores; hoy, el operario): sin Volumen ni
+   * Devoluciones ni sus pestañas, que la API le responde con 403. Se abre desde la configuración del backend.
+   */
+  veBultos: boolean
 }
 
 /** `GET /api/sincronizacion/estado`: «Datos de Chess al …». Más de 36 h sin una corrida OK → aviso de datos viejos. */

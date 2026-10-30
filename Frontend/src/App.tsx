@@ -2,7 +2,7 @@ import { lazy } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { RequireAuth } from './auth/RequireAuth'
-import { ConSesionApp, SoloRoles } from './auth/SesionApp'
+import { ConSesionApp, SoloConBultos, SoloRoles } from './auth/SesionApp'
 import { CoberturaPage } from './cobertura/CoberturaPage'
 import { Layout } from './layout/Layout'
 import { EnConstruccion } from './pages/EnConstruccion'
@@ -28,8 +28,11 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route index element={<CoberturaPage />} />
                 <Route path="cliente/:id" element={<FichaPage />} />
-                <Route path="volumen" element={<VolumenPage />} />
-                <Route path="devoluciones" element={<DevolucionesPage />} />
+                {/* El operario, por ahora, solo Cobertura y la ficha (`sesion.veBultos`, 30/10) */}
+                <Route element={<SoloConBultos />}>
+                  <Route path="volumen" element={<VolumenPage />} />
+                  <Route path="devoluciones" element={<DevolucionesPage />} />
+                </Route>
                 {/* Mi ruta de hoy, oculta (29/10, pedido de Cesar) hasta que tenga pantalla: el link viejo va a Cobertura */}
                 <Route path="mi-ruta" element={<Navigate to="/" replace />} />
                 {/* El Tablero, oculto por ahora (30/10, pedido de Cesar): la pantalla queda en resumen/TableroPage */}

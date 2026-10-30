@@ -68,7 +68,8 @@ function sesionApp(email: string, rol: RolPrueba) {
   const vendedores = vendedoresVisibles(rol, vendedoresDelOperario(email))
   const vendedor = rol === 'operario' && vendedores.length === 1 ? { idPersonal: vendedores[0].id, nombre: vendedores[0].nombre } : null
   const hoy = hoyArgentina()
-  return { email, rol, vendedor, vendedores, hoy, mesEnCurso: `${hoy.slice(0, 7)}-01` }
+  // Como la API de la 1.2 (Comercial:OperarioSoloCobertura): el operario, solo Cobertura y la ficha
+  return { email, rol, vendedor, vendedores, hoy, mesEnCurso: `${hoy.slice(0, 7)}-01`, veBultos: rol !== 'operario' }
 }
 
 function responder(res: ServerResponse, estado: number, cuerpo?: unknown) {
@@ -116,6 +117,9 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
       return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email)))
     }
     const cliente = ruta.match(/^\/api\/clientes\/(\d+)(\/volumen|\/devoluciones)?$/)
+    // Sin veBultos (el operario), Volumen y Devoluciones y sus pestañas dan 403, como la API
+    if (rol === 'operario' && (cliente?.[2] || ruta === '/api/volumen' || ruta === '/api/devoluciones'))
+      return responder(res, 403, { status: 403, title: 'Volumen y Devoluciones todavía no están habilitados para los vendedores.' })
     if (cliente) {
       await demora(300)
       const armar = cliente[2] === '/volumen' ? fichaVolumen : cliente[2] === '/devoluciones' ? fichaDevoluciones : ficha

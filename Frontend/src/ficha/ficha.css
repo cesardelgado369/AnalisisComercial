@@ -42,6 +42,12 @@
 /* Cuerpo con pestañas: Qué compró, Volumen, Devoluciones */
 .ficha-cuerpo { padding: 0; overflow: hidden; }
 .ficha-pestanas { padding: 0 20px; }
+/* Con una sola parte (el vendedor, sin Volumen ni Devoluciones), un título en lugar de las pestañas */
+.ficha-cuerpo-titulo {
+  display: flex; align-items: center; gap: 6px; padding: 14px 20px; font-size: 15px; font-weight: 800;
+  border-bottom: 1px solid var(--borde);
+}
+.ficha-cuerpo-titulo .icono { color: var(--acento); }
 .ficha-pestanas button { display: inline-flex; align-items: center; gap: 6px; }
 .ficha-pestana { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; transition: opacity .15s ease; }
 .ficha-pestana.recargando { opacity: .6; }

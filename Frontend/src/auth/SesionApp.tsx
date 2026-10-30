@@ -36,7 +36,8 @@ export function ConSesionApp() {
       .then((s) => {
         if (!vigente) return
         cargada.current = true
-        setDatos(s)
+        // Una API anterior a la 1.2 no lo manda: se ve todo, como antes
+        setDatos({ ...s, veBultos: s.veBultos !== false })
       })
       .catch((e: unknown) => {
         if (!vigente) return
@@ -109,4 +110,10 @@ export function useSesionApp() {
 export function SoloRoles({ roles }: { roles: Rol[] }) {
   const { rol } = useSesionApp()
   return roles.includes(rol) ? <Outlet /> : <Navigate to="/" replace />
+}
+
+/** Volumen y Devoluciones, solo con `veBultos` (hoy el operario no las ve): si llega por URL, vuelve a Cobertura. */
+export function SoloConBultos() {
+  const { veBultos } = useSesionApp()
+  return veBultos ? <Outlet /> : <Navigate to="/" replace />
 }

@@ -27,6 +27,8 @@ export const ClientesExcluidosPage = lazy(() => cargas.exclusiones().then((m) =>
 export const ClasificacionClientesPage = lazy(() => cargas.clasificacion().then((m) => ({ default: m.ClasificacionClientesPage })))
 
 const DE_TODOS = [cargas.ficha, cargas.volumen, cargas.devoluciones]
+/** Las que no se adelantan sin `sesion.veBultos` (no las va a abrir). */
+const CON_BULTOS: unknown[] = [cargas.volumen, cargas.devoluciones]
 const POR_ROL: Record<Rol, (() => Promise<unknown>)[]> = {
   operario: DE_TODOS,
   // El Tablero está oculto por ahora (30/10): no se adelanta
@@ -38,13 +40,13 @@ const POR_ROL: Record<Rol, (() => Promise<unknown>)[]> = {
  * Baja en segundo plano las pantallas del rol, una por vez y cuando el navegador está libre. Con «ahorro de datos»
  * activado en el teléfono no se adelanta nada (se bajan recién al abrirlas).
  */
-export function precargar(rol: Rol) {
+export function precargar(rol: Rol, veBultos: boolean) {
   const conexion = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
   if (conexion?.saveData) return
   // Safari no tiene requestIdleCallback: ahí, un rato después
   const libre = (fn: () => void) =>
     typeof window.requestIdleCallback === 'function' ? window.requestIdleCallback(fn, { timeout: 5000 }) : setTimeout(fn, 1500)
-  const pendientes = [...POR_ROL[rol]]
+  const pendientes = POR_ROL[rol].filter((c) => veBultos || !CON_BULTOS.includes(c))
   const siguiente = () => {
     const carga = pendientes.shift()
     if (carga) libre(() => void carga().catch(() => undefined).then(siguiente))

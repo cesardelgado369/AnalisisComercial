@@ -23,6 +23,8 @@ interface ItemMenu {
   icono: string
   /** Quién lo ve (el rol lo da `GET /api/sesion`). */
   roles: Rol[]
+  /** Solo con `sesion.veBultos` (hoy, el operario no ve Volumen ni Devoluciones). */
+  conBultos?: boolean
   grupo: 'comercial' | 'admin' | 'prueba'
 }
 
@@ -38,8 +40,8 @@ const MODO_PRUEBA = import.meta.env.MODE === 'mock'
  */
 export const MENU: ItemMenu[] = [
   { ruta: '/', texto: 'Cobertura', icono: 'groups', roles: TODOS, grupo: 'comercial' },
-  { ruta: '/volumen', texto: 'Volumen', icono: 'inventory_2', roles: TODOS, grupo: 'comercial' },
-  { ruta: '/devoluciones', texto: 'Devoluciones', icono: 'assignment_return', roles: TODOS, grupo: 'comercial' },
+  { ruta: '/volumen', texto: 'Volumen', icono: 'inventory_2', roles: TODOS, grupo: 'comercial', conBultos: true },
+  { ruta: '/devoluciones', texto: 'Devoluciones', icono: 'assignment_return', roles: TODOS, grupo: 'comercial', conBultos: true },
   // Mi ruta de hoy, oculta hasta que tenga pantalla (29/10). El Tablero, oculto por ahora (30/10, pedido de Cesar):
   // { ruta: '/resumen', texto: 'Tablero', icono: 'dashboard', roles: ['admin', 'supervisor'], grupo: 'comercial' },
   { ruta: '/admin/usuarios', texto: 'Gestión de cuentas', icono: 'manage_accounts', roles: ['admin'], grupo: 'admin' },
@@ -76,7 +78,7 @@ const HORAS_DATOS_VIEJOS = 36
  */
 export function Layout() {
   const { usuario, salir } = useAuth()
-  const { rol } = useSesionApp()
+  const { rol, veBultos } = useSesionApp()
   const [lateralVisible, setLateralVisible] = useState(esAncho)
   // Solo cuando se acaba de ingresar: la cabecera, el lateral y el contenido entran uno atrás del otro.
   const [entrada] = useState(tomarIngreso)
@@ -85,7 +87,7 @@ export function Layout() {
   // El vendedor en el celular ve solo el logo de esta app: no salta a las otras (Cesar, 30/10)
   const celular = useMedia('(max-width: 767px)')
   // Con la app ya armada, las pantallas del rol se bajan en segundo plano (abrir la ficha en la calle no espera la red)
-  useEffect(() => precargar(rol), [rol])
+  useEffect(() => precargar(rol, veBultos), [rol, veBultos])
 
   const clases = ['app', lateralVisible ? 'menu-abierto' : 'colapsado', entrada && 'entrada'].filter(Boolean).join(' ')
   const nombre = usuario?.nombreCompleto || usuario?.email || ''
@@ -164,7 +166,7 @@ export function Layout() {
       <Animacion as="aside" className="lateral entra-lateral" visible={lateralVisible} efecto="deslizar-izquierda" duracion={DURACION_LATERAL}>
         <nav className="menu">
           {GRUPOS_MENU.map(({ grupo, titulo }) => {
-            const items = MENU.filter((m) => m.grupo === grupo && m.roles.includes(rol))
+            const items = MENU.filter((m) => m.grupo === grupo && m.roles.includes(rol) && (!m.conBultos || veBultos))
             return (
               items.length > 0 && (
                 <div key={grupo} className="menu-grupo">
