@@ -28,6 +28,12 @@ totales solo en porcentaje (`a35b943`) y operario y supervisor ven solo los últ
 vendedor solo con porcentajes, ayuda ⓘ del dueño, vista de celular, últimos 4 meses con el filtro «Mes» del dueño,
 Tablero oculto. Sin migraciones nuevas.
 
+**Versión `1.2`, publicada el 30/10** (OK del usuario, la corrió él; imágenes desde `git archive` de `9f3c389`, backup
+antes: `AnalisisComercial_20261030_1750.bak.gz`). La versión para vendedores: el operario ve solo Cobertura y la ficha
+(`sesion.veBultos`; Volumen y Devoluciones → 403, se abre con `Comercial:OperarioSoloCobertura=false`), y la
+Clasificación de clientes del admin (Vital con un click). Migración `ClientesVitales` aplicada (una tabla nueva). La
+republicación de la 1.1 con Vitales (16:50) no llegó a correr: entró con esta.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
