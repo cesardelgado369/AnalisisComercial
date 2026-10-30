@@ -1,0 +1,50 @@
+/*
+ * Efecto "ola" al pasar el mouse: una capa de color con el borde delantero ondulado entra desde la
+ * izquierda y llena el contenedor. Mientras el mouse sigue encima, la onda se mueve.
+ * Uso: agregar la clase `ola` al elemento (se puede cambiar el color con `--ola-color`).
+ */
+.ola {
+  --ola-color: rgba(124, 58, 237, .6);
+  --ola-borde: 18px;       /* ancho de la onda */
+  --ola-alto: 16px;        /* largo de cada cresta (tiene que coincidir con el keyframe) */
+  --ola-duracion: 650ms;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ola::before {
+  content: '';
+  position: absolute;
+  /* Sobra un ancho de onda a cada lado: al final la onda queda afuera y el llenado es parejo. */
+  inset: 0 auto 0 calc(-1 * var(--ola-borde));
+  width: calc(100% + 2 * var(--ola-borde));
+  z-index: -1;
+  background: var(--ola-color);
+  transform: translateX(-100%);
+  transition: transform var(--ola-duracion) cubic-bezier(.45, 0, .25, 1);
+  /* Cuerpo sólido + borde derecho ondulado (se repite a lo alto). */
+  --ola-onda: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 24' preserveAspectRatio='none'%3E%3Cpath d='M0 0H8C12 3 12 9 8 12C4 15 4 21 8 24H0Z'/%3E%3C/svg%3E");
+  -webkit-mask:
+    linear-gradient(#000 0 0) left top / calc(100% - 2 * var(--ola-borde)) 100% no-repeat,
+    var(--ola-onda) right 0 / calc(var(--ola-borde) * 2) var(--ola-alto) repeat-y;
+  mask:
+    linear-gradient(#000 0 0) left top / calc(100% - 2 * var(--ola-borde)) 100% no-repeat,
+    var(--ola-onda) right 0 / calc(var(--ola-borde) * 2) var(--ola-alto) repeat-y;
+}
+
+.ola:hover::before,
+.ola:focus-visible::before {
+  transform: translateX(var(--ola-borde));
+  animation: ola-ondula .9s linear infinite;
+}
+
+@keyframes ola-ondula {
+  from { -webkit-mask-position: left top, right 0; mask-position: left top, right 0; }
+  to { -webkit-mask-position: left top, right 16px; mask-position: left top, right 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ola::before { transition: none; }
+  .ola:hover::before, .ola:focus-visible::before { animation: none; }
+}

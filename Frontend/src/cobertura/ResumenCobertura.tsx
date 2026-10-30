@@ -1,0 +1,107 @@
+import type { KpiMes } from '../api/types'
+import { Ayuda } from '../components/Ayuda'
+import { formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { DIAS_VISITA, nombrePropio, unidadEnFrase } from './estados'
+
+/** Lo que hace falta para explicar cada mes: de quién es la cartera y los filtros que la recortan. */
+export interface ContextoAyuda {
+  /** El vendedor elegido («Mateo Rojas»); null = todos los vendedores. */
+  vendedor: string | null
+  dia: number | null
+  unidad: string | null
+}
+
+/**
+ * Cabecera de la tarjeta de Cobertura, como la web actual: a la izquierda el vendedor elegido y el resumen de la
+ * cartera; a la derecha un indicador por mes (porcentaje, mes, «162 de 246» y la barra). El mes en curso va atenuado y
+ * con «al 22/10»: no se compara de igual a igual con los meses cerrados. Con `ayuda` (el dueño), al lado del «162 de
+ * 246» va un ícono que explica cómo se contó ese mes.
+ */
+export function ResumenCobertura(props: { titulo: string; subtitulo: string; kpis: KpiMes[]; ayuda?: ContextoAyuda | null }) {
+  const { titulo, subtitulo, kpis, ayuda } = props
+  return (
+    <header className="cob-resumen">
+      <div className="cob-resumen-textos">
+        <h1>{nombrePropio(titulo)}</h1>
+        <p>{subtitulo}</p>
+      </div>
+      <ul className="cob-kpis" aria-label="Cobertura por mes">
+        {kpis.map((k) => {
+          const pct = formatoPorcentaje(k.porcentaje)
+          return (
+            <li key={k.mes} className={k.mesEnCurso ? 'cob-kpi en-curso' : 'cob-kpi'}>
+              <span className="cob-kpi-valor">{pct}</span>
+              <span className="cob-kpi-mes">
+                {nombreMesTitulo(k.mes)}
+                {k.mesEnCurso && k.corteAl && <span className="cob-kpi-corte"> al {formatoFechaCorta(k.corteAl)}</span>}
+              </span>
+              <span className="cob-kpi-detalle">
+                {formatoEntero(k.clientesConCompra)} de {formatoEntero(k.clientesCartera)}
+                {ayuda && (
+                  <Ayuda etiqueta={`Cómo se calculó ${nombreMes(k.mes)}`}>
+                    <ExplicacionMes k={k} ayuda={ayuda} />
+                  </Ayuda>
+                )}
+              </span>
+              <span
+                className="cob-kpi-barra"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(k.porcentaje)}
+                aria-label={`${nombreMesTitulo(k.mes)}${k.mesEnCurso ? ' (mes en curso)' : ''}: ${pct} de los clientes compraron`}
+              >
+                <span style={{ width: `${Math.min(100, Math.max(0, k.porcentaje))}%` }} />
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </header>
+  )
+}
+
+/**
+ * Cómo se contó un mes, en palabras, con sus números. Las reglas son las del backend (CONTRATO_API.md: «Cartera de
+ * cada mes», «KPI del mes» y «Compró»): si cambian allá, se cambia este texto.
+ */
+function ExplicacionMes({ k, ayuda }: { k: KpiMes; ayuda: ContextoAyuda }) {
+  const mes = nombreMes(k.mes)
+  const dia = ayuda.dia === null ? null : DIAS_VISITA.find((d) => d.codigo === ayuda.dia)?.nombre.toLowerCase()
+  // «los lunes», «los sábados»
+  const visita = dia ? `, con visita los ${dia.endsWith('o') ? `${dia}s` : dia}` : ''
+  return (
+    <>
+      <span className="cob-ayuda-parrafo">
+        <strong>
+          {nombreMesTitulo(k.mes)}: {formatoEntero(k.clientesConCompra)} de {formatoEntero(k.clientesCartera)}.
+        </strong>{' '}
+        De los {formatoEntero(k.clientesCartera)} clientes que tenía la cartera en {mes}, {formatoEntero(k.clientesConCompra)}{' '}
+        compraron ({formatoPorcentaje(k.porcentaje)}).
+      </span>
+      <span className="cob-ayuda-parrafo">
+        <strong>Cartera de {mes}:</strong> los clientes que figuraron en las rutas de{' '}
+        {ayuda.vendedor ?? 'todos los vendedores (sin las cuentas de la casa)'} en {mes}
+        {visita}, sin los clientes excluidos.
+      </span>
+      <span className="cob-ayuda-parrafo">
+        Un cliente puede existir desde antes y no contar en los meses anteriores: si ese mes no estaba asignado a{' '}
+        {ayuda.vendedor ? `la ruta de ${ayuda.vendedor} (estaba en la de otro vendedor o en ninguna)` : 'la ruta de ningún vendedor'}
+        , no es parte de la cartera de ese mes. Por eso el total de clientes cambia de un mes a otro.
+      </span>
+      <span className="cob-ayuda-parrafo">
+        <strong>Compró:</strong> tuvo al menos una factura de {mes} no anulada (Factura o Factura cierre consig.)
+        {ayuda.unidad ? ` con artículos de ${unidadEnFrase(ayuda.unidad)}` : ''} y, descontado lo que se le retiró en la
+        misma factura y las notas de crédito del mes, le quedó algo comprado de al menos un artículo. La Factura
+        presupuesto no cuenta.
+      </span>
+      {k.mesEnCurso && (
+        <span className="cob-ayuda-parrafo">
+          <strong>{nombreMesTitulo(k.mes)} está en curso:</strong> cuenta las facturas
+          {k.corteAl ? ` hasta el ${formatoFechaCorta(k.corteAl)}` : ''}. Se completa a fin de mes; hasta entonces no se
+          compara de igual a igual con los meses cerrados.
+        </span>
+      )}
+    </>
+  )
+}

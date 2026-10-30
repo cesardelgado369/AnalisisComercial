@@ -1,0 +1,70 @@
+# Análisis Comercial (Madomi Pastas) en el VPS: /opt/analisis-comercial/compose.yaml (pasos en DESPLIEGUE.md, al lado).
+#
+#   Nginx del host (TLS, freno al login, /plataforma/ → portal 127.0.0.1:8090)
+#     └─ web   127.0.0.1:8098   el SPA y /api/ → api
+#          └─ api    lee y escribe su base AnalisisComercial en vignoli-sqlserver (red vignoli_default)
+#        sync        lee Chess (internet) y escribe la misma base: todos los días a las 05:00 y cuando el Admin lo pide
+#
+# La base vive en el SQL Server de la plataforma (compose «vignoli», /home/vignoli/MainPage/deploy) con un usuario
+# propio, analisis_app, dueño solo de AnalisisComercial (no ve la central). La crea preparar-base.sh.
+# Los secretos van en secretos/ (700/600, los genera preparar-secretos.sh), nunca en este archivo.
+name: analisis-prod
+
+x-logs: &logs
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+services:
+  api:
+    image: analisis-prod-api:${ANALISIS_VERSION:?falta ANALISIS_VERSION en /opt/analisis-comercial/.env}
+    container_name: analisis-prod-api
+    env_file: [secretos/base.env]     # ConnectionStrings__Comercial (usuario analisis_app)
+    environment:
+      # Pública (no es secreta): la del login central de producción, la misma que usa el CashFlow.
+      Jwt__ClavePublica: "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEh9177EsUIKdfARksR0CgMdGQF2LKYSX11EYSI5/Bms3SpqOR6wogHIQixVHg1fSGEMC0iAg7FiI+a5Jt895yAA=="
+      AllowedHosts: "analistascomercial.vignoliyasconsultoria.com;localhost;127.0.0.1"   # 127.0.0.1: pruebas desde el VPS
+    networks: [default, vignoli]
+    mem_limit: 512m                   # VPS compartido: un pico reinicia solo este contenedor
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    logging: *logs
+
+  sync:
+    image: analisis-prod-sync:${ANALISIS_VERSION:?falta ANALISIS_VERSION en /opt/analisis-comercial/.env}
+    container_name: analisis-prod-sync
+    env_file:
+      - secretos/base.env             # la misma base
+      - secretos/chess.env            # Chess__Usuario y Chess__Clave (los escribe el usuario en preparar-secretos.sh)
+    environment:
+      Base__MigrarAlIniciar: "false"  # migra la API; si arranca antes, reintenta cada 30 s hasta que estén las tablas
+    depends_on: [api]
+    networks: [default, vignoli]      # default para salir a Chess; vignoli para la base
+    mem_limit: 768m                   # la carga inicial lee un mes de ventas por vez
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    logging: *logs
+
+  web:
+    image: analisis-prod-web:${ANALISIS_VERSION:?falta ANALISIS_VERSION en /opt/analisis-comercial/.env}
+    container_name: analisis-prod-web
+    depends_on: [api]
+    mem_limit: 128m
+    ports:
+      - "127.0.0.1:8098:8080"         # solo el Nginx del host; Docker se saltea el firewall
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+    logging: *logs
+
+networks:
+  vignoli:
+    external: true
+    name: vignoli_default             # la red del compose de la plataforma (donde está vignoli-sqlserver)

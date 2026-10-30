@@ -1,0 +1,32 @@
+/*
+ * Entrada al sistema: apenas se ingresa, la cabecera baja, el lateral entra desde la izquierda y el
+ * contenido sube apareciendo, uno atrás del otro. Es solo la primera vez (ver `recienIngreso` en sesion.ts):
+ * navegar entre pantallas no la repite.
+ * Uso: agregar la clase `entrada` al contenedor y `entra-cabecera` / `entra-lateral` / `entra-contenido`
+ * a cada parte.
+ */
+.entrada .entra-cabecera { animation: entra-cabecera 420ms cubic-bezier(.2, 0, 0, 1) both; }
+.entrada .entra-lateral { animation: entra-lateral 420ms cubic-bezier(.2, 0, 0, 1) 120ms both; }
+.entrada .entra-contenido { animation: entra-contenido 420ms cubic-bezier(.2, 0, 0, 1) 220ms both; }
+
+@keyframes entra-cabecera {
+  from { transform: translateY(-100%); }
+  to { transform: none; }
+}
+
+@keyframes entra-lateral {
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes entra-contenido {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Quien pide menos movimiento entra sin animación: el sistema aparece hecho. */
+@media (prefers-reduced-motion: reduce) {
+  .entrada .entra-cabecera,
+  .entrada .entra-lateral,
+  .entrada .entra-contenido { animation: none; }
+}

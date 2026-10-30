@@ -1,0 +1,87 @@
+/* ---- Login: el de De Ruta y Mantenimiento (formulario a la izquierda), con el panel violeta de la lupa a la derecha */
+.login {
+  min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(440px, 42%) minmax(0, 1fr);
+  background: var(--superficie);
+}
+
+.login-panel { display: flex; flex-direction: column; padding: 40px 56px 28px; min-width: 0; }
+.login-contenido { flex: 1; width: 100%; max-width: 380px; margin: 0 auto; display: flex; flex-direction: column; justify-content: center; gap: 28px; }
+.login-logo { width: 300px; max-width: 86%; height: auto; display: block; }
+
+.login-titulos h1 { margin: 0; font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: -.01em; }
+.login-titulos p { margin: 6px 0 0; font-size: 14px; color: var(--texto-2); }
+
+.login-form { display: flex; flex-direction: column; gap: 18px; }
+.login-campo { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--texto); }
+.login-campo input {
+  width: 100%; height: 44px; padding: 0 14px; font: inherit; font-size: 14px; font-weight: 400; color: var(--texto);
+  background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: var(--radio);
+  transition: border-color .15s, box-shadow .15s;
+}
+.login-campo input::placeholder { color: var(--texto-3); }
+.login-campo input:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124, 58, 237, .16); }
+.login-campo input[aria-invalid="true"] { border-color: var(--rojo); }
+
+.login-password { position: relative; display: flex; }
+.login-password input { padding-right: 44px; }
+.login-password input::-ms-reveal { display: none; }
+.login-ver {
+  position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; display: grid; place-items: center;
+  background: none; border: none; border-radius: var(--radio); color: var(--texto-3); cursor: pointer;
+}
+.login-ver:hover { color: var(--acento); }
+.login-ver:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+.login-mayus { font-weight: 500; }
+.login-mayus .icono { color: var(--texto-2); }
+
+.login-opciones { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: -4px; font-size: 13px; }
+.login-opciones .check-linea { font-weight: 500; }
+.login-olvido { font-size: 13px; color: var(--acento); cursor: pointer; }
+.login-olvido:hover { text-decoration: underline; }
+.login-nota { margin: -6px 0 0; font-size: 13px; line-height: 19px; color: var(--texto-2); }
+.login-error { white-space: normal; font-size: 13px; align-items: flex-start; }
+.login-error .icono { margin-top: 1px; }
+
+/* Ingresar: blanco con letra violeta; al pasar el mouse (o al tocarlo) una ola violeta lo va llenando de izquierda a
+   derecha y la letra pasa a blanco (la misma ola del menú, animations/ola.css). Mientras ingresa queda lleno. */
+.login-boton {
+  --ola-color: var(--acento);
+  --ola-duracion: 550ms;
+  height: 46px; margin-top: 4px; padding: 0 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font: inherit; font-size: 15px; font-weight: 700; color: var(--acento);
+  background: var(--superficie); border: 1.5px solid var(--acento); border-radius: var(--radio);
+  transition: color .3s ease .12s;
+}
+.login-boton:hover, .login-boton:focus-visible, .login-boton:active, .login-boton.lleno { color: #fff; }
+.login-boton:active::before, .login-boton.lleno::before { transform: translateX(var(--ola-borde)); }
+.login-boton.lleno::before { animation: ola-ondula .9s linear infinite; }
+.login-boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.login-boton:disabled { cursor: default; }
+
+.login-pie { margin-top: 24px; text-align: center; font-size: 12px; color: var(--texto-3); }
+
+/* ---- Panel de la derecha (PanelLogin.tsx): la escena de la lupa en grande sobre violeta, sin frases */
+.carrusel { position: relative; overflow: hidden; background: var(--cabecera-oscuro); }
+.panel-lupa {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; padding: 48px;
+  background:
+    radial-gradient(circle at 78% 18%, rgba(167, 139, 250, .35) 0%, rgba(167, 139, 250, 0) 40%),
+    radial-gradient(circle at 50% 45%, var(--cabecera) 0%, var(--cabecera-oscuro) 72%);
+}
+.panel-lupa-escena { width: 100%; max-width: 520px; }
+.panel-lupa-escena .la-dibujo { max-width: none; }
+
+@media (max-width: 1100px) {
+  .login { grid-template-columns: minmax(400px, 48%) minmax(0, 1fr); }
+  .login-panel { padding: 32px 40px 24px; }
+}
+
+/* Angosto: solo el formulario */
+@media (max-width: 860px) {
+  .login { grid-template-columns: minmax(0, 1fr); }
+  .carrusel { display: none; }
+  .login-panel { padding: 32px 16px 20px; }
+  .login-contenido { justify-content: flex-start; padding-top: 8vh; }
+  .login-logo { width: 230px; }
+}

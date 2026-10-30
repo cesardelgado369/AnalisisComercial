@@ -1,0 +1,51 @@
+/* ---- Cobertura en el mapa (VistaMapa): mapa a la izquierda, leyenda y filtros a la derecha */
+.mapa-cob { display: grid; grid-template-columns: minmax(0, 1fr) 280px; }
+.mapa-cob-mapa { position: relative; height: calc(100vh - var(--alto-header) - 120px); min-height: 460px; border-right: 1px solid var(--borde); }
+.mapa-cob-leaflet { width: 100%; height: 100%; font: inherit; border-radius: 0 0 0 16px; }
+/* Fondo en grises (como en De Ruta): que resalten los colores de los vendedores */
+.mapa-cob-leaflet .leaflet-tile-pane { filter: grayscale(1) brightness(1.06) contrast(.9); }
+.mapa-cob-leaflet .leaflet-tooltip { font-family: inherit; font-size: 12px; }
+.mapa-cob-leaflet .leaflet-popup-content-wrapper { border-radius: var(--radio-grande); }
+.mapa-cob-leaflet .leaflet-popup-content { margin: 12px 14px; font-family: inherit; }
+
+.mapa-cob-popup { display: flex; flex-direction: column; gap: 4px; min-width: 200px; font-size: 13px; }
+.mapa-cob-popup strong { font-size: 14px; }
+.mapa-cob-popup .apagado { font-size: 12px; }
+.mapa-cob-popup-estado { font-weight: 700; }
+.mapa-cob-popup-estado.compro { color: var(--compro); }
+.mapa-cob-popup-estado.dejo { color: var(--rojo); }
+.mapa-cob-popup .enlace { margin-top: 4px; }
+
+.mapa-cob-panel { display: flex; flex-direction: column; max-height: calc(100vh - var(--alto-header) - 120px); min-height: 460px; overflow-y: auto; }
+.mapa-cob-bloque { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; }
+.mapa-cob-bloque + .mapa-cob-bloque { border-top: 1px solid var(--borde); }
+.mapa-cob-bloque h2 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 700; color: var(--titulo-chico); }
+.mapa-cob-meses { display: flex; }
+.mapa-cob-meses button { flex: 1; }
+.mapa-cob-nota { font-size: 12px; color: var(--texto-2); }
+
+.mapa-cob-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.mapa-cob-lista .check-linea { min-height: 32px; padding: 2px 4px; border-radius: var(--radio); }
+.mapa-cob-lista .check-linea:hover { background: var(--superficie-baja); }
+.mapa-cob-nombre { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mapa-cob-cantidad { margin-left: auto; font-size: 12px; color: var(--texto-3); font-variant-numeric: tabular-nums; }
+.mapa-cob-muestra { width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%; box-shadow: 0 0 0 1.5px #fff, 0 0 0 2.5px var(--borde-fuerte); }
+
+/* Los símbolos de la leyenda, iguales a los del mapa (en gris: el color es del vendedor) */
+.mapa-cob-simbolo { position: relative; width: 14px; height: 14px; flex-shrink: 0; border-radius: 50%; box-sizing: border-box; }
+.mapa-cob-simbolo.compro { background: var(--texto-2); box-shadow: 0 0 0 1.5px #fff; }
+.mapa-cob-simbolo.noCompro { background: #fff; border: 2.5px solid var(--texto-2); }
+.mapa-cob-simbolo.sinCompraAun { background: #fff; border: 2.5px dashed var(--texto-2); }
+.mapa-cob-simbolo.dejo { background: #fff; border: 2.5px solid var(--texto-2); box-shadow: 0 0 0 2px #fff, 0 0 0 4px #d03b3b; margin: 0 2px; }
+
+.mapa-cob-sin { font-weight: 500; font-size: 12px; }
+.mapa-cob-sin .icono { color: var(--texto-3); }
+
+/* Celular: el mapa arriba y la leyenda abajo */
+@media (max-width: 960px) {
+  .mapa-cob { grid-template-columns: minmax(0, 1fr); }
+  .mapa-cob-mapa { height: 60vh; min-height: 360px; border-right: none; border-bottom: 1px solid var(--borde); }
+  .mapa-cob-leaflet { border-radius: 0; }
+  .mapa-cob-panel { max-height: none; min-height: 0; }
+  .mapa-cob-lista .check-linea { min-height: 44px; }
+}

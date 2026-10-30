@@ -1,0 +1,155 @@
+/* ---- Administración: Gestión de cuentas y Clientes excluidos */
+.adm { max-width: 1120px; gap: 16px; }
+.adm .adm-nuevo { min-height: 44px; }
+.adm-barra { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+.adm-barra .pestanas { flex: 1 1 auto; }
+.adm-barra .buscador-pagina input { height: 44px; }
+.adm-cantidad { font-size: 12px; font-weight: 700; color: var(--texto-3); }
+.pestanas button[aria-pressed="true"] .adm-cantidad { color: var(--acento); }
+.adm-tarjeta { padding: 4px 0 0; overflow: hidden; }
+.adm-tarjeta > .loading-default, .adm-tarjeta > .vacio, .adm-tarjeta > .adm-error-carga { padding: 16px 20px; }
+.adm-aviso { display: flex; align-items: flex-start; gap: 8px; }
+.adm-aviso .icono { margin-top: 1px; }
+.adm-error-carga { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.adm-error-carga .btn { min-height: 44px; }
+
+/* Tablas: entre 721 px y lo que mida la tabla, se desplaza ella sola (nunca la página ni se recorta) */
+.adm-tabla-scroll { overflow-x: auto; }
+.adm-tabla td { vertical-align: top; }
+.adm-tabla th:first-child, .adm-tabla td:first-child { padding-left: 20px; }
+.adm-tabla th:last-child, .adm-tabla td:last-child { padding-right: 20px; }
+.adm-tabla tbody tr.cliqueable { cursor: pointer; }
+.adm-tabla tbody tr.adm-fija { cursor: default; }
+.adm-col-accion { width: 1%; text-align: right; white-space: nowrap; }
+.adm-col-codigo { width: 90px; font-variant-numeric: tabular-nums; color: var(--texto-2); }
+.adm-lista-vendedores { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.adm-baja {
+  margin-left: 6px; padding: 0 6px; font-size: 11px; font-weight: 600; color: var(--texto-2);
+  border: 1px solid var(--borde-fuerte); border-radius: 999px; white-space: nowrap;
+}
+.adm-estado { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; }
+.adm-estado .icono { color: var(--ok); }
+.adm-estado.pausada .icono { color: var(--texto-3); }
+.adm-estado.pausada { color: var(--texto-2); }
+
+/* Clientes: los excluidos atenuados, con la marca y su motivo */
+.adm-tabla-clientes tr.adm-excluido { background: var(--superficie-baja); }
+.adm-tabla-clientes tr.adm-excluido .celda-principal { color: var(--texto-2); text-decoration: line-through; text-decoration-color: var(--borde-fuerte); }
+.adm-marca-excluido { display: inline-flex; align-items: flex-start; gap: 4px; font-weight: 600; color: var(--texto); }
+.adm-marca-excluido .icono { color: var(--rojo); margin-top: 1px; }
+/* Sobre los fondos de las filas resaltadas, el texto secundario un tono más oscuro (4,5:1 o más) */
+.adm-tabla-clientes tr.adm-sugerido .celda-secundaria, .adm-tabla-clientes tr.adm-excluido .celda-secundaria { color: var(--texto-2); }
+
+/* Estadística rápida: los últimos meses en círculos chicos (los de Cobertura) con el mes arriba (en la computadora, en
+   la cabecera de la tabla; en el celular, sobre cada círculo) */
+.adm-col-meses { width: 1%; white-space: nowrap; }
+.adm-meses, .adm-meses-cabecera { display: inline-flex; gap: 6px; }
+.adm-meses-cabecera span { width: 22px; text-align: center; text-transform: capitalize; }
+.adm-mes { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.adm-mes-inicial, .adm-rotulo-movil { display: none; }
+.adm-mes-inicial { font-size: 11px; font-weight: 700; color: var(--texto-2); text-transform: capitalize; }
+.adm-rotulo-movil { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+
+/* Sugerencia del backend: excluir (lamparita violeta, fila resaltada) o revisar */
+.adm-ic-sugerencia { color: var(--acento); }
+.adm-tabla-clientes tr.adm-sugerido { background: #faf6ff; }
+.adm-sugerencia-estado { display: inline-flex; align-items: flex-start; gap: 6px; }
+.adm-sugerencia-estado > .icono { margin-top: 1px; color: var(--acento); }
+.adm-sugerencia-estado.revisar > .icono { color: var(--texto-3); }
+.adm-sugerencia-estado strong { display: block; font-size: 13px; }
+.adm-sugerencia-estado .celda-secundaria { display: block; }
+
+.adm-lista { transition: opacity .15s ease; }
+.adm-lista:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+.adm-lista.recargando { opacity: .55; }
+.adm-lista .paginado { padding: 12px 20px; border-top: 1px solid var(--borde); }
+
+/* Grupos por vendedor (como los A, B y C de De Ruta): encabezado violeta (el gradiente de la cabecera) que pliega el
+   grupo, con el texto y los íconos en claro */
+.adm-grupos { display: flex; flex-direction: column; gap: 10px; }
+.adm-grupo { display: flex; flex-direction: column; gap: 8px; }
+.adm-grupo-cabecera {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px 16px; cursor: pointer; text-align: left;
+  font: inherit; color: #fff; border: none; border-radius: var(--radio-grande);
+  background: linear-gradient(100deg, var(--cabecera-oscuro) 0%, var(--cabecera) 55%, #4c1d95 100%);
+}
+.adm-grupo-cabecera:hover { filter: brightness(1.18); }
+.adm-grupo-cabecera:focus-visible { outline-offset: 2px; }
+.adm-grupo-cabecera > .icono { color: var(--cabecera-claro); }
+.adm-grupo-titulo { font-size: 15px; font-weight: 700; }
+.adm-grupo-cuenta { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 600; color: var(--lateral-texto); }
+.adm-grupo-sugeridos, .adm-grupo-excluidos { display: inline-flex; align-items: center; gap: 4px; color: #fff; }
+.adm-grupo-cuenta .adm-ic-sugerencia { color: var(--cabecera-claro); }
+.adm-grupo-excluidos .icono { color: #ff9e9e; }
+
+/* Formularios de los modales */
+.adm-form { display: flex; flex-direction: column; gap: 16px; }
+.adm-form input[type="text"], .adm-form input[type="password"] { width: 100%; }
+.adm-form-grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.adm-form-doble { grid-column: 1 / -1; }
+.adm-password-campo { display: flex; gap: 8px; }
+.adm-password-campo input { flex: 1; min-width: 0; font-family: ui-monospace, 'Cascadia Mono', monospace; letter-spacing: .04em; }
+.adm-campo { display: flex; flex-direction: column; gap: 6px; }
+.adm-campo-titulo { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.adm-activo { margin-top: 2px; }
+.adm-error-general { white-space: normal; margin-right: auto; }
+
+.adm-vendedores { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; border: none; min-width: 0; }
+.adm-vendedores legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.adm-vendedores-titulo { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--titulo-chico); margin-top: 4px; }
+.adm-vendedores-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+.adm-vendedor {
+  flex-direction: row; align-items: center; gap: 8px; min-height: 44px; padding: 6px 12px; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--texto); background: var(--superficie-baja);
+  border: 1.5px solid transparent; border-radius: var(--radio);
+}
+.adm-vendedor:hover { border-color: var(--acento-claro); }
+.adm-vendedor.elegido { background: var(--superficie-media); border-color: var(--acento); }
+.adm-vendedor-nombre { flex: 1; min-width: 0; }
+/* El #id distingue al vendedor viejo del nuevo en un renombre: con contraste suficiente sobre los dos fondos */
+.adm-vendedor-id { font-size: 11px; font-weight: 600; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+
+.adm-sugerencias { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-sugerencia {
+  min-height: 32px; padding: 0 10px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; color: var(--texto-2);
+  background: var(--superficie-baja); border: 1px solid var(--borde); border-radius: 999px;
+}
+.adm-sugerencia:hover { color: var(--texto); border-color: var(--acento-claro); }
+
+/* Cuenta creada: los datos para pasarle a la persona */
+.adm-creada { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.adm-creada-ok { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.adm-creada-ok .icono { color: var(--ok); }
+.adm-credenciales {
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; padding: 12px 16px; width: 100%;
+  background: var(--superficie-baja); border: 1px dashed var(--acento-claro); border-radius: var(--radio);
+}
+.adm-credenciales dt { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.adm-credenciales dd { margin: 0; font-weight: 700; word-break: break-all; }
+.adm-password { font-family: ui-monospace, 'Cascadia Mono', monospace; letter-spacing: .06em; }
+
+/* Celular: las tablas pasan a tarjetas (sin scroll horizontal) y todo lo que se toca mide 44 px */
+@media (max-width: 720px) {
+  .adm-barra .buscador-pagina, .adm-barra .buscador-pagina input { width: 100%; }
+  .adm .adm-nuevo { width: 100%; justify-content: center; }
+  .adm-tabla-scroll { overflow: visible; }
+  .adm-tabla thead { display: none; }
+  .adm-tabla, .adm-tabla tbody { display: block; }
+  .adm-tabla tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 12px 16px; border-bottom: 1px solid var(--superficie-media); }
+  .adm-tabla td { display: block; padding: 0 !important; border: none; background: none; }
+  /* Todo en una columna; el botón arriba a la derecha */
+  .adm-tabla td:not(.adm-col-accion) { grid-column: 1; }
+  .adm-tabla td.adm-col-accion { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+  .adm-tabla-clientes td.adm-col-codigo { font-size: 12px; }
+  .adm-mes-inicial { display: block; }
+  .adm-rotulo-movil { display: inline; }
+  .adm .btn, .adm-form .btn, .adm-creada .btn, .modal-pie .btn, .adm-sugerencia,
+  .adm-form .segmentado button, .adm-lista .paginado .btn { min-height: 44px; }
+  .adm-form .segmentado button { padding-top: 0; padding-bottom: 0; }
+  .adm-activo { min-height: 44px; }
+  .adm-form-grilla { grid-template-columns: 1fr; }
+  .adm-password-campo { flex-wrap: wrap; }
+  .adm-password-campo input { flex-basis: 100%; }
+  .adm-grupo-cabecera { flex-wrap: wrap; }
+  .adm-grupo-cuenta { margin-left: 34px; width: 100%; flex-wrap: wrap; gap: 4px 14px; }
+}

@@ -1,0 +1,25 @@
+/*
+ * Efecto "agrandar" al pasar el mouse: el elemento crece un poco sobre los de al lado, con un rebote corto,
+ * y vuelve a su tamaño al salir. Pensado para grupos de íconos (p. ej. las acciones de una fila): el que
+ * está bajo el mouse se destaca del resto.
+ * Uso: agregar la clase `agrandar` al elemento (el tamaño se cambia con `--agrandar-escala`).
+ */
+.agrandar {
+  --agrandar-escala: 1.3;
+  --agrandar-duracion: 180ms;
+  position: relative;
+  transition: transform var(--agrandar-duracion) cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.agrandar:hover,
+.agrandar:focus-visible {
+  z-index: 1;               /* queda por encima de los vecinos si se tocan */
+  transform: scale(var(--agrandar-escala));
+}
+
+.agrandar:active { transform: scale(calc(var(--agrandar-escala) - .1)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .agrandar { transition: none; }
+  .agrandar:hover, .agrandar:focus-visible, .agrandar:active { transform: none; }
+}

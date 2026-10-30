@@ -1,0 +1,45 @@
+/* ---- Volumen: el total contra la base y cada cliente con su avance (sobre la estructura de Cobertura) */
+.vol-resumen { align-items: flex-start; }
+.vol-mes select {
+  height: 36px; margin-top: 4px; padding: 0 34px 0 12px; font-size: 13px; font-weight: 700; color: var(--texto); cursor: pointer;
+  appearance: none; -webkit-appearance: none; border: 1px solid var(--borde-fuerte); border-radius: 999px;
+  background: var(--superficie-baja) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237c3aed' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 18px;
+}
+
+.vol-total { display: flex; flex-direction: column; gap: 4px; min-width: min(100%, 360px); max-width: 440px; }
+.vol-total-numero { font-size: 14px; font-weight: 600; color: var(--texto-2); }
+.vol-total-numero strong { font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -.02em; color: var(--acento); font-variant-numeric: tabular-nums; }
+.vol-total-detalle { font-size: 14px; color: var(--texto-2); }
+.vol-total-detalle strong { color: var(--texto); font-variant-numeric: tabular-nums; }
+.vol-total-corte { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+
+/* La barra del avance (relleno violeta) con la marca del ritmo (operario) */
+.vol-barra { position: relative; display: block; height: 10px; margin: 6px 0 2px; border-radius: 999px; background: var(--superficie-media); }
+.vol-barra-relleno { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--acento); transition: width .4s ease; }
+.vol-barra-ritmo { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--texto); box-shadow: 0 0 0 2px var(--superficie); }
+.vol-barra.chica { height: 6px; margin: 0; flex: 1; min-width: 60px; }
+.vol-barra.chica .vol-barra-ritmo { top: -3px; bottom: -3px; width: 2px; margin-left: -1px; }
+
+.vol-estado { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--texto); }
+.vol-estado.bien .icono { color: var(--ok); }
+.vol-estado.mal .icono { color: var(--rojo); }
+
+/* Tabla */
+.vol-col-num { width: 120px; text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vol-col-num .cob-orden { margin-left: auto; }
+.vol-col-avance { width: 210px; }
+.vol-avance { display: flex; align-items: center; gap: 10px; }
+.vol-avance-numero { display: inline-flex; align-items: center; justify-content: flex-end; gap: 2px; min-width: 58px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vol-avance-numero.bien .icono { color: var(--ok); }
+.vol-avance-numero.mal .icono { color: var(--rojo); }
+.vacio-avance { font-size: 12px; font-weight: 600; }
+
+/* Celular: tarjetas con los bultos y la barra */
+.vol-tarjeta-numeros { font-size: 13px; margin-top: 4px; }
+.vol-tarjeta-numeros strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+.cob-tarjetas .vol-avance { margin-top: 6px; }
+
+@media (max-width: 767px) {
+  .vol-total { min-width: 0; max-width: none; width: 100%; }
+  .vol-total-numero strong { font-size: 28px; line-height: 34px; }
+}

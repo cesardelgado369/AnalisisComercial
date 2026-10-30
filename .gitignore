@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+TestResults/
+.vs/
+*.user
+
+# Front (Frontend/.gitignore tiene lo suyo)
+node_modules/
+dist/
+
+# Nunca al repo: secretos del VPS, respaldos y datos reales de clientes
+secretos/
+.env
+*.bak
+*.bak.7z
+*.xlsx
+*.csv

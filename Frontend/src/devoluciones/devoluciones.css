@@ -1,0 +1,44 @@
+/* ---- Devoluciones: un indicador por mes (se elige tocándolo) y, del mes elegido, clientes y artículos */
+.dev-kpis { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.dev-kpi {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 112px; min-height: 44px; padding: 10px 12px;
+  cursor: pointer; font: inherit; text-align: center; color: var(--texto);
+  background: var(--superficie); border: 1.5px solid transparent; border-radius: var(--radio-grande);
+  transition: background-color .15s, border-color .15s;
+}
+.dev-kpi:hover { background: var(--superficie-baja); }
+.dev-kpi[aria-pressed="true"] { background: var(--superficie-baja); border-color: var(--acento); }
+.dev-kpi-valor { font-size: 30px; line-height: 36px; font-weight: 800; letter-spacing: -.02em; color: var(--acento); font-variant-numeric: tabular-nums; }
+.dev-kpi.en-curso .dev-kpi-valor { color: #8b5cf6; }
+.dev-kpi-mes { font-size: 14px; font-weight: 700; }
+.dev-kpi-corte { font-size: 11px; font-weight: 600; color: var(--texto-2); }
+.dev-kpi-detalle { font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+
+.dev-cuerpo { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.dev-bloque { min-width: 0; padding: 16px 0 8px; }
+.dev-bloque + .dev-bloque { border-left: 1px solid var(--borde); }
+.dev-bloque h2 { display: flex; align-items: center; gap: 8px; padding: 0 24px 8px; font-size: 15px; font-weight: 800; }
+.dev-cantidad { padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--texto-2); background: var(--superficie-media); }
+.dev-tabla th { top: var(--alto-header); }
+.dev-col-num { width: 96px; text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.dev-articulos { list-style: none; margin: 0; padding: 0 24px; }
+.dev-articulos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--superficie-media); }
+.dev-articulos li:last-child { border-bottom: none; }
+.dev-articulo-nombre { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.dev-articulo-nombre .apagado { font-size: 12px; }
+.dev-articulo-numeros { display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dev-articulo-numeros strong { font-size: 15px; }
+.dev-tarjeta-numeros { font-size: 13px; margin-top: 4px; }
+.dev-tarjeta-numeros strong { font-size: 15px; color: var(--texto); }
+
+@media (max-width: 1100px) {
+  .dev-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .dev-bloque + .dev-bloque { border-left: none; border-top: 1px solid var(--borde); }
+}
+@media (max-width: 767px) {
+  .dev-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .dev-kpi { min-width: 0; }
+  .dev-bloque h2 { padding: 0 16px 8px; }
+  .dev-articulos { padding: 0 16px; }
+}

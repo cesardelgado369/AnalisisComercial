@@ -1,0 +1,77 @@
+/* ---- Tablero: grilla de 3×3 que entra entera en la pantalla (debajo de la cabecera) */
+.tablero { max-width: none; height: calc(100dvh - var(--alto-header) - 20px - 32px); display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.tablero-cabecera { display: flex; align-items: baseline; gap: 6px 16px; flex-wrap: wrap; }
+.tablero-cabecera h1 { font-size: 22px; line-height: 28px; font-weight: 800; }
+.tablero-cabecera p { color: var(--texto-2); font-weight: 600; }
+.tablero-mes { text-transform: capitalize; }
+.tablero-grilla { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.tablero-tarjeta { display: flex; flex-direction: column; min-height: 0; padding: 14px 18px; gap: 8px; overflow: hidden; }
+.tablero-tarjeta h2 { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--titulo-chico); }
+.tablero-tarjeta h2 .icono { color: var(--acento); }
+.tablero-cuerpo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+.tablero-secundario { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+
+/* Métrica contra el mes anterior: el número grande, la flecha y el mes anterior */
+.tablero-metrica { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.tablero-valor { font-size: clamp(30px, 5.2vh, 52px); line-height: 1; font-weight: 800; color: var(--texto); font-variant-numeric: tabular-nums; }
+.tablero-cambio { display: inline-flex; align-items: center; gap: 2px; align-self: flex-start; padding: 2px 8px 2px 4px; border-radius: 999px; font-size: 14px; font-weight: 700; color: var(--texto); background: var(--superficie-baja); }
+.tablero-cambio.bueno { background: #e3f6ee; }
+.tablero-cambio.bueno .icono { color: var(--ok); }
+.tablero-cambio.malo { background: var(--fila-alerta); }
+.tablero-cambio.malo .icono { color: var(--rojo); }
+
+/* Leyenda: el mes en curso (barra violeta) y el anterior (la marca gris) */
+.tablero-leyenda { display: flex; gap: 14px; font-size: 11px; font-weight: 600; color: var(--texto-2); text-transform: capitalize; }
+.tablero-leyenda span { display: inline-flex; align-items: center; gap: 4px; }
+.tablero-muestra { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--acento); }
+.tablero-muestra.anterior { width: 3px; height: 12px; border-radius: 2px; background: var(--texto-2); }
+
+/* Barras: verticales (días) u horizontales (vendedores), con la marca del mes anterior */
+.tablero-barras { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+.tablero-barras li { display: flex; flex-direction: column-reverse; align-items: center; gap: 4px; min-height: 0; }
+.tablero-barra-nombre { font-size: 12px; font-weight: 700; color: var(--texto-2); }
+.tablero-barra-valor { font-size: 13px; font-weight: 800; color: var(--texto); font-variant-numeric: tabular-nums; }
+.tablero-barra-pista { position: relative; flex: 1; width: 100%; max-width: 40px; min-height: 0; background: var(--superficie-baja); border-radius: 4px; }
+.tablero-barra { position: absolute; left: 0; right: 0; bottom: 0; background: var(--acento); border-radius: 4px 4px 0 0; transition: height .4s ease; }
+.tablero-barra-anterior { position: absolute; left: -4px; right: -4px; height: 3px; margin-bottom: -1px; border-radius: 2px; background: var(--texto-2); box-shadow: 0 0 0 2px var(--superficie); }
+
+.tablero-barras.horizontal { grid-auto-flow: row; grid-auto-rows: minmax(0, 1fr); grid-auto-columns: auto; gap: 4px; }
+.tablero-barras.horizontal li { display: grid; grid-template-columns: 120px minmax(0, 1fr) 42px; align-items: center; gap: 8px; }
+.tablero-barras.horizontal .tablero-barra-nombre { order: 0; justify-self: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tablero-barras.horizontal .tablero-barra-pista { max-width: none; height: 14px; flex: none; }
+.tablero-barras.horizontal .tablero-barra { top: 0; bottom: 0; right: auto; border-radius: 0 4px 4px 0; transition: width .4s ease; }
+.tablero-barras.horizontal .tablero-barra-anterior { top: -3px; bottom: -3px; left: auto; right: auto; width: 3px; height: auto; margin: 0 0 0 -1px; }
+.tablero-barras.horizontal .tablero-barra-valor { text-align: right; }
+
+/* Listas con semáforo (rutas y vendedores) */
+.tablero-lista, .tablero-variaciones { flex: 1; min-height: 0; margin: 0; padding: 0; list-style: none; display: grid; grid-auto-rows: minmax(0, 1fr); }
+.tablero-lista li, .tablero-variaciones li { display: grid; align-items: center; gap: 8px; border-bottom: 1px solid var(--superficie-media); min-height: 0; }
+.tablero-lista li:last-child, .tablero-variaciones li:last-child { border-bottom: none; }
+.tablero-lista li { grid-template-columns: minmax(0, 1fr) auto auto 104px; }
+.tablero-lista-nombre { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tablero-lista-dato { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.tablero-estado { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--texto); white-space: nowrap; }
+.tablero-estado.bien .icono { color: var(--ok); }
+.tablero-estado.atencion .icono { color: #d97706; }
+.tablero-estado.mal .icono { color: var(--rojo); }
+
+/* Variación: barra divergente desde el centro (verde sube, rojo baja) */
+.tablero-variaciones li { grid-template-columns: 120px minmax(0, 1fr) 64px; }
+.tablero-divergente { position: relative; height: 14px; }
+.tablero-eje { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--borde-fuerte); }
+.tablero-delta { position: absolute; top: 0; bottom: 0; }
+.tablero-delta.sube { background: var(--ok); border-radius: 0 4px 4px 0; }
+.tablero-delta.baja { background: var(--rojo); border-radius: 4px 0 0 4px; }
+
+/* Vendedores: los que dejaron de comprar en una barrita */
+.tablero-lista li:has(.tablero-dejaron) { grid-template-columns: 120px minmax(0, 1fr) 104px; }
+.tablero-dejaron { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; width: 100%; }
+.tablero-dejaron-pista { flex: 1; min-width: 0; }
+.tablero-dejaron-barra { display: block; height: 10px; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--acento-claro); }
+.tablero-dejaron .tablero-secundario { white-space: nowrap; }
+
+/* Pantallas bajas o angostas: la grilla deja de entrar; pasa a una columna con scroll */
+@media (max-width: 960px), (max-height: 620px) {
+  .tablero { height: auto; overflow: visible; }
+  .tablero-grilla { grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: minmax(200px, auto); }
+}

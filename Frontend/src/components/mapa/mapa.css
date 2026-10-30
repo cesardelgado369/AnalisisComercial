@@ -1,0 +1,10 @@
+/* Botón «Expandir mapa»: mismo aspecto que los de zoom de Leaflet (blanco, ícono negro) */
+.expandir-mapa button {
+  width: 30px; height: 30px; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: #fff; border: none; border-radius: 4px; color: var(--texto);
+}
+.expandir-mapa button:hover { background: #f4f4f4; }
+.expandir-mapa button:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+
+/* En pantalla completa el mapa ocupa todo, sin borde ni esquinas redondeadas */
+.leaflet-container:fullscreen { border: none; border-radius: 0; }

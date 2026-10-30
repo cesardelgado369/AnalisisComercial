@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/appsettings.Development.json
+**/*.user
+tests/
+.config/
+sincronizar.*
+README.md
+.env
+.env.*

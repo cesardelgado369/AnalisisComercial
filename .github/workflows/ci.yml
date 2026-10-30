@@ -1,0 +1,97 @@
+# Pruebas de Análisis Comercial (Madomi) en cada push y pull request.
+#   backend   las 3 suites de .NET (dominio, sincronización con Chess falso, API: seguridad, gobernanza y contrato)
+#             contra un SQL Server de Linux descartable; las pruebas crean y borran sus bases.
+#   frontend  lint y build (tsc + vite) del front.
+#   imagenes  que las tres imágenes de Despliegue/ se sigan armando (no se publican: el despliegue es a mano, con OK).
+# Nada de esto usa Chess ni la base de producción: no hace falta ningún secreto.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (.NET 8 + SQL Server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # Solo para este contenedor, que se borra al terminar el trabajo: no es un secreto.
+          MSSQL_SA_PASSWORD: PruebasCI2026
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P PruebasCI2026 -C -b -Q 'SELECT 1'"
+          --health-interval 10s --health-timeout 5s --health-retries 12 --health-start-period 20s
+    env:
+      PRUEBAS_SQL: Server=localhost,1433;User ID=sa;Password=PruebasCI2026;TrustServerCertificate=True
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restaurar
+        run: dotnet restore AnalisisComercial.sln
+      - name: Compilar
+        run: dotnet build AnalisisComercial.sln --no-restore -c Release
+      - name: Pruebas
+        run: dotnet test AnalisisComercial.sln --no-build -c Release --logger trx --results-directory TestResults
+      - name: Guardar resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: resultados-backend
+          path: Backend/TestResults
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend (React + Vite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: Frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: Frontend/package-lock.json
+      - name: Instalar
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+
+  imagenes:
+    name: Imágenes de despliegue
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: API
+        run: docker build -f Despliegue/backend.Dockerfile --target api -t analisis-ci-api Backend
+      - name: Sincronización
+        run: docker build -f Despliegue/backend.Dockerfile --target sync -t analisis-ci-sync Backend
+      - name: Web
+        run: docker build -f Despliegue/web.Dockerfile --build-context despliegue=Despliegue -t analisis-ci-web Frontend

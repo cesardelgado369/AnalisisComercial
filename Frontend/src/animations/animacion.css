@@ -1,0 +1,18 @@
+.anim {
+  transition:
+    transform var(--anim-duracion, 220ms) cubic-bezier(.2, 0, 0, 1),
+    opacity var(--anim-duracion, 220ms) ease;
+}
+
+/* Estado inicial (oculto) de cada efecto; `.anim-activo` es el estado final (visible). */
+.anim-deslizar-izquierda { transform: translateX(-100%); }
+.anim-deslizar-arriba { transform: translateY(8px); opacity: 0; }
+.anim-aparecer { opacity: 0; }
+
+.anim-activo.anim-deslizar-izquierda,
+.anim-activo.anim-deslizar-arriba { transform: none; opacity: 1; }
+.anim-activo.anim-aparecer { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim { transition: none; }
+}

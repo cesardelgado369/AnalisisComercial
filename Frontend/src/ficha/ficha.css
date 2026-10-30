@@ -1,0 +1,126 @@
+/* ---- Ficha del cliente */
+.ficha { gap: 16px; transition: opacity .15s ease; }
+.ficha.recargando { opacity: .6; }
+.ficha-volver {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; min-height: 44px; padding: 0 4px;
+  font-weight: 700; color: var(--texto-2); text-decoration: none;
+}
+.ficha-volver:hover { color: var(--acento); }
+.ficha-error { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.ficha-error .btn { min-height: 44px; }
+
+/* Cabecera: nombre, ruta y vendedor; los datos en columnas; los meses con su estado */
+.ficha-cabecera { display: flex; flex-direction: column; gap: 18px; padding: 20px 24px; }
+.ficha-titulo h1 { font-size: 26px; line-height: 32px; font-weight: 800; }
+.ficha-subtitulo { display: flex; flex-wrap: wrap; gap: 4px 0; margin-top: 4px; color: var(--texto-2); font-weight: 600; }
+.ficha-subtitulo span + span::before { content: '·'; margin: 0 8px; color: var(--texto-3); }
+/* El código es lo que el vendedor busca en Chess y dicta por teléfono: bien visible, también en el celular */
+.ficha-codigo {
+  padding: 0 8px; border-radius: 999px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--texto);
+  background: var(--superficie-media); user-select: all;
+}
+.ficha-datos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 24px; margin: 0; }
+.ficha-datos dt { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--titulo-chico); }
+.ficha-datos dd { margin: 4px 0 0; font-weight: 600; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.ficha-mapa { min-height: 32px; font-size: 13px; }
+.ficha-dias { font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.ficha-dias.alerta { color: var(--rojo); }
+
+.ficha-meses { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 14px 0 0; list-style: none; border-top: 1px solid var(--borde); }
+.ficha-meses li {
+  display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 84px; padding: 8px 10px;
+  border-radius: var(--radio); background: var(--superficie-baja);
+}
+.ficha-mes-nombre { font-size: 12px; font-weight: 700; color: var(--texto-2); }
+/* Fuera de la cartera (para el vendedor, un mes que no es suyo): sin datos, rayado */
+.ficha-meses li.fuera { background: repeating-linear-gradient(-45deg, var(--superficie-baja) 0 6px, var(--superficie) 6px 12px); }
+.ficha-mes-nota { font-size: 11px; font-weight: 600; color: var(--texto-2); text-align: center; }
+
+.ficha-mes-bultos { font-size: 12px; font-weight: 700; color: var(--texto); font-variant-numeric: tabular-nums; }
+.ficha-aviso { margin: 0; }
+
+/* Cuerpo con pestañas: Qué compró, Volumen, Devoluciones */
+.ficha-cuerpo { padding: 0; overflow: hidden; }
+.ficha-pestanas { padding: 0 20px; }
+.ficha-pestanas button { display: inline-flex; align-items: center; gap: 6px; }
+.ficha-pestana { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; transition: opacity .15s ease; }
+.ficha-pestana.recargando { opacity: .6; }
+.ficha-pestana-error { margin: 16px 20px; }
+.ficha-cuerpo > .loading-default, .ficha-cuerpo > .vacio { padding: 24px 20px; }
+
+/* Artículos × meses, agrupados por unidad de negocio; debajo de cada ✓, los bultos */
+.ficha-tabla-scroll { overflow-x: auto; }
+.ficha-celda-bultos { display: block; margin-top: 2px; font-size: 11px; font-weight: 600; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+
+/* Volumen y devoluciones de la ficha: listas de artículos con sus números */
+.ficha-vol-resumen { padding: 4px 0 8px; border-bottom: 1px solid var(--borde); }
+.ficha-vol-resumen .vol-total { max-width: 520px; }
+.ficha-vol-grupos { display: flex; flex-direction: column; gap: 16px; }
+.ficha-vol-titulo { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 13px; font-weight: 800; color: var(--texto); }
+.ficha-vol-titulo .icono { color: var(--texto-2); }
+.ficha-vol-titulo.baja .icono { color: var(--rojo); }
+.ficha-vol-titulo.sube .icono { color: var(--ok); }
+.ficha-vol-lista { list-style: none; margin: 0; padding: 0; }
+.ficha-vol-fila {
+  display: grid; grid-template-columns: minmax(0, 1fr) 130px 220px; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--superficie-media);
+}
+.ficha-vol-fila:last-child { border-bottom: none; }
+.ficha-vol-articulo { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.ficha-vol-articulo .apagado { font-size: 12px; }
+.ficha-vol-numeros { text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ficha-vol-numeros strong { font-size: 15px; }
+.ficha-dev-ayuda { font-size: 13px; }
+.ficha-dev-meses { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ficha-dev-mes {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 96px; min-height: 44px; padding: 8px 12px;
+  cursor: pointer; font: inherit; color: var(--texto); background: var(--superficie-baja);
+  border: 1.5px solid transparent; border-radius: var(--radio);
+}
+.ficha-dev-mes[aria-pressed="true"] { border-color: var(--acento); background: var(--superficie); }
+.ficha-dev-mes.fuera { cursor: default; background: repeating-linear-gradient(-45deg, var(--superficie-baja) 0 6px, var(--superficie) 6px 12px); }
+.ficha-dev-pct { font-size: 20px; font-weight: 800; color: var(--acento); font-variant-numeric: tabular-nums; }
+.ficha-dev-detalle { font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
+.ficha-dev-titulo { margin-top: 4px; font-size: 14px; font-weight: 800; }
+.ficha-dev-pct-fila { text-align: right; font-variant-numeric: tabular-nums; }
+.ficha-tabla { width: 100%; border-collapse: collapse; }
+.ficha-tabla thead th {
+  position: sticky; top: 0; z-index: 1; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 700;
+  color: var(--texto-2); background: var(--superficie); border-bottom: 1px solid var(--borde);
+}
+.ficha-tabla th:first-child { padding-left: 20px; }
+.ficha-col-mes { width: 1%; text-align: center !important; white-space: nowrap; padding: 6px 12px; }
+.ficha-tabla td.ficha-col-mes { border-bottom: 1px solid var(--superficie-media); }
+.ficha-col-mes.fuera { background: repeating-linear-gradient(-45deg, var(--superficie-baja) 0 6px, var(--superficie) 6px 12px); }
+.ficha-mes-corto { display: none; text-transform: capitalize; }
+.ficha-grupo th {
+  padding: 12px 20px 6px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--titulo-chico); background: var(--superficie);
+}
+.ficha-grupo-cantidad { margin-left: 6px; font-weight: 600; color: var(--texto-2); letter-spacing: 0; }
+.ficha-articulo { padding: 8px 12px 8px 20px; text-align: left; font-size: 14px; font-weight: 600; border-bottom: 1px solid var(--superficie-media); }
+.ficha-tabla tbody tr:not(.ficha-grupo):hover { background: var(--superficie-baja); }
+
+@media (max-width: 720px) {
+  .ficha-cabecera { padding: 16px; }
+  .ficha-titulo h1 { font-size: 22px; line-height: 28px; }
+  .ficha-datos { grid-template-columns: 1fr; }
+  .ficha-meses { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+  .ficha-meses li { min-width: 0; padding: 8px 4px; }
+  .ficha-mes-largo { display: none; }
+  .ficha-mes-corto { display: inline; }
+  .ficha-col-mes { padding: 6px 4px; }
+  .ficha-pestanas { padding: 0 12px; column-gap: 4px; flex-wrap: nowrap; }
+  /* Las tres pestañas en una línea: sin el ícono y un poco más juntas */
+  .ficha-pestanas button { padding-left: 6px; padding-right: 6px; }
+  .ficha-pestanas .icono { display: none; }
+  .ficha-pestana { padding: 14px 16px 16px; }
+  .ficha-tabla th:first-child, .ficha-articulo, .ficha-grupo th { padding-left: 16px; }
+  .ficha-articulo { font-size: 13px; }
+  /* Artículo arriba; los números y la barra debajo, en dos columnas */
+  .ficha-vol-fila { grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; }
+  .ficha-vol-articulo { grid-column: 1 / -1; }
+  .ficha-vol-numeros { text-align: left; }
+  .ficha-dev-meses { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+  .ficha-dev-mes { min-width: 0; padding: 8px 4px; }
+}

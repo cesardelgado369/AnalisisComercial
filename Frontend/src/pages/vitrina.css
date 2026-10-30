@@ -1,0 +1,23 @@
+/* TODO testing: estilos de la vitrina de componentes (VitrinaPage), solo en desarrollo */
+.vitrina-grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 16px; }
+.vitrina-ancha { grid-column: 1 / -1; }
+.vitrina-oscuro {
+  align-items: center; border: none; color: #fff;
+  background: radial-gradient(circle at 50% 45%, var(--cabecera) 0%, var(--cabecera-oscuro) 75%);
+}
+.vitrina-oscuro header { align-self: stretch; }
+.vitrina-oscuro p { color: rgba(255, 255, 255, .75); }
+.vitrina-repetir { align-self: center; }
+.vitrina-caja { border: 1px dashed var(--borde-fuerte); border-radius: var(--radio); }
+.vitrina-botones { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.vitrina-ola {
+  --ola-color: var(--acento);
+  display: inline-flex; padding: 8px 14px; border-radius: var(--radio); font-weight: 600; cursor: default;
+  background: var(--lateral); color: var(--lateral-texto);
+}
+.vitrina-icono {
+  width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer;
+  background: var(--superficie-baja); color: var(--acento); border: 1px solid var(--borde); border-radius: 50%;
+}
+.vitrina-listo { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.vitrina-listo .icono { color: var(--ok); }

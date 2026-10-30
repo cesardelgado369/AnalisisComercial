@@ -1,0 +1,79 @@
+/* ---- Círculo girando (LoadingDefault y LoadingModal), como en De Ruta: el arco en el violeta de la app */
+.loading-circulo {
+  width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%;
+  border: 2.5px solid var(--superficie-media); border-top-color: var(--acento);
+  animation: loading-girar .8s linear infinite;
+}
+.loading-circulo-grande { width: 40px; height: 40px; border-width: 3.5px; }
+@keyframes loading-girar { to { transform: rotate(360deg); } }
+
+.loading-default { display: flex; align-items: center; gap: 10px; padding: 12px 0; color: var(--texto-2); font-size: 13px; }
+.loading-modal {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  min-height: 220px; height: 100%; color: var(--texto-2); font-size: 13px;
+}
+
+/* ---- LoadingAnalisis: barras que crecen, la línea de tendencia y la lupa (la línea de tiempo está en el .tsx) */
+.loading-analisis {
+  --la-grilla: var(--superficie-media);
+  --la-suelo: var(--piedra);
+  --la-barra: #ddd0fb;
+  --la-destacada: var(--acento);
+  --la-linea: var(--cabecera);
+  --la-punto: #fff;
+  --la-lupa: var(--piedra);
+  --la-vidrio: rgba(124, 58, 237, .10);
+  --la-reflejo: rgba(255, 255, 255, .9);
+  --la-insignia: var(--acento);
+  --la-insignia-flecha: #fff;
+  --la-chispa: #f59e0b;
+  --la-texto: var(--texto);
+  --la-texto-2: var(--texto-2);
+  display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0;
+}
+.loading-analisis.sobre-oscuro {
+  --la-grilla: rgba(255, 255, 255, .12);
+  --la-suelo: rgba(255, 255, 255, .7);
+  --la-barra: rgba(255, 255, 255, .24);
+  --la-destacada: #c4b5fd;
+  --la-linea: #fff;
+  --la-punto: var(--cabecera-oscuro);
+  --la-lupa: #fff;
+  --la-vidrio: rgba(255, 255, 255, .12);
+  --la-reflejo: rgba(255, 255, 255, .7);
+  --la-insignia: #fff;
+  --la-insignia-flecha: var(--cabecera);
+  --la-chispa: #fde68a;
+  --la-texto: #fff;
+  --la-texto-2: rgba(255, 255, 255, .75);
+}
+
+.la-dibujo { width: 100%; max-width: 420px; height: auto; display: block; overflow: visible; }
+.la-grilla { stroke: var(--la-grilla); stroke-width: 1.5; stroke-dasharray: 4 6; }
+.la-suelo { stroke: var(--la-suelo); stroke-width: 2.5; stroke-linecap: round; }
+.la-barra, .la-destacada { transform-box: fill-box; transform-origin: 50% 100%; }
+.la-barra { fill: var(--la-barra); }
+.la-destacada { fill: var(--la-destacada); }
+.la-linea {
+  fill: none; stroke: var(--la-linea); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round;
+  stroke-dasharray: 1; stroke-dashoffset: 0;
+}
+.la-punto { fill: var(--la-punto); stroke: var(--la-linea); stroke-width: 2.5; transform-box: fill-box; transform-origin: center; }
+.la-lupa { transform-box: fill-box; transform-origin: 30% 30%; }
+.la-vidrio { fill: var(--la-vidrio); }
+.la-reflejo { fill: none; stroke: var(--la-reflejo); stroke-width: 2.5; stroke-linecap: round; }
+.la-aro { fill: none; stroke: var(--la-lupa); stroke-width: 4.5; }
+.la-mango { stroke: var(--la-lupa); stroke-width: 7; stroke-linecap: round; }
+.la-insignia { transform-box: fill-box; transform-origin: center; }
+.la-insignia circle { fill: var(--la-insignia); }
+.la-insignia path { fill: none; stroke: var(--la-insignia-flecha); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+/* Sin animación quedan escondidas: son solo el destello del hallazgo */
+.la-chispa { fill: var(--la-chispa); transform-box: fill-box; transform-origin: center; transform: scale(0); }
+
+.loading-analisis-texto { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; font-size: 13px; color: var(--la-texto-2); }
+.loading-analisis-texto strong { color: var(--la-texto); font-size: 14px; }
+.loading-analisis-segundos { font-weight: 400; color: var(--la-texto-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-circulo { animation-duration: 2.4s; }
+}
