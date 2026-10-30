@@ -3,20 +3,15 @@ import type { EstadoMes, FichaCliente } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { CeldaEstado } from '../cobertura/CeldaEstado'
-import { mesesDisponibles, nombrePropio } from '../cobertura/estados'
+import { PRIMER_MES, nombrePropio } from '../cobertura/estados'
 import { unidadVisible } from '../comercial/filtros'
+import { useMesReferencia } from '../comercial/mesReferencia'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { cantidad, formatoBultos, formatoFecha, nombreMesCorto, nombreMesTitulo } from '../utils/formato'
 import { PestanaDevoluciones, PestanaVolumen } from './Pestanas'
 import '../cobertura/cobertura.css'
 import './ficha.css'
-
-/** Hasta 12 meses para atrás (el máximo del contrato), desde el primero con datos: toda la historia que hay. */
-function desdeHistoria(mesEnCurso: string) {
-  const disponibles = mesesDisponibles(mesEnCurso)
-  return disponibles[Math.max(0, disponibles.length - 12)]
-}
 
 type Pestana = 'compras' | 'volumen' | 'devoluciones'
 const PESTANAS: { valor: Pestana; texto: string; icono: string }[] = [
@@ -28,7 +23,8 @@ const PESTANAS: { valor: Pestana; texto: string; icono: string }[] = [
 /**
  * Ficha del cliente (`/cliente/:id`, «CCC x bulto»): la cabecera (código, ruta, días de visita, dirección con el mapa,
  * última compra), su estado y sus bultos en cada mes, y tres pestañas: qué compró cada mes (artículos × meses), Volumen
- * (qué bajó y qué subió contra la base) y Devoluciones. La pestaña va en la URL (`?pestana=`).
+ * (qué bajó y qué subió contra la base) y Devoluciones. La pestaña va en la URL (`?pestana=`). Los meses son los cuatro
+ * en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el dueño).
  *
  * Gobernanza (CONTRATO_API.md): operario y supervisor solo ven los meses en que el cliente estuvo en **su** cartera. Los
  * otros los manda la API como `fueraDeCartera`, sin bultos ni artículos; acá van rayados y sin ningún dato.
@@ -43,8 +39,15 @@ export function FichaPage() {
   const pestanaUrl = params.get('pestana') as Pestana | null
   const pestana: Pestana = PESTANAS.some((p) => p.valor === pestanaUrl) ? pestanaUrl! : 'compras'
   const idCliente = Number(id)
-  const mesDesde = desdeHistoria(sesion.mesEnCurso)
-  const ruta = Number.isInteger(idCliente) && idCliente > 0 ? `/clientes/${idCliente}?mesDesde=${mesDesde}` : null
+  const { mes: mesRef, ventana } = useMesReferencia()
+  const rango = `mesDesde=${ventana[0]}&mesHasta=${mesRef}`
+  const ruta = Number.isInteger(idCliente) && idCliente > 0 ? `/clientes/${idCliente}?${rango}` : null
+  // El mes de las pestañas, si es uno de los que se ven (Volumen no compara julio: no tiene mes anterior)
+  const mesDe = (clave: string, validos: string[]) => {
+    const m = params.get(clave)
+    return m && m !== mesRef && validos.includes(m) ? m : null
+  }
+  const mesVol = mesDe('mesVol', ventana.filter((m) => m !== PRIMER_MES)) ?? mesRef
   const { datos: f, errores, cargando, recargar } = useConsulta<FichaCliente>(ruta, 'No pudimos cargar la ficha. Probá de nuevo.')
 
   /** Cambia un parámetro de la ficha sin sumar entradas al historial (Atrás vuelve a la lista). */
@@ -185,12 +188,21 @@ export function FichaPage() {
         </div>
 
         {pestana === 'volumen' ? (
-          <PestanaVolumen idCliente={f.idCliente} mes={params.get('mesVol')} mesEnCurso={sesion.mesEnCurso} esOperario={esOperario} />
+          mesVol === PRIMER_MES ? (
+            <p className="vacio">{nombreMesTitulo(PRIMER_MES)} es el primer mes con datos: no hay un mes anterior para comparar el volumen.</p>
+          ) : (
+            <PestanaVolumen
+              idCliente={f.idCliente}
+              mes={mesVol === sesion.mesEnCurso ? null : mesVol}
+              mesEnCurso={sesion.mesEnCurso}
+              esOperario={esOperario}
+            />
+          )
         ) : pestana === 'devoluciones' ? (
           <PestanaDevoluciones
             idCliente={f.idCliente}
-            mesDesde={mesDesde}
-            mes={params.get('mesDev')}
+            rango={rango}
+            mes={mesDe('mesDev', ventana)}
             onMes={(m) => cambiar('mesDev', m)}
             esOperario={esOperario}
           />

@@ -2,7 +2,7 @@ import { memo, useCallback, useMemo } from 'react'
 import type { ChipVolumen, ClienteVolumen, Volumen } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { BuscadorCobertura } from '../cobertura/BuscadorCobertura'
-import { mesesDisponibles } from '../cobertura/estados'
+import { PRIMER_MES } from '../cobertura/estados'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { CabeceraOrden, Chips, FilaCliente, SinClientes, TarjetaCliente, porNombre, useAbrirFicha } from '../comercial/lista'
 import { Ayuda } from '../components/Ayuda'
@@ -36,19 +36,25 @@ const CHIP_SIN_DATOS: Record<ChipVolumen, string> = {
  */
 export function VolumenPage() {
   const filtros = useFiltrosComerciales()
-  const { sesion, params, cambiar, buscar, elegirChip, verTodos, esOperario, busqueda, conVendedor, titulo } = filtros
+  const { sesion, params, cambiar, buscar, elegirChip, verTodos, esOperario, busqueda, conVendedor, titulo, referencia } = filtros
   const chip = deLista(params.get('chip'), CHIPS, 'todos')
   const orden = deLista(params.get('orden'), ORDENES, 'nombre')
-  // Agosto en adelante (julio es el primer mes con datos: no tiene base)
-  const meses = mesesDisponibles(sesion.mesEnCurso).slice(1).reverse()
-  const mes = filtros.mesElegido(meses)
+  // Los meses que se ven (el en curso y los tres anteriores), menos julio: es el primero con datos y no tiene base. El
+  // dueño no tiene este desplegable: el mes lo elige en el filtro «Mes», que cambia toda la app.
+  const meses = filtros.ventana.filter((m) => m !== PRIMER_MES).reverse()
+  const mes = referencia.puedeElegir ? null : filtros.mesElegido(meses)
+  const mesVolumen = mes ?? filtros.mesRef
+  const sinMesAnterior = mesVolumen === PRIMER_MES
 
   const consulta = new URLSearchParams(filtros.consulta)
   if (busqueda) consulta.set('busqueda', busqueda)
   if (chip !== 'todos') consulta.set('chip', chip)
-  if (mes) consulta.set('mes', mes)
+  if (mesVolumen !== sesion.mesEnCurso) consulta.set('mes', mesVolumen)
   const qs = consulta.toString()
-  const { datos, errores, cargando, recargar } = useConsulta<Volumen>(`/volumen${qs ? `?${qs}` : ''}`, 'No pudimos cargar el volumen. Probá de nuevo.')
+  const { datos, errores, cargando, recargar } = useConsulta<Volumen>(
+    sinMesAnterior ? null : `/volumen${qs ? `?${qs}` : ''}`,
+    'No pudimos cargar el volumen. Probá de nuevo.',
+  )
   const vigentes = errores.length ? null : datos
   const t = vigentes ? textos(vigentes.comparacion, sesion.mesEnCurso) : null
   const cambiarOrden = useCallback((o: Orden) => cambiar('orden', o === 'nombre' ? null : o, false), [cambiar])
@@ -66,16 +72,18 @@ export function VolumenPage() {
           <div className="cob-resumen-textos">
             <h1>{titulo}</h1>
             <p>{vigentes ? filtros.subtitulo(vigentes.chips.todos) : ' '}</p>
-            <label className="vol-mes">
-              <span className="sr-solo">Mes</span>
-              <select value={mes ?? ''} onChange={(e) => cambiar('mes', e.target.value || null)}>
-                {meses.map((m) => (
-                  <option key={m} value={m === sesion.mesEnCurso ? '' : m}>
-                    {nombreMesTitulo(m)}{m === sesion.mesEnCurso ? ' (en curso)' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!referencia.puedeElegir && meses.length > 1 && (
+              <label className="vol-mes">
+                <span className="sr-solo">Mes</span>
+                <select value={mes ?? ''} onChange={(e) => cambiar('mes', e.target.value || null)}>
+                  {meses.map((m) => (
+                    <option key={m} value={m === filtros.mesRef ? '' : m}>
+                      {nombreMesTitulo(m)}{m === sesion.mesEnCurso ? ' (en curso)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           {/* Sin clientes (p. ej. todavía sin datos de Chess) no hay total que comparar: la lista lo explica */}
           {vigentes && t && vigentes.chips.todos > 0 ? (
@@ -109,7 +117,12 @@ export function VolumenPage() {
         </div>
 
         <div className="cob-cuerpo">
-          {errores.length > 0 ? (
+          {sinMesAnterior ? (
+            <p className="cob-estado">
+              {nombreMesTitulo(PRIMER_MES)} es el primer mes con datos: no hay un mes anterior para comparar el volumen.
+              Elegí otro mes.
+            </p>
+          ) : errores.length > 0 ? (
             <ErrorCarga errores={errores} onReintentar={recargar} acento />
           ) : !datos || !t ? (
             <div className="cob-estado"><span className="esqueleto esqueleto-titulo" /></div>

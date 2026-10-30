@@ -20,13 +20,13 @@ export const DIAS_VISITA = [
 ]
 
 /** Primer mes con datos de Chess (CONTRATO_API.md): no se puede pedir antes. */
-const PRIMER_MES = '2026-07-01'
+export const PRIMER_MES = '2026-07-01'
 
-/** Los meses que se pueden elegir: desde el primero con datos hasta el en curso (`sesion.mesEnCurso`). */
-export function mesesDisponibles(mesEnCurso: string) {
+/** Los meses desde el primero con datos hasta `hasta` (el mes en curso, o el que eligió el dueño). */
+export function mesesDisponibles(hasta: string) {
   const meses: string[] = []
   let [anio, mes] = PRIMER_MES.split('-').map(Number)
-  for (let m = PRIMER_MES; m <= mesEnCurso && meses.length < 24; ) {
+  for (let m = PRIMER_MES; m <= hasta && meses.length < 24; ) {
     meses.push(m)
     mes = mes === 12 ? 1 : mes + 1
     if (mes === 1) anio++
@@ -34,6 +34,12 @@ export function mesesDisponibles(mesEnCurso: string) {
   }
   return meses
 }
+
+/** Cuántos meses se ven (Cesar, 30/10): el mes y los tres anteriores. Es también el rango por defecto de la API. */
+const MESES_VISIBLES = 4
+
+/** Los meses que se ven parado en `mes`: ese y los tres anteriores, sin pasar del primero con datos. */
+export const ventanaDe = (mes: string) => mesesDisponibles(mes).slice(-MESES_VISIBLES)
 
 export const CHIPS: ChipCobertura[] = ['todos', 'compraronMesActual', 'sinCompraMesActual', 'dejaronDeComprar']
 

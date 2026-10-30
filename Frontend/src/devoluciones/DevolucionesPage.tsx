@@ -1,6 +1,5 @@
 import type { Devoluciones } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
-import { mesesDisponibles } from '../cobertura/estados'
 import { BarraFiltros, useFiltrosComerciales } from '../comercial/filtros'
 import { FilaCliente, NombreArticulo, TarjetaCliente, useAbrirFicha } from '../comercial/lista'
 import { Ayuda } from '../components/Ayuda'
@@ -23,13 +22,16 @@ import './devoluciones.css'
  */
 export function DevolucionesPage() {
   const filtros = useFiltrosComerciales()
-  const { sesion, cambiar, conVendedor, esOperario, titulo } = filtros
+  const { cambiar, conVendedor, esOperario, titulo, mesRef, ventana } = filtros
   const angosto = useMedia('(max-width: 767px)')
-  const mes = filtros.mesElegido(mesesDisponibles(sesion.mesEnCurso))
+  const mes = filtros.mesElegido(ventana)
 
-  // Los indicadores, siempre los cuatro meses hasta el actual; el detalle, del mes elegido (otra consulta solo si hace falta)
-  const base = filtros.consulta.toString()
-  const resumen = useConsulta<Devoluciones>(`/devoluciones${base ? `?${base}` : ''}`, 'No pudimos cargar las devoluciones. Probá de nuevo.')
+  // Los indicadores, siempre los cuatro meses en los que está parada la app; el detalle, del mes elegido (otra consulta
+  // solo si hace falta)
+  const base = new URLSearchParams(filtros.consulta)
+  base.set('mesDesde', ventana[0])
+  base.set('mesHasta', mesRef)
+  const resumen = useConsulta<Devoluciones>(`/devoluciones?${base}`, 'No pudimos cargar las devoluciones. Probá de nuevo.')
   const consultaMes = new URLSearchParams(filtros.consulta)
   if (mes) {
     consultaMes.set('mesDesde', mes)
@@ -42,7 +44,7 @@ export function DevolucionesPage() {
   const ficha = useAbrirFicha('Devoluciones', `pestana=devoluciones${mes ? `&mesDev=${mes}` : ''}`)
   useRecordarAltura(!!d)
   const nombreDelMes = d ? nombreMes(d.mes) : ''
-  const kpiElegido = resumen.errores.length ? null : resumen.datos?.kpis.find((k) => k.mes === (mes ?? sesion.mesEnCurso))
+  const kpiElegido = resumen.errores.length ? null : resumen.datos?.kpis.find((k) => k.mes === (mes ?? mesRef))
 
   return (
     <section className="pagina cob dev">
@@ -64,14 +66,14 @@ export function DevolucionesPage() {
           {resumen.datos && !resumen.errores.length && (
             <ol className="dev-kpis" aria-label="Devoluciones por mes">
               {resumen.datos.kpis.map((k) => {
-                const elegido = (mes ?? sesion.mesEnCurso) === k.mes
+                const elegido = (mes ?? mesRef) === k.mes
                 return (
                   <li key={k.mes}>
                     <button
                       type="button"
                       className={`dev-kpi${k.mesEnCurso ? ' en-curso' : ''}`}
                       aria-pressed={elegido}
-                      onClick={() => cambiar('mes', k.mes === sesion.mesEnCurso ? null : k.mes)}
+                      onClick={() => cambiar('mes', k.mes === mesRef ? null : k.mes)}
                     >
                       <span className="dev-kpi-valor">{pct(k.porcentaje)}</span>
                       <span className="dev-kpi-mes">

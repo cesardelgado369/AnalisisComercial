@@ -5,12 +5,15 @@ import { useSesionApp } from '../auth/SesionApp'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { DIAS_VISITA, nombrePropio } from '../cobertura/estados'
+import { SelectorMes } from '../comercial/filtros'
+import { useMesReferencia } from '../comercial/mesReferencia'
 import { formatoEntero, formatoFechaCorta, nombreMes } from '../utils/formato'
 import './tablero.css'
 
 /**
  * Tablero (`/resumen`, admin y supervisor): la foto macro en una grilla de 3×3 que entra en una pantalla.
- * - 11, 12, 21 y 22: el mes en curso contra el anterior (cobertura, clientes con compra, cartera, dejaron de comprar).
+ * - 11, 12, 21 y 22: el mes contra el anterior (cobertura, clientes con compra, cartera, dejaron de comprar). El mes es
+ *   el en curso, o el que eligió el dueño en el filtro «Mes» (comercial/mesReferencia).
  * - 13 y 23: los días de visita (la cobertura de cada ruta y cómo viene contra el mes anterior).
  * - 31, 32 y 33: los vendedores (cobertura, variación y estado).
  * Los números son los de `GET /api/cobertura` (los arma la API), pedidos por día y por vendedor. Con `chip` la lista
@@ -56,7 +59,8 @@ const pct = (n: number | undefined) => (n === undefined ? '—' : `${Math.round(
 
 export function TableroPage() {
   const sesion = useSesionApp()
-  const mes = sesion.mesEnCurso
+  const referencia = useMesReferencia()
+  const mes = referencia.mes
   const ant = mesAnterior(mes)
   const [datos, setDatos] = useState<Datos | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -69,11 +73,11 @@ export function TableroPage() {
       anterior: c.kpis.find((k) => k.mes.slice(0, 7) === ant.slice(0, 7)),
       dejaron: c.chips.dejaronDeComprar,
     })
-    const pedir = (qs: string) => api.get<Cobertura>(`/cobertura?chip=dejaronDeComprar${qs}`)
+    const pedir = (qs: string, hasta = mes) => api.get<Cobertura>(`/cobertura?chip=dejaronDeComprar&mesHasta=${hasta}${qs}`)
     const vendedores = sesion.vendedores.filter((v) => !v.esCasa)
     Promise.all([
       pedir(''),
-      pedir(`&mesHasta=${ant}`),
+      pedir('', ant),
       Promise.all(DIAS_VISITA.map((d) => pedir(`&dia=${d.codigo}`))),
       Promise.all(vendedores.map((v) => pedir(`&vendedor=${v.id}`))),
     ])
@@ -105,6 +109,11 @@ export function TableroPage() {
           <span className="tablero-mes">{mesTxt}</span>
           {corte ? ` al ${formatoFechaCorta(corte)} (en curso)` : ''} contra {antTxt} completo
         </p>
+        {referencia.puedeElegir && (
+          <div className="tablero-mes-filtro">
+            <SelectorMes referencia={referencia} />
+          </div>
+        )}
       </header>
 
       {error ? (

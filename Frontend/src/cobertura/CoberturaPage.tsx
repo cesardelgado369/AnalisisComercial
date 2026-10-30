@@ -9,7 +9,7 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { formatoEntero, nombreMes } from '../utils/formato'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { BuscadorCobertura } from './BuscadorCobertura'
-import { CHIPS, mesesDisponibles, textoChip } from './estados'
+import { CHIPS, textoChip } from './estados'
 import { ResumenCobertura } from './ResumenCobertura'
 import { TablaCobertura, type Orden } from './TablaCobertura'
 import './cobertura.css'
@@ -33,19 +33,20 @@ const ORDENES: Orden[] = ['codigo', 'codigo-desc', 'nombre', 'nombre-desc']
  */
 export function CoberturaPage() {
   const filtros = useFiltrosComerciales()
-  const { sesion, params, cambiar, buscar, elegirChip, verTodos, busqueda, conVendedor, titulo } = filtros
+  const { sesion, params, cambiar, buscar, elegirChip, verTodos, busqueda, conVendedor, titulo, mesRef, ventana } = filtros
   const chip = deLista<ChipCobertura>(params.get('chip'), CHIPS, 'todos')
   const orden = deLista<Orden>(params.get('orden'), ORDENES, 'codigo')
   const vista: 'tabla' | 'mapa' = params.get('vista') === 'mapa' ? 'mapa' : 'tabla'
-  // Mes de corte (`mesHasta`): por defecto el en curso. Con otro, la cartera, los colores del mapa y el compró o no
-  // compró son todos de ese mes (lo resuelve la API).
-  const disponibles = mesesDisponibles(sesion.mesEnCurso)
-  const mes = filtros.mesElegido(disponibles)
+  // Los cuatro meses en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el
+  // dueño). Mes de corte (`mesHasta`): el último, o otro de esos que se elija en el mapa; la cartera, los colores del
+  // mapa y el compró o no compró son todos de ese mes (lo resuelve la API).
+  const mes = filtros.mesElegido(ventana)
 
   const consulta = new URLSearchParams(filtros.consulta)
   if (busqueda) consulta.set('busqueda', busqueda)
   if (chip !== 'todos') consulta.set('chip', chip)
-  if (mes) consulta.set('mesHasta', mes)
+  consulta.set('mesDesde', ventana[0])
+  consulta.set('mesHasta', mes ?? mesRef)
   const qs = consulta.toString()
 
   const { datos, errores, cargando, recargar } = useConsulta<Cobertura>(
@@ -108,8 +109,8 @@ export function CoberturaPage() {
             <Suspense fallback={<div className="cob-estado"><LoadingDefault texto="Cargando el mapa…" /></div>}>
               <VistaMapa
                 datos={datos}
-                mesesDisponibles={disponibles}
-                onMes={(m) => cambiar('mes', m === sesion.mesEnCurso ? null : m)}
+                mesesDisponibles={ventana}
+                onMes={(m) => cambiar('mes', m === mesRef ? null : m)}
                 vendedores={sesion.vendedores}
                 conVendedores={conVendedor}
               />

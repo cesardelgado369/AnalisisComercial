@@ -4,6 +4,10 @@
 /* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cob-filtros.con-mes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1100px) {
+  .cob-filtros.con-mes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 .cob-filtro { gap: 6px; }
 .cob-filtro select {
   height: 44px; padding: 0 40px 0 14px; font-size: 14px; font-weight: 600; color: var(--texto); cursor: pointer;
@@ -12,6 +16,8 @@
   transition: border-color .15s, box-shadow .15s;
 }
 .cob-filtro select:hover { border-color: var(--acento-claro); }
+/* El dueño parado en un mes pasado: que se note en todas las secciones */
+.cob-filtro-pasado select { border-color: var(--acento); background-color: var(--superficie-baja); color: var(--acento); }
 .cob-filtro select:focus-visible { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124, 58, 237, .16); }
 .cob-filtro-con-aviso { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cob-filtro-aviso { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 12px; font-weight: 600; color: var(--texto); }
@@ -187,7 +193,7 @@
 
 @media (max-width: 767px) {
   /* Filtros compactos (con el teléfono en la mano, primero los números): el valor elegido ya dice qué filtra */
-  .cob-filtros, .cob-filtros.sin-vendedor { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtros, .cob-filtros.sin-vendedor, .cob-filtros.con-mes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }
   .cob-resumen-textos h1 { font-size: 22px; line-height: 28px; }

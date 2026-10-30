@@ -3,8 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
+import { cantidad, nombreMesTitulo } from '../utils/formato'
 import type { ContextoAyuda } from './ayuda'
-import { cantidad } from '../utils/formato'
+import { useMesReferencia, type MesReferencia } from './mesReferencia'
 
 /** Un valor de la URL, si es uno de los válidos; si no (o si no está), el de siempre. */
 export function deLista<T extends string>(valor: string | null, validos: readonly T[], defecto: T): T {
@@ -18,6 +19,7 @@ export function deLista<T extends string>(valor: string | null, validos: readonl
  */
 export function useFiltrosComerciales() {
   const sesion = useSesionApp()
+  const referencia = useMesReferencia()
   const [params, setParams] = useSearchParams()
   const esOperario = sesion.rol === 'operario'
   // El operario elige solo si tiene más de un vendedor de Chess (p. ej. el mismo vendedor renombrado en Chess con otro id)
@@ -60,10 +62,10 @@ export function useFiltrosComerciales() {
     setParams(p)
   }, [setParams])
 
-  /** El mes de `?mes=`, si es uno de los que se pueden elegir; null = el mes en curso. */
+  /** El mes de `?mes=` de la pantalla, si es uno de los que se pueden elegir; null = el mes en el que está parada la app. */
   const mesElegido = (disponibles: string[]) => {
     const mes = params.get('mes')
-    return mes && mes !== sesion.mesEnCurso && disponibles.includes(mes) ? mes : null
+    return mes && mes !== referencia.mes && disponibles.includes(mes) ? mes : null
   }
 
   /** Los filtros comunes, listos para la consulta a la API. */
@@ -95,6 +97,10 @@ export function useFiltrosComerciales() {
 
   return {
     sesion,
+    referencia,
+    /** El mes en el que está parada la app (el en curso, o el que eligió el dueño) y los cuatro que se ven. */
+    mesRef: referencia.mes,
+    ventana: referencia.ventana,
     params,
     cambiar,
     buscar,
@@ -118,14 +124,14 @@ export function useFiltrosComerciales() {
 type Filtros = ReturnType<typeof useFiltrosComerciales>
 
 /**
- * Los tres desplegables. En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
+ * Los desplegables (el dueño suma el mes en el que se para la app). En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
  * del filtro a la vista (el valor elegido ya lo dice: «Todos los días», «Lunes»); el lector de pantalla lo lee igual.
  */
 export function BarraFiltros({ filtros }: { filtros: Filtros }) {
   const { sesion, cambiar, esOperario, eligeVendedor, vendedor, dia, unidad } = filtros
   const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer las unidades de negocio.')
   return (
-    <div className={eligeVendedor ? 'cob-filtros' : 'cob-filtros sin-vendedor'}>
+    <div className={['cob-filtros', !eligeVendedor && 'sin-vendedor', filtros.referencia.puedeElegir && 'con-mes'].filter(Boolean).join(' ')}>
       {eligeVendedor && (
         <label className="cob-filtro">
           <span className="cob-filtro-nombre">Vendedor</span>
@@ -166,7 +172,30 @@ export function BarraFiltros({ filtros }: { filtros: Filtros }) {
           </p>
         )}
       </div>
+      {filtros.referencia.puedeElegir && <SelectorMes referencia={filtros.referencia} />}
     </div>
+  )
+}
+
+/**
+ * El mes en el que se para la app (solo el dueño): elegir otro cambia toda la interfaz y sigue elegido en las otras
+ * secciones. Parado en un mes pasado, el desplegable se resalta para que no se olvide.
+ */
+export function SelectorMes({ referencia }: { referencia: MesReferencia }) {
+  const { mes, enCurso, opciones, elegir } = referencia
+  const ultimo = opciones[opciones.length - 1]
+  return (
+    <label className={enCurso ? 'cob-filtro cob-filtro-mes' : 'cob-filtro cob-filtro-mes cob-filtro-pasado'}>
+      <span className="cob-filtro-nombre">Mes</span>
+      <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
+        {[...opciones].reverse().map((m) => (
+          <option key={m} value={m === ultimo ? '' : m}>
+            {nombreMesTitulo(m)}
+            {m === ultimo ? ' (en curso)' : ''}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 

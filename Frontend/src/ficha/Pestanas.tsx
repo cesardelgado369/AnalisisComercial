@@ -100,13 +100,14 @@ export function PestanaVolumen(props: { idCliente: number; mes: string | null; m
  */
 export function PestanaDevoluciones(props: {
   idCliente: number
-  mesDesde: string
+  /** `mesDesde=…&mesHasta=…`: los meses que se ven. */
+  rango: string
   mes: string | null
   onMes: (mes: string | null) => void
   esOperario: boolean
 }) {
-  const { idCliente, mesDesde, mes, onMes, esOperario } = props
-  const ruta = `/clientes/${idCliente}/devoluciones?mesDesde=${mesDesde}${mes ? `&mes=${mes}` : ''}`
+  const { idCliente, rango, mes, onMes, esOperario } = props
+  const ruta = `/clientes/${idCliente}/devoluciones?${rango}${mes ? `&mes=${mes}` : ''}`
   const { datos, errores, cargando, recargar } = useConsulta<FichaDevoluciones>(ruta, 'No pudimos cargar las devoluciones del cliente.')
   if (errores.length) return <ErrorCarga errores={errores} onReintentar={recargar} className="ficha-error ficha-pestana-error" />
   if (!datos) return <LoadingDefault texto="Cargando las devoluciones…" />
