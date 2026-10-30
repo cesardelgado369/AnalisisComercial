@@ -18,6 +18,16 @@ Chess daba 838).
 de vendedores para administración, y el front con Gestión de cuentas (sin la API de cuentas de la plataforma, muestra
 los accesos) y los cambios de Clientes excluidos.
 
+**Versión `1.0`, publicada el 30/10** (OK del usuario, la corrió él con `publicar.sh`): fase 2 (gobernanza, Volumen y
+Devoluciones en bultos, pestañas de la ficha), cuentas de la plataforma en Gestión de cuentas. Migración
+`SinCargoYUnidadesPorBulto` aplicada sin errores.
+
+**Versión `1.1`, publicada el 30/10** (OK de Cesar en el chat del front; la publicó la sesión del front desde un
+`git archive` de `f3f76b7`, backup antes: `AnalisisComercial_20261030_1553.bak.gz`). Back: el operario recibe los
+totales solo en porcentaje (`a35b943`) y operario y supervisor ven solo los últimos 4 meses (`1e17dc8`). Front: el
+vendedor solo con porcentajes, ayuda ⓘ del dueño, vista de celular, últimos 4 meses con el filtro «Mes» del dueño,
+Tablero oculto. Sin migraciones nuevas.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
@@ -133,9 +143,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/j
 
 ## Pendiente
 
-- **Fase 2** (gobernanza, volumen, devoluciones; hecha en local el 29/10, sin publicar): al publicarla, la API migra
-  sola (`SinCargoYUnidadesPorBulto`: dos columnas nuevas). Después, una sola vez, volver a leer las ventas para
-  completar los bultos sin cargo de los meses ya cargados:
+- **Fase 2** (publicada en la 1.0): falta, una sola vez y opcional, volver a leer las ventas para completar los bultos
+  sin cargo de los meses ya cargados:
   `docker compose stop sync && docker compose run --rm sync --una-vez --recargar-ventas && docker compose start sync`.
   Las unidades por bulto de los artículos llegan con la sincronización diaria.
 
