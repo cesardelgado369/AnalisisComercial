@@ -34,6 +34,12 @@ public class OpcionesComercial
     /// <summary>Operario y supervisor ven solo estos meses hasta el en curso (Cesar, 30/10/2026); el admin, desde <see cref="PrimerMes"/>.</summary>
     public int MesesVisibles { get; set; } = 4;
 
+    /// <summary>
+    /// El operario ve solo Cobertura y la ficha: Volumen y Devoluciones (también las pestañas de la ficha) → 403
+    /// (Cesar, 30/10/2026, versión 1.2 para vendedores). false para abrírselas sin publicar código.
+    /// </summary>
+    public bool OperarioSoloCobertura { get; set; } = true;
+
     /// <summary>Clientes excluidos: sin comprar desde hace estos días (o nunca, con esta antigüedad en la cartera) → «excluir».</summary>
     public int DiasSugerirExcluir { get; set; } = 90;
 

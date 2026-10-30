@@ -18,7 +18,8 @@ public class SesionService(ComercialDbContext db, Lectura lectura) : ISesionServ
             ? new VendedorDto(p, vendedores.TryGetValue(p, out var v) ? v.Nombre : $"Vendedor {p}")
             : null;
         await lectura.RegistrarAsync("sesion", null, ct);
-        return new SesionDto(a.Email, a.Rol, propio, Opciones(a, vendedores), lectura.Hoy, lectura.MesEnCurso);
+        return new SesionDto(a.Email, a.Rol, propio, Opciones(a, vendedores), lectura.Hoy, lectura.MesEnCurso,
+            VeBultos: !(lectura.Op.OperarioSoloCobertura && a.Rol == RolApp.Operario));
     }
 
     public async Task<EstadoSincronizacionDto> EstadoSincronizacionAsync(CancellationToken ct = default)
@@ -184,6 +185,7 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
 
     public async Task<VolumenClienteDto> VolumenAsync(int idCliente, DateOnly? mes, CancellationToken ct = default)
     {
+        await lectura.ExigirBultosAsync(ct);
         var (_, propios) = await lectura.ClienteVisibleAsync(idCliente, "ficha-volumen", ct);
         var c = await lectura.ComparacionAsync(mes, ct);
         var (actual, enBase) = await lectura.BultosComparadosAsync(c, [idCliente], null, ct);
@@ -214,6 +216,7 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
     public async Task<DevolucionesClienteDto> DevolucionesAsync(int idCliente, DateOnly? mesDesde, DateOnly? mesHasta,
         DateOnly? mes, CancellationToken ct = default)
     {
+        await lectura.ExigirBultosAsync(ct);
         var meses = await lectura.MesesAsync(mesDesde, mesHasta, ct);
         var elegido = Calendario.Mes(mes ?? meses[^1]);
         if (!meses.Contains(elegido))

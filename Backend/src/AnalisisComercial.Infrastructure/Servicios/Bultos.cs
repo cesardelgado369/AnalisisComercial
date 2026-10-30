@@ -16,6 +16,7 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
     {
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
+        await lectura.ExigirBultosAsync(ct);
         var mirada = await lectura.MiradaAsync(f.Vendedor, "volumen", ct);
         var c = await lectura.ComparacionAsync(f.Mes, ct);
         var a = await lectura.AlcanceAsync(ct);
@@ -72,6 +73,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
 {
     public async Task<DevolucionesDto> ObtenerAsync(FiltroDevoluciones f, CancellationToken ct = default)
     {
+        await lectura.ExigirBultosAsync(ct);
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
         var meses = await lectura.MesesAsync(f.MesDesde, f.MesHasta, ct);

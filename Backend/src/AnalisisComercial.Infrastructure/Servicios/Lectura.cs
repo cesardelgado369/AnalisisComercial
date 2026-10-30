@@ -102,6 +102,13 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     public async Task<IReadOnlyList<DateOnly>> MesesAsync(DateOnly? desde, DateOnly? hasta, CancellationToken ct)
         => Meses(desde, hasta, await PrimerMesVisibleAsync(ct));
 
+    /// <summary>Volumen y Devoluciones: 403 para el operario mientras vea solo Cobertura (<see cref="OpcionesComercial.OperarioSoloCobertura"/>).</summary>
+    public async Task ExigirBultosAsync(CancellationToken ct)
+    {
+        if (Op.OperarioSoloCobertura && (await AlcanceAsync(ct)).Rol == RolApp.Operario)
+            throw new AccesoDenegadoException("Por ahora el vendedor ve solo Cobertura.");
+    }
+
     /// <summary>
     /// Gobernanza (Cesar, 30/10/2026): operario y supervisor ven los últimos <see cref="OpcionesComercial.MesesVisibles"/>
     /// meses (el en curso y los anteriores); el admin, desde el primer mes con datos.

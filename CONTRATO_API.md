@@ -54,6 +54,10 @@ Operario y supervisor ven un cliente **solo en los meses en que estuvo en la car
 - **Ventana de 4 meses para operario y supervisor** (Cesar, 30/10): ven el mes en curso y los 3 anteriores. Un
   `mesDesde` más viejo se recorta al primero de la ventana; un `mesHasta` (o el `mes` de `/api/volumen` y de la pestaña
   Volumen) más viejo → 400 con `errors.mesHasta` / `errors.mes`. El admin pide cualquier mes desde julio de 2026.
+- **El operario ve solo Cobertura y la ficha** (Cesar, 30/10, versión 1.2 para vendedores): `/api/volumen`,
+  `/api/devoluciones` y las pestañas `/api/clientes/{id}/volumen` y `/devoluciones` le dan 403. La ficha la ve con sus
+  artículos. Se abre sin publicar con `Comercial:OperarioSoloCobertura = false`; el front lo sabe por
+  `sesion.veBultos`.
 - Ficha y sus pestañas: el operario o supervisor entra si el cliente estuvo **alguna vez** en su cartera (desde julio
   de 2026), aunque hoy sea de otro: ve solo sus meses. Si nunca fue suyo, 404.
 - Los clientes excluidos no cuentan en las carteras (como siempre), pero la exclusión no cambia de quién es cada mes.
@@ -102,12 +106,13 @@ Con `analisis-comercial.ver` alcanza (sin rol cargado → 403 con el `title` de 
   "vendedor": { "idPersonal": 2, "nombre": "FRANCO BAIGORRIA" } | null,   // el del operario SI tiene uno solo; null si tiene
                                                                           // varios, y para admin y supervisor
   "vendedores": [{ "id": 2, "nombre": "FRANCO BAIGORRIA", "esCasa": false }],   // los que puede elegir (el operario: los suyos)
-  "hoy": "2026-10-26", "mesEnCurso": "2026-10-01" }
+  "hoy": "2026-10-26", "mesEnCurso": "2026-10-01",
+  "veBultos": false }   // false = solo Cobertura y la ficha: sin Volumen ni Devoluciones (ni sus pestañas)
 ```
 
 `vendedores` viene ordenado por nombre, con la casa al final («Cuentas de la casa (Deposito)», `esCasa: true`, solo
 admin). El front arma el menú con `rol`: operario → Cobertura y Mi ruta; supervisor suma Resumen; admin suma
-Administración.
+Administración. Con `veBultos: false` (hoy, el operario) no se muestran Volumen ni Devoluciones.
 
 ### `GET /api/sincronizacion/estado`
 
@@ -477,6 +482,7 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
 - 30/10: operario con totales solo en porcentaje (`a35b943`) y **ventana de 4 meses** para operario y supervisor (ver
   Gobernanza). Salen en la 1.1.
 - 30/10: **clientes Vitales** (`PUT`/`DELETE /api/admin/clientes/{id}/vital`, `vital` en la base de clientes, filtro
-  `vitales`, `vitales` en el resumen). Migración `ClientesVitales` (una tabla nueva). Sin publicar.
+  `vitales`, `vitales` en el resumen). Migración `ClientesVitales` (una tabla nueva). Publicado como 1.1.
+- 30/10: **el operario ve solo Cobertura y la ficha** (`sesion.veBultos`; Volumen y Devoluciones → 403). Sale en la 1.2.
 - 26/10: regla de «compró» y unidad de negocio fijadas con diag_ccc. `GET /api/cobertura` suma `idPersonal`, `lat` y
   `lng` (vista de mapa). Los datos reales se bajan con `Backend/sincronizar.bat`.

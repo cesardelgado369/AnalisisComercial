@@ -20,8 +20,9 @@ public record VendedorDto(int IdPersonal, string Nombre);
 /// <summary>Una opción del filtro de vendedor. <c>EsCasa</c>: cuentas de la casa (Deposito), solo para el Admin.</summary>
 public record OpcionVendedorDto(int Id, string Nombre, bool EsCasa);
 
+/// <param name="VeBultos">false = solo Cobertura y la ficha (Volumen y Devoluciones dan 403).</param>
 public record SesionDto(string Email, RolApp Rol, VendedorDto? Vendedor, IReadOnlyList<OpcionVendedorDto> Vendedores,
-    DateOnly Hoy, DateOnly MesEnCurso);
+    DateOnly Hoy, DateOnly MesEnCurso, bool VeBultos);
 
 public record EstadoSincronizacionDto(DateTimeOffset? UltimaOk, DateOnly? VentasHasta);
 

@@ -64,6 +64,7 @@ public class Entorno : IAsyncLifetime
             b.UseSetting("ConnectionStrings:Comercial", Conexion);
             b.UseSetting("Jwt:ClavePublica", publica);
             b.UseSetting("Autenticacion:Desarrollo:Habilitado", "false");
+            b.UseSetting("Comercial:OperarioSoloCobertura", "false");   // las pruebas de la fase 2 miran todo
             Ajustar(b);
             b.ConfigureTestServices(s =>
             {
@@ -227,10 +228,17 @@ public class ColeccionEntorno : ICollectionFixture<Entorno>
     public const string Nombre = "Entorno";
 }
 
-/// <summary>Los mismos datos con la ventana de operario y supervisor en 2 meses (septiembre y octubre), para probarla.</summary>
+/// <summary>
+/// Los mismos datos con la configuración de producción que se prueba aparte: la ventana de operario y supervisor en
+/// 2 meses (septiembre y octubre) y el operario solo con Cobertura.
+/// </summary>
 public sealed class EntornoVentana : Entorno
 {
-    protected override void Ajustar(IWebHostBuilder b) => b.UseSetting("Comercial:MesesVisibles", "2");
+    protected override void Ajustar(IWebHostBuilder b)
+    {
+        b.UseSetting("Comercial:MesesVisibles", "2");
+        b.UseSetting("Comercial:OperarioSoloCobertura", "true");
+    }
 }
 
 [CollectionDefinition(Nombre)]

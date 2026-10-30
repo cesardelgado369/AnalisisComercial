@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json.Nodes;
 
 namespace AnalisisComercial.Security.Tests;
@@ -28,9 +28,25 @@ public class VentanaTests(EntornoVentana e)
         Assert.NotNull(r["errors"]!["mesHasta"]);
         await e.Supervisor().JsonAsync("/api/devoluciones?mesHasta=2026-08-01", HttpStatusCode.BadRequest);
         await e.Operario().JsonAsync("/api/clientes/101?mesDesde=2026-07-01&mesHasta=2026-08-01", HttpStatusCode.BadRequest);
-        var v = await e.Operario().JsonAsync("/api/volumen?mes=2026-08-01", HttpStatusCode.BadRequest);
+        var v = await e.Supervisor().JsonAsync("/api/volumen?mes=2026-08-01", HttpStatusCode.BadRequest);
         Assert.NotNull(v["errors"]!["mes"]);
-        await e.Operario().JsonAsync("/api/clientes/101/volumen?mes=2026-08-01", HttpStatusCode.BadRequest);
         await e.Admin().JsonAsync("/api/volumen?mes=2026-08-01");
+    }
+
+    [Fact]
+    public async Task El_operario_ve_solo_Cobertura_y_la_ficha()
+    {
+        var op = e.Operario();
+        Assert.False((bool)(await op.JsonAsync("/api/sesion"))["veBultos"]!);
+        await op.JsonAsync("/api/cobertura");
+        await op.JsonAsync("/api/clientes/101");
+        await op.EstadoAsync("/api/volumen", HttpStatusCode.Forbidden);
+        await op.EstadoAsync("/api/devoluciones", HttpStatusCode.Forbidden);
+        await op.EstadoAsync("/api/clientes/101/volumen", HttpStatusCode.Forbidden);
+        await op.EstadoAsync("/api/clientes/101/devoluciones", HttpStatusCode.Forbidden);
+
+        Assert.True((bool)(await e.Supervisor().JsonAsync("/api/sesion"))["veBultos"]!);
+        await e.Supervisor().JsonAsync("/api/volumen");
+        await e.Admin().JsonAsync("/api/devoluciones");
     }
 }
