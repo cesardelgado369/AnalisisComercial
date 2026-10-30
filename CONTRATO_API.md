@@ -51,6 +51,9 @@ Operario y supervisor ven un cliente **solo en los meses en que estuvo en la car
   `total.bultosBase` y `total.bultosEsperado` en null (queda `total.porcentaje`), y en `/api/devoluciones`
   `kpis[].bultosVendidos`, `kpis[].bultosDevueltos` y `articulos[].bultosVendidos` / `bultosDevueltos` en null (quedan
   los porcentajes). Los bultos de cada cliente (`clientes[]` y la ficha) sí los ve.
+- **Ventana de 4 meses para operario y supervisor** (Cesar, 30/10): ven el mes en curso y los 3 anteriores. Un
+  `mesDesde` más viejo se recorta al primero de la ventana; un `mesHasta` (o el `mes` de `/api/volumen` y de la pestaña
+  Volumen) más viejo → 400 con `errors.mesHasta` / `errors.mes`. El admin pide cualquier mes desde julio de 2026.
 - Ficha y sus pestañas: el operario o supervisor entra si el cliente estuvo **alguna vez** en su cartera (desde julio
   de 2026), aunque hoy sea de otro: ve solo sus meses. Si nunca fue suyo, 404.
 - Los clientes excluidos no cuentan en las carteras (como siempre), pero la exclusión no cambia de quién es cada mes.
@@ -66,7 +69,8 @@ Operario y supervisor ven un cliente **solo en los meses en que estuvo en la car
 - Edición con `version` (texto opaco): el GET la trae, el PUT la exige y responde 409 si otro guardó en el medio.
 - **Rango de meses** (`mesDesde`, `mesHasta`, donde se indica): por defecto `mesHasta` = mes en curso y `mesDesde` =
   tres meses antes (cuatro meses, como la web actual). Máximo 12 meses. No antes del primer mes con datos
-  (2026-07-01): se recorta. `mesDesde > mesHasta` → 400.
+  (2026-07-01): se recorta (para operario y supervisor, a su ventana de 4 meses: ver Gobernanza). `mesDesde > mesHasta`
+  → 400.
 - **Día de visita** (`dia`): código de Chess. 2 lunes · 3 martes · 4 miércoles · 5 jueves · 6 viernes · 7 sábado
   (1 domingo existe pero nadie lo usa).
 
@@ -463,5 +467,7 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
   pruebas (gobernanza, volumen, devoluciones). Guarda además `cantidadesSinCargo` de cada línea y `unidadesBulto` de
   cada artículo, para confirmar con los datos qué mide la cantidad y qué es una devolución; los meses ya cargados se
   completan con `--recargar-ventas`. Sin publicar.
+- 30/10: operario con totales solo en porcentaje (`a35b943`) y **ventana de 4 meses** para operario y supervisor (ver
+  Gobernanza). Salen en la 1.1.
 - 26/10: regla de «compró» y unidad de negocio fijadas con diag_ccc. `GET /api/cobertura` suma `idPersonal`, `lat` y
   `lng` (vista de mapa). Los datos reales se bajan con `Backend/sincronizar.bat`.

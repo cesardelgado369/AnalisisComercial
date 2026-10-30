@@ -1,4 +1,4 @@
-using AnalisisComercial.Domain;
+﻿using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Infrastructure;
 
@@ -30,6 +30,9 @@ public class OpcionesComercial
     public int MesesPorDefecto { get; set; } = 4;
 
     public int MaxMeses { get; set; } = 12;
+
+    /// <summary>Operario y supervisor ven solo estos meses hasta el en curso (Cesar, 30/10/2026); el admin, desde <see cref="PrimerMes"/>.</summary>
+    public int MesesVisibles { get; set; } = 4;
 
     /// <summary>Clientes excluidos: sin comprar desde hace estos días (o nunca, con esta antigüedad en la cartera) → «excluir».</summary>
     public int DiasSugerirExcluir { get; set; } = 90;

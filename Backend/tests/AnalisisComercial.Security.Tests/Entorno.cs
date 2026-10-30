@@ -1,4 +1,4 @@
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -34,7 +34,7 @@ namespace AnalisisComercial.Security.Tests;
 ///   Accesos: operario@madomi → UNO; supervisor@madomi → DOS; nuevo@madomi → UNO (todavía no entró);
 ///   doble@madomi → operario con UNO y UNO BIS.
 /// </summary>
-public sealed class Entorno : IAsyncLifetime
+public class Entorno : IAsyncLifetime
 {
     public static readonly Guid Madomi = Guid.Parse("A1B2C3D4-0000-4000-8000-000000000001");
     public static readonly DateOnly Hoy = new(2026, 10, 26);
@@ -64,6 +64,7 @@ public sealed class Entorno : IAsyncLifetime
             b.UseSetting("ConnectionStrings:Comercial", Conexion);
             b.UseSetting("Jwt:ClavePublica", publica);
             b.UseSetting("Autenticacion:Desarrollo:Habilitado", "false");
+            Ajustar(b);
             b.ConfigureTestServices(s =>
             {
                 s.Replace(ServiceDescriptor.Singleton<IReloj, RelojFijo>());
@@ -73,6 +74,9 @@ public sealed class Entorno : IAsyncLifetime
         _fabrica.CreateClient().Dispose();   // arranca la API: crea la base con las migraciones
         await SembrarAsync();
     }
+
+    /// <summary>Para un entorno con otra configuración (<see cref="EntornoVentana"/>).</summary>
+    protected virtual void Ajustar(IWebHostBuilder b) { }
 
     public async Task DisposeAsync()
     {
@@ -221,4 +225,16 @@ public sealed class Entorno : IAsyncLifetime
 public class ColeccionEntorno : ICollectionFixture<Entorno>
 {
     public const string Nombre = "Entorno";
+}
+
+/// <summary>Los mismos datos con la ventana de operario y supervisor en 2 meses (septiembre y octubre), para probarla.</summary>
+public sealed class EntornoVentana : Entorno
+{
+    protected override void Ajustar(IWebHostBuilder b) => b.UseSetting("Comercial:MesesVisibles", "2");
+}
+
+[CollectionDefinition(Nombre)]
+public class ColeccionEntornoVentana : ICollectionFixture<EntornoVentana>
+{
+    public const string Nombre = "EntornoVentana";
 }

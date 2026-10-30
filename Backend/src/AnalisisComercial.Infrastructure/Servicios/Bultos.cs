@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Datos;
@@ -74,7 +74,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
     {
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
-        var meses = lectura.Meses(f.MesDesde, f.MesHasta);
+        var meses = await lectura.MesesAsync(f.MesDesde, f.MesHasta, ct);
         var mirada = await lectura.MiradaAsync(f.Vendedor, "devoluciones", ct);
         var carteras = await lectura.CarterasAsync(mirada, meses, f.Dia, ct);
         var ids = carteras.Values.SelectMany(x => x.Keys).Distinct().ToList();

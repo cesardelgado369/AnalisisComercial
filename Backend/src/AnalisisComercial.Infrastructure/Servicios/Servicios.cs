@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Datos;
@@ -55,7 +55,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
     {
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
-        var meses = lectura.Meses(f.MesDesde, f.MesHasta);
+        var meses = await lectura.MesesAsync(f.MesDesde, f.MesHasta, ct);
         var mirada = await lectura.MiradaAsync(f.Vendedor, "cobertura", ct);
         var mesRef = meses[^1];
         var mesEnCurso = lectura.MesEnCurso;
@@ -122,7 +122,7 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
 {
     public async Task<FichaClienteDto> FichaAsync(int idCliente, DateOnly? mesDesde, DateOnly? mesHasta, CancellationToken ct = default)
     {
-        var meses = lectura.Meses(mesDesde, mesHasta);
+        var meses = await lectura.MesesAsync(mesDesde, mesHasta, ct);
         var (cliente, propios) = await lectura.ClienteVisibleAsync(idCliente, "ficha", ct);
         bool Ve(DateOnly m) => propios is null || propios.Contains(m);
         var a = await lectura.AlcanceAsync(ct);
@@ -214,7 +214,7 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
     public async Task<DevolucionesClienteDto> DevolucionesAsync(int idCliente, DateOnly? mesDesde, DateOnly? mesHasta,
         DateOnly? mes, CancellationToken ct = default)
     {
-        var meses = lectura.Meses(mesDesde, mesHasta);
+        var meses = await lectura.MesesAsync(mesDesde, mesHasta, ct);
         var elegido = Calendario.Mes(mes ?? meses[^1]);
         if (!meses.Contains(elegido))
             throw new ValidacionException("mes", "Tiene que estar entre mesDesde y mesHasta.");
@@ -274,7 +274,7 @@ public class ResumenService(Lectura lectura) : IResumenService
 {
     public async Task<IReadOnlyList<ResumenVendedorDto>> PorVendedorAsync(DateOnly? mesDesde, DateOnly? mesHasta, CancellationToken ct = default)
     {
-        var meses = lectura.Meses(mesDesde, mesHasta);
+        var meses = await lectura.MesesAsync(mesDesde, mesHasta, ct);
         var a = await lectura.AlcanceAsync(ct);
         if (a.Rol == RolApp.Operario)
         {

@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Datos;
 using Microsoft.EntityFrameworkCore;
@@ -76,25 +76,45 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
 
     /// <summary>
     /// Valida el rango de meses. Por defecto, los últimos <see cref="OpcionesComercial.MesesPorDefecto"/> hasta el mes en
-    /// curso. Se recorta al primer mes con datos; más de <see cref="OpcionesComercial.MaxMeses"/> → 400.
+    /// curso. Se recorta a <paramref name="primero"/> (el primer mes con datos si no viene); más de
+    /// <see cref="OpcionesComercial.MaxMeses"/> → 400.
     /// </summary>
-    public IReadOnlyList<DateOnly> Meses(DateOnly? desde, DateOnly? hasta)
+    public IReadOnlyList<DateOnly> Meses(DateOnly? desde, DateOnly? hasta, DateOnly? primero = null)
     {
+        var p = primero ?? Op.PrimerMes;
         var h = Calendario.Mes(hasta ?? MesEnCurso);
         if (h > MesEnCurso)
             throw new ValidacionException("mesHasta", "No puede ser posterior al mes en curso.");
         var d = Calendario.Mes(desde ?? h.AddMonths(-(Op.MesesPorDefecto - 1)));
         if (d > h)
             throw new ValidacionException("mesDesde", "Tiene que ser anterior o igual a mesHasta.");
-        if (d < Op.PrimerMes)
-            d = Op.PrimerMes;
-        if (h < Op.PrimerMes)
-            throw new ValidacionException("mesHasta", $"No hay datos antes de {Op.PrimerMes:MM/yyyy}.");
+        if (d < p)
+            d = p;
+        if (h < p)
+            throw new ValidacionException("mesHasta", AntesDe(p));
         var meses = Calendario.Meses(d, h);
         if (meses.Count > Op.MaxMeses)
             throw new ValidacionException("mesDesde", $"Elegí como mucho {Op.MaxMeses} meses.");
         return meses;
     }
+
+    /// <summary><see cref="Meses"/> con la ventana de quien entra (<see cref="PrimerMesVisibleAsync"/>).</summary>
+    public async Task<IReadOnlyList<DateOnly>> MesesAsync(DateOnly? desde, DateOnly? hasta, CancellationToken ct)
+        => Meses(desde, hasta, await PrimerMesVisibleAsync(ct));
+
+    /// <summary>
+    /// Gobernanza (Cesar, 30/10/2026): operario y supervisor ven los últimos <see cref="OpcionesComercial.MesesVisibles"/>
+    /// meses (el en curso y los anteriores); el admin, desde el primer mes con datos.
+    /// </summary>
+    public async Task<DateOnly> PrimerMesVisibleAsync(CancellationToken ct)
+    {
+        var ventana = MesEnCurso.AddMonths(-(Op.MesesVisibles - 1));
+        return (await AlcanceAsync(ct)).EsAdmin || ventana < Op.PrimerMes ? Op.PrimerMes : ventana;
+    }
+
+    string AntesDe(DateOnly primero) => primero == Op.PrimerMes
+        ? $"No hay datos antes de {Op.PrimerMes:MM/yyyy}."
+        : $"Se ven los últimos {Op.MesesVisibles} meses: desde {primero:MM/yyyy}.";
 
     /// <summary>
     /// La cartera de cada mes (la foto de ese mes) para la mirada, sin los excluidos y, si viene <paramref name="dia"/>,
@@ -272,6 +292,8 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
             throw new ValidacionException("mes", "No puede ser posterior al mes en curso.");
         if (m <= Op.PrimerMes)
             throw new ValidacionException("mes", $"No hay ventas antes de {Op.PrimerMes:MM/yyyy} para comparar: el primer mes es {Op.PrimerMes.AddMonths(1):MM/yyyy}.");
+        if (await PrimerMesVisibleAsync(ct) is var p && m < p)
+            throw new ValidacionException("mes", AntesDe(p));
         var tipo = a.Rol == RolApp.Operario ? TipoComparacion.MesAnteriorCompleto : TipoComparacion.MismoDiaHabil;
         return Volumen.Comparar(m, tipo, await UltimoDiaCompletoAsync(ct), Op.DiasFeriados());
     }
