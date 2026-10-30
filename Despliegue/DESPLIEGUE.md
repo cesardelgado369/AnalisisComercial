@@ -89,8 +89,10 @@ La clave de `sa` no se copia: `preparar-base.sh` y `backup.sh` la leen del `.env
    docker logs -f analisis-prod-sync         # la carga inicial: unos minutos, termina con «Sincronización … OK»
    ```
 
-   **Actualizar**: imágenes nuevas (paso 1), `ANALISIS_VERSION=<fecha nueva>` en `.env`, `bash backup.sh` y
-   `docker compose up -d`.
+   **Actualizar**: imágenes nuevas (paso 1), `bash backup.sh` en el VPS y, desde Git Bash en la carpeta
+   AnalisisComercial, `bash Despliegue/publicar.sh <versión>`: marca lo que corre como `anterior`, sube las imágenes y
+   el compose, cambia `ANALISIS_VERSION`, arranca y verifica. Al final imprime cómo volver atrás. Desde la 1.0 (30/10)
+   las versiones van por número (`1.0`, `1.1`…), no por fecha.
 
 4. **Nginx del host**, solo la primera vez (el registro DNS A `analistascomercial` → 2.25.126.222 tiene que existir; si
    no, certbot falla):
