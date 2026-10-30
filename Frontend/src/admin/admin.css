@@ -95,6 +95,34 @@
 .adm-boton-vital.activo .icono { color: #d97706; }
 .adm-boton-vital:disabled { cursor: progress; opacity: .7; }
 
+/* Sincronización con Chess: de cuándo son los datos con el botón, el progreso de una pedida y las últimas corridas */
+.sinc-estado { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; padding: 18px 20px; }
+.sinc-estado-textos { display: flex; align-items: flex-start; gap: 12px; }
+.sinc-estado-icono { font-size: 28px; color: var(--acento); }
+.sinc-estado-titulo { font-size: 16px; font-weight: 800; color: var(--texto); }
+.sinc-estado .btn { min-height: 44px; }
+.sinc-progreso { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; }
+.sinc-pasos { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; margin: 0; padding: 0; list-style: none; font-size: 13px; font-weight: 600; }
+.sinc-pasos li { display: inline-flex; align-items: center; gap: 4px; color: var(--texto); }
+.sinc-pasos li.ok .icono { color: var(--ok); }
+.sinc-pasos li.corriendo { color: var(--acento); }
+.sinc-pasos li.corriendo .icono { animation: girar 1.2s linear infinite; }
+.sinc-pasos li.con-error .icono { color: var(--rojo); }
+.sinc-resultado { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 14px; border-radius: var(--radio); font-size: 14px; font-weight: 600; }
+.sinc-resultado.ok { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.sinc-resultado.ok .icono { color: var(--ok); }
+.sinc-resultado.con-errores { background: var(--alerta-fondo); color: var(--alerta-texto); border: 1px solid var(--alerta-borde); }
+.sinc-historial-titulo { padding: 16px 20px 8px; font-size: 15px; font-weight: 800; }
+.sinc-col-num { text-align: right; font-variant-numeric: tabular-nums; }
+.sinc-marca { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.sinc-marca.ok .icono { color: var(--ok); }
+.sinc-marca.en-curso { color: var(--acento); }
+.sinc-marca.con-errores .icono { color: #d97706; }
+.sinc-error { margin-top: 4px; font-size: 12px; color: var(--texto-2); }
+@media (prefers-reduced-motion: reduce) {
+  .sinc-pasos li.corriendo .icono { animation: none; }
+}
+
 /* Formularios de los modales */
 .adm-form { display: flex; flex-direction: column; gap: 16px; }
 .adm-form input[type="text"], .adm-form input[type="password"] { width: 100%; }

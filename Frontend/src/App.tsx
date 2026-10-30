@@ -7,7 +7,16 @@ import { CoberturaPage } from './cobertura/CoberturaPage'
 import { Layout } from './layout/Layout'
 import { EnConstruccion } from './pages/EnConstruccion'
 import { LoginPage } from './pages/LoginPage'
-import { ClasificacionClientesPage, ClientesExcluidosPage, CuentasPage, DevolucionesPage, FichaPage, PerfilPage, VolumenPage } from './rutas'
+import {
+  ClasificacionClientesPage,
+  ClientesExcluidosPage,
+  CuentasPage,
+  DevolucionesPage,
+  FichaPage,
+  PerfilPage,
+  SincronizacionPage,
+  VolumenPage,
+} from './rutas'
 
 /** TODO testing: la vitrina solo existe en desarrollo (ni se baja en producción). */
 const VitrinaPage = lazy(() => import('./pages/VitrinaPage').then((m) => ({ default: m.VitrinaPage })))
@@ -42,7 +51,7 @@ export default function App() {
                   <Route path="usuarios" element={<CuentasPage />} />
                   <Route path="exclusiones" element={<ClientesExcluidosPage />} />
                   <Route path="clasificacion" element={<ClasificacionClientesPage />} />
-                  <Route path="sincronizacion" element={<EnConstruccion titulo="Sincronización con Chess" detalle="Las últimas corridas y el botón «Actualizar ahora»." />} />
+                  <Route path="sincronizacion" element={<SincronizacionPage />} />
                 </Route>
                 <Route path="perfil" element={<PerfilPage />} />
                 {import.meta.env.DEV && <Route path="vitrina" element={<VitrinaPage />} />}

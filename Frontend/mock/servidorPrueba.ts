@@ -14,6 +14,7 @@ import type { Plugin } from 'vite'
 import * as admi from './datosAdmin.ts'
 import { ErrorMock, UNIDADES, ayerArgentina, cobertura, hoyArgentina, vendedoresVisibles, type RolPrueba } from './datosCobertura.ts'
 import { ficha, fichaDevoluciones, fichaVolumen } from './datosFicha.ts'
+import * as sinc from './datosSincronizacion.ts'
 import { devoluciones, volumen } from './datosVolumen.ts'
 
 const APP = { codigo: 'analisis-comercial', nombre: 'Análisis Comercial', urlBase: 'http://localhost:5177' }
@@ -107,9 +108,7 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
   if (!rol) return responder(res, 403, { status: 403, title: 'Todavía no tenés acceso a Análisis Comercial. Pedíselo al administrador.' })
   try {
     if (ruta === '/api/sesion') return responder(res, 200, sesionApp(email, rol))
-    if (ruta === '/api/sincronizacion/estado') {
-      return responder(res, 200, { ultimaOk: `${hoyArgentina()}T05:00:12-03:00`, ventasHasta: ayerArgentina() })
-    }
+    if (ruta === '/api/sincronizacion/estado') return responder(res, 200, sinc.estado(ayerArgentina()))
     if (ruta === '/api/cobertura/vendedores') return responder(res, 200, vendedoresVisibles(rol, vendedoresDelOperario(email)))
     if (ruta === '/api/cobertura/unidades') return responder(res, 200, UNIDADES)
     if (ruta === '/api/cobertura') {
@@ -166,6 +165,8 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
     admi.incluir(Number(exclusion[1]))
     return responder(res, 204)
   }
+  if (metodo === 'GET' && ruta === '/api/admin/sincronizaciones') return responder(res, 200, sinc.listar(Number(p.get('cantidad')) || 30))
+  if (metodo === 'POST' && ruta === '/api/admin/sincronizaciones') return responder(res, 202, sinc.pedir(email))
   if (metodo === 'PUT' && vital) return responder(res, 200, admi.marcarVital(Number(vital[1]), email))
   if (metodo === 'DELETE' && vital) {
     admi.quitarVital(Number(vital[1]))
