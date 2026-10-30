@@ -413,9 +413,9 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
   que están en una ruta vigente, con el vendedor de su ruta de hoy. Sin ruta o con una ruta sin vendedor: «sin
   vendedor».
   - `GET /api/admin/clientes/resumen` → `[{ idPersonal | null, vendedor | null, esCasa, clientes, excluidos,
-    sugeridos }]`: un grupo por vendedor, por nombre; la casa al final y «sin vendedor» (`idPersonal: null`) último.
+    sugeridos, vitales }]`: un grupo por vendedor, por nombre; la casa al final y «sin vendedor» (`idPersonal: null`) último.
     `sugeridos` = cuántos tienen la sugerencia `excluir`.
-  - `GET /api/admin/clientes?vendedor=&texto=&excluidos=&sugerencia=&pagina=1&tamano=50` →
+  - `GET /api/admin/clientes?vendedor=&texto=&excluidos=&sugerencia=&vitales=&pagina=1&tamano=50` →
     ```jsonc
     { "pagina": 1, "tamano": 50, "total": 1315,
       "meses": ["2026-07-01", "2026-08-01", "2026-09-01", "2026-10-01"],   // los mismos 4 meses que /cobertura
@@ -423,12 +423,13 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
                   "localidad": "…" | null, "ultimaCompra": "2026-08-10" | null, "diasSinComprar": 77 | null,
                   "estados": ["fueraDeCartera", "compro", "dejoDeComprar", "sinCompraAun"],   // uno por mes, EstadoMes
                   "sugerencia": "excluir" | "revisar" | null, "motivoSugerencia": "Dejó de comprar en septiembre" | null,
-                  "excluido": false, "motivo": null, "excluidoPor": null, "excluidoEn": null }] }
+                  "excluido": false, "motivo": null, "excluidoPor": null, "excluidoEn": null,
+                  "vital": true, "vitalPor": "checho@madomi" | null, "vitalEn": "…" | null }] }
     ```
-    `vendedor` = `idPersonal`, o `sin` para «sin vendedor»; `excluidos` = `todos` (por defecto), `solo` o `sin`;
+    `vendedor` = `idPersonal`, o `sin` para «sin vendedor»; `excluidos` y `vitales` = `todos` (por defecto), `solo` o `sin`;
     `sugerencia` = `excluir` o `revisar` (la pestaña «Sugeridos para excluir»); `texto` = código exacto o parte de la
     razón social (sin mayúsculas ni tildes); sin `texto` trae todos. Por razón social. `tamano` hasta 200. Errores en
-    `errors.vendedor`, `errors.excluidos`, `errors.sugerencia`, `errors.pagina`, `errors.tamano`. Reemplaza al buscador
+    `errors.vendedor`, `errors.excluidos`, `errors.vitales`, `errors.sugerencia`, `errors.pagina`, `errors.tamano`. Reemplaza al buscador
     de hasta 20 que había antes.
   - `estados`: la regla de Cobertura con la cartera de **toda la empresa** (sin mirar exclusiones: un excluido igual
     muestra cómo viene). `diasSinComprar`: desde la última compra; null si nunca compró.
@@ -441,6 +442,12 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
     | `revisar` | dejó de comprar el último mes cerrado (y no volvió) | «Dejó de comprar en septiembre» |
     | `revisar` | no compra hace 60 a 89 días | «No compra hace 70 días» |
     | `null` | ya excluido, compra seguido, o es nuevo en la cartera y todavía no compró | — |
+- **Clasificación de clientes: Vital** (Cesar, 30/10/2026). El admin marca un cliente como Vital con un click, sobre la
+  misma base de clientes (`/api/admin/clientes`, filtro `vitales`). Por ahora es solo una marca para el admin: no cambia
+  la cobertura ni ningún cálculo, y el vendedor no la ve (se decide más adelante).
+  - `PUT /api/admin/clientes/{idCliente}/vital` → 200 `{ idCliente, razonSocial, marcadoPor, marcadoEn }`. Si ya era
+    Vital, devuelve la marca que tenía (un segundo click no cambia nada). 404 si el cliente no existe.
+  - `DELETE /api/admin/clientes/{idCliente}/vital` → 204, aunque no fuera Vital.
 
 **Sincronización con Chess:**
 
@@ -469,5 +476,7 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
   completan con `--recargar-ventas`. Sin publicar.
 - 30/10: operario con totales solo en porcentaje (`a35b943`) y **ventana de 4 meses** para operario y supervisor (ver
   Gobernanza). Salen en la 1.1.
+- 30/10: **clientes Vitales** (`PUT`/`DELETE /api/admin/clientes/{id}/vital`, `vital` en la base de clientes, filtro
+  `vitales`, `vitales` en el resumen). Migración `ClientesVitales` (una tabla nueva). Sin publicar.
 - 26/10: regla de «compró» y unidad de negocio fijadas con diag_ccc. `GET /api/cobertura` suma `idPersonal`, `lat` y
   `lng` (vista de mapa). Los datos reales se bajan con `Backend/sincronizar.bat`.

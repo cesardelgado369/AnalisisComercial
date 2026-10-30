@@ -224,6 +224,24 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                     b.ToTable("Cliente", (string)null);
                 });
 
+            modelBuilder.Entity("AnalisisComercial.Domain.ClienteVital", b =>
+                {
+                    b.Property<int>("IdCliente")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("MarcadoEn")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("MarcadoPor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("IdCliente");
+
+                    b.ToTable("ClienteVital", (string)null);
+                });
+
             modelBuilder.Entity("AnalisisComercial.Domain.CompraMes", b =>
                 {
                     b.Property<DateOnly>("Mes")

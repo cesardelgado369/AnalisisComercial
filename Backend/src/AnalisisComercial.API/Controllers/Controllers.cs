@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -123,8 +123,18 @@ public class AdminController(IAdminService admin) : ControllerBase
 
     [HttpGet("clientes")]
     public Task<PaginaClientesDto> Clientes([FromQuery] string? vendedor, [FromQuery] string? texto, [FromQuery] string? excluidos,
-        [FromQuery] string? sugerencia, [FromQuery] int? pagina, [FromQuery] int? tamano, CancellationToken ct)
-        => admin.ClientesAsync(new FiltroClientesAdmin(vendedor, texto, excluidos, pagina ?? 1, tamano ?? 50, sugerencia), ct);
+        [FromQuery] string? sugerencia, [FromQuery] string? vitales, [FromQuery] int? pagina, [FromQuery] int? tamano, CancellationToken ct)
+        => admin.ClientesAsync(new FiltroClientesAdmin(vendedor, texto, excluidos, pagina ?? 1, tamano ?? 50, sugerencia, vitales), ct);
+
+    [HttpPut("clientes/{idCliente:int}/vital")]
+    public Task<VitalDto> MarcarVital(int idCliente, CancellationToken ct) => admin.MarcarVitalAsync(idCliente, ct);
+
+    [HttpDelete("clientes/{idCliente:int}/vital")]
+    public async Task<IActionResult> QuitarVital(int idCliente, CancellationToken ct)
+    {
+        await admin.QuitarVitalAsync(idCliente, ct);
+        return NoContent();
+    }
 
     [HttpGet("sincronizaciones")]
     public Task<SincronizacionesDto> Sincronizaciones([FromQuery] int? cantidad, CancellationToken ct)

@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Datos;
 using Microsoft.EntityFrameworkCore;
@@ -225,7 +225,30 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new NoEncontradoException("Ese cliente no estaba excluido.");
     }
 
-    // ---- base de clientes (para excluir) y vendedores
+    // ---- clientes Vitales (Cesar, 30/10/2026: un click en la lista)
+
+    public async Task<VitalDto> MarcarVitalAsync(int idCliente, CancellationToken ct = default)
+    {
+        var admin = await AdminAsync("admin-vitales", ct);
+        var cliente = await db.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.IdCliente == idCliente, ct)
+                      ?? throw new NoEncontradoException("No existe ese cliente.");
+        var v = await db.Vitales.AsNoTracking().FirstOrDefaultAsync(x => x.IdCliente == idCliente, ct);
+        if (v is null)
+        {
+            v = new ClienteVital { IdCliente = idCliente, MarcadoPor = admin.Email, MarcadoEn = reloj.Ahora };
+            db.Vitales.Add(v);
+            await db.GuardarAsync(ct);
+        }
+        return new VitalDto(idCliente, cliente.RazonSocial, v.MarcadoPor, v.MarcadoEn);
+    }
+
+    public async Task QuitarVitalAsync(int idCliente, CancellationToken ct = default)
+    {
+        await AdminAsync("admin-vitales", ct);
+        await db.Vitales.Where(x => x.IdCliente == idCliente).ExecuteDeleteAsync(ct);
+    }
+
+    // ---- base de clientes (para excluir y clasificar) y vendedores
 
     /// <summary>
     /// La base de clientes: los que manda Chess y los que están en una ruta vigente, con el vendedor de su ruta de hoy.
@@ -238,12 +261,16 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
            from r in rr.DefaultIfEmpty()
            join e in db.Exclusiones on c.IdCliente equals e.IdCliente into ee
            from e in ee.DefaultIfEmpty()
+           join v in db.Vitales on c.IdCliente equals v.IdCliente into vv
+           from v in vv.DefaultIfEmpty()
            select new FilaBase
            {
                IdCliente = c.IdCliente, RazonSocial = c.RazonSocial, Ruta = r == null ? null : r.Nombre,
                IdPersonal = r == null ? null : r.IdPersonal, Localidad = c.Localidad, Excluido = e != null,
                Motivo = e == null ? null : e.Motivo, ExcluidoPor = e == null ? null : e.CreadoPor,
                ExcluidoEn = e == null ? null : (DateTimeOffset?)e.CreadoEn,
+               Vital = v != null, VitalPor = v == null ? null : v.MarcadoPor,
+               VitalEn = v == null ? null : (DateTimeOffset?)v.MarcadoEn,
            };
 
     // Con propiedades (no un record posicional): EF traduce el Where y el GroupBy que se arman encima de esta proyección
@@ -259,6 +286,9 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         public string? Motivo { get; init; }
         public string? ExcluidoPor { get; init; }
         public DateTimeOffset? ExcluidoEn { get; init; }
+        public bool Vital { get; init; }
+        public string? VitalPor { get; init; }
+        public DateTimeOffset? VitalEn { get; init; }
     }
 
     public async Task<IReadOnlyList<VendedorAdminDto>> VendedoresAsync(CancellationToken ct = default)
@@ -319,7 +349,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .ThenBy(x => x.v?.Nombre)
             .Select(x => new GrupoClientesDto(x.g.Key, x.v?.Nombre ?? (x.g.Key is { } p ? $"Vendedor {p}" : null),
                 x.v is { EsPersona: false }, x.g.Count(), x.g.Count(f => f.Excluido),
-                x.g.Count(f => estadisticas[f.IdCliente].Sugerencia == SugerenciaCliente.Excluir)))
+                x.g.Count(f => estadisticas[f.IdCliente].Sugerencia == SugerenciaCliente.Excluir), x.g.Count(f => f.Vital)))
             .ToList();
     }
 
@@ -359,6 +389,13 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             "sin" => q.Where(x => !x.Excluido),
             _ => throw new ValidacionException("excluidos", "todos, solo o sin."),
         };
+        q = (f.Vitales?.Trim().ToLowerInvariant()) switch
+        {
+            null or "" or "todos" => q,
+            "solo" => q.Where(x => x.Vital),
+            "sin" => q.Where(x => !x.Vital),
+            _ => throw new ValidacionException("vitales", "todos, solo o sin."),
+        };
         if (f.Texto?.Trim() is { Length: > 0 } t)
         {
             var codigo = int.TryParse(t, out var n) ? n : (int?)null;
@@ -393,7 +430,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             var e = estadisticas[x.IdCliente];
             return new ClienteAdminDto(x.IdCliente, x.RazonSocial, x.Ruta, x.IdPersonal,
                 x.IdPersonal is { } p ? vendedores.GetValueOrDefault(p) : null, x.Localidad, e.UltimaCompra, e.DiasSinComprar,
-                e.Estados, e.Sugerencia, e.Motivo, x.Excluido, x.Motivo, x.ExcluidoPor, x.ExcluidoEn);
+                e.Estados, e.Sugerencia, e.Motivo, x.Excluido, x.Motivo, x.ExcluidoPor, x.ExcluidoEn, x.Vital, x.VitalPor, x.VitalEn);
         }).ToList());
     }
 

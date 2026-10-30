@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,6 +22,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
     public DbSet<AccesoUsuario> Accesos => Set<AccesoUsuario>();
     public DbSet<AccesoVendedor> AccesoVendedores => Set<AccesoVendedor>();
     public DbSet<Exclusion> Exclusiones => Set<Exclusion>();
+    public DbSet<ClienteVital> Vitales => Set<ClienteVital>();
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
     public DbSet<SyncSolicitud> SyncSolicitudes => Set<SyncSolicitud>();
     public DbSet<AccesoLog> AccesoLogs => Set<AccesoLog>();
@@ -135,6 +136,14 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.Property(x => x.IdCliente).ValueGeneratedNever();
             e.Property(x => x.Motivo).HasMaxLength(200);
             e.Property(x => x.CreadoPor).HasMaxLength(200);
+        });
+
+        b.Entity<ClienteVital>(e =>
+        {
+            e.ToTable("ClienteVital");
+            e.HasKey(x => x.IdCliente);
+            e.Property(x => x.IdCliente).ValueGeneratedNever();
+            e.Property(x => x.MarcadoPor).HasMaxLength(200);
         });
 
         b.Entity<SyncLog>(e =>

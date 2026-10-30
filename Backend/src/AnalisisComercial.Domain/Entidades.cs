@@ -1,4 +1,4 @@
-namespace AnalisisComercial.Domain;
+﻿namespace AnalisisComercial.Domain;
 
 // Espejo de Chess: lo escribe solo la sincronización. Los ids son los de Chess.
 
@@ -178,6 +178,14 @@ public class Exclusion
     public string Motivo { get; set; } = "";
     public string CreadoPor { get; set; } = "";
     public DateTimeOffset CreadoEn { get; set; }
+}
+
+/// <summary>Cliente que el dueño marcó como Vital (Cesar, 30/10/2026): por ahora solo una marca en la lista.</summary>
+public class ClienteVital
+{
+    public int IdCliente { get; set; }
+    public string MarcadoPor { get; set; } = "";
+    public DateTimeOffset MarcadoEn { get; set; }
 }
 
 // Trazas.

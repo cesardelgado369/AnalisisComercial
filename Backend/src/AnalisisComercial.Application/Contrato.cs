@@ -1,4 +1,4 @@
-using AnalisisComercial.Domain;
+﻿using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Application;
 
@@ -183,19 +183,25 @@ public record NuevaExclusionDto(int? IdCliente, string? Motivo);
 
 /// <summary>Un grupo de la base de clientes: un vendedor (o la casa, o «sin vendedor» con IdPersonal null).</summary>
 /// <param name="Sugeridos">Cuántos tienen la sugerencia «excluir».</param>
-public record GrupoClientesDto(int? IdPersonal, string? Vendedor, bool EsCasa, int Clientes, int Excluidos, int Sugeridos);
+public record GrupoClientesDto(int? IdPersonal, string? Vendedor, bool EsCasa, int Clientes, int Excluidos, int Sugeridos,
+    int Vitales);
 
 /// <param name="Vendedor">idPersonal, o "sin" para los clientes sin vendedor; null = todos.</param>
 /// <param name="Excluidos">todos (por defecto), solo o sin.</param>
 /// <param name="Sugerencia">excluir o revisar; null = todos.</param>
+/// <param name="Vitales">todos (por defecto), solo o sin.</param>
 public record FiltroClientesAdmin(string? Vendedor, string? Texto, string? Excluidos, int Pagina = 1, int Tamano = 50,
-    string? Sugerencia = null);
+    string? Sugerencia = null, string? Vitales = null);
 
 /// <param name="Estados">Uno por cada mes de la página (los últimos meses, como en /cobertura), con la cartera de la empresa.</param>
 /// <param name="MotivoSugerencia">Ya redactado para mostrar («No compra hace 4 meses», «Dejó de comprar en septiembre»).</param>
 public record ClienteAdminDto(int IdCliente, string RazonSocial, string? Ruta, int? IdPersonal, string? Vendedor, string? Localidad,
     DateOnly? UltimaCompra, int? DiasSinComprar, IReadOnlyList<EstadoMes> Estados, SugerenciaCliente? Sugerencia,
-    string? MotivoSugerencia, bool Excluido, string? Motivo, string? ExcluidoPor, DateTimeOffset? ExcluidoEn);
+    string? MotivoSugerencia, bool Excluido, string? Motivo, string? ExcluidoPor, DateTimeOffset? ExcluidoEn,
+    bool Vital, string? VitalPor, DateTimeOffset? VitalEn);
+
+/// <summary>La marca Vital de un cliente.</summary>
+public record VitalDto(int IdCliente, string RazonSocial, string MarcadoPor, DateTimeOffset MarcadoEn);
 
 public record PaginaClientesDto(int Pagina, int Tamano, int Total, IReadOnlyList<DateOnly> Meses, IReadOnlyList<ClienteAdminDto> Filas);
 
@@ -235,6 +241,12 @@ public interface IAdminService
     Task QuitarExclusionAsync(int idCliente, CancellationToken ct = default);
     Task<IReadOnlyList<GrupoClientesDto>> ResumenClientesAsync(CancellationToken ct = default);
     Task<PaginaClientesDto> ClientesAsync(FiltroClientesAdmin filtro, CancellationToken ct = default);
+
+    /// <summary>Marca el cliente como Vital; si ya lo era, devuelve la marca que tenía.</summary>
+    Task<VitalDto> MarcarVitalAsync(int idCliente, CancellationToken ct = default);
+
+    /// <summary>Le saca la marca Vital (si no la tenía, no hace nada).</summary>
+    Task QuitarVitalAsync(int idCliente, CancellationToken ct = default);
 
     Task<SincronizacionesDto> SincronizacionesAsync(int cantidad, CancellationToken ct = default);
     Task<SolicitudSincronizacionDto> SolicitarSincronizacionAsync(CancellationToken ct = default);
