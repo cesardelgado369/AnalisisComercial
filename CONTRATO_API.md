@@ -47,6 +47,10 @@ Operario y supervisor ven un cliente **solo en los meses en que estuvo en la car
   también era suyo), última compra y días sin comprar, artículos, bultos, bases de comparación, KPI y totales.
 - Nunca viajan el nombre ni los datos del vendedor anterior. Al operario no le llegan totales de la empresa,
   rankings ni nombres de otros vendedores.
+- **Totales solo en porcentaje para el operario** (Cesar, 30/10): en `/api/volumen` le llegan `total.bultosActual`,
+  `total.bultosBase` y `total.bultosEsperado` en null (queda `total.porcentaje`), y en `/api/devoluciones`
+  `kpis[].bultosVendidos`, `kpis[].bultosDevueltos` y `articulos[].bultosVendidos` / `bultosDevueltos` en null (quedan
+  los porcentajes). Los bultos de cada cliente (`clientes[]` y la ficha) sí los ve.
 - Ficha y sus pestañas: el operario o supervisor entra si el cliente estuvo **alguna vez** en su cartera (desde julio
   de 2026), aunque hoy sea de otro: ve solo sus meses. Si nunca fue suyo, 404.
 - Los clientes excluidos no cuentan en las carteras (como siempre), pero la exclusión no cambia de quién es cada mes.

@@ -88,8 +88,9 @@ public record VolumenClienteDto(Comparacion Comparacion, TotalVolumenDto Total, 
 public record KpiDevolucionDto(DateOnly Mes, decimal? BultosVendidos, decimal? BultosDevueltos, decimal? Porcentaje,
     bool MesEnCurso, DateOnly? CorteAl);
 
-public record ArticuloDevolucionDto(int IdArticulo, string Descripcion, string? UnidadNegocio, decimal BultosVendidos,
-    decimal BultosDevueltos, decimal? Porcentaje);
+/// <param name="BultosVendidos">null para el operario en /devoluciones (gobernanza 30/10: solo porcentajes).</param>
+public record ArticuloDevolucionDto(int IdArticulo, string Descripcion, string? UnidadNegocio, decimal? BultosVendidos,
+    decimal? BultosDevueltos, decimal? Porcentaje);
 
 public record DevolucionesClienteDto(IReadOnlyList<DateOnly> Meses, IReadOnlyList<KpiDevolucionDto> Kpis, DateOnly Mes,
     IReadOnlyList<ArticuloDevolucionDto> Articulos);

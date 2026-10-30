@@ -109,8 +109,11 @@ public class FaseDosTests(Entorno e)
         Assert.Null(Fila(v, 102)["bultosBase"]);   // en septiembre era de DOS: nuevo en su cartera
         Assert.Null(Fila(v, 102)["porcentaje"]);
 
-        var t = v["total"]!;
-        Assert.Equal((1m, 4m, 3.08m, 25.0m), ((decimal)t["bultosActual"]!, (decimal)t["bultosBase"]!, (decimal)t["bultosEsperado"]!, (decimal)t["porcentaje"]!));
+        var t = v["total"]!;   // el operario: totales solo en porcentaje
+        Assert.Equal(25.0m, (decimal)t["porcentaje"]!);
+        Assert.Null(t["bultosActual"]);
+        Assert.Null(t["bultosBase"]);
+        Assert.Null(t["bultosEsperado"]);
         var chips = v["chips"]!;
         Assert.Equal((2, 1, 0, 1, 0), ((int)chips["todos"]!, (int)chips["sinCompraAun"]!, (int)chips["nuevos"]!, (int)chips["bajaron"]!, (int)chips["subieron"]!));
 
@@ -181,12 +184,14 @@ public class FaseDosTests(Entorno e)
         var d = await e.Operario().JsonAsync("/api/devoluciones?mesHasta=2026-09-01");
         Assert.Equal("2026-09-01", (string?)d["mes"]);
         var sep = d["kpis"]!.AsArray()[^1]!;
-        // 101 en septiembre: 5 facturados, 1 de nota de crédito → 4 vendidos, 1 devuelto, 1 / 5 = 20 %.
-        Assert.Equal((4m, 1m, 20.0m), ((decimal)sep["bultosVendidos"]!, (decimal)sep["bultosDevueltos"]!, (decimal)sep["porcentaje"]!));
+        // 101 en septiembre: 5 facturados, 1 de nota de crédito → 1 / 5 = 20 %. El operario no recibe los bultos totales.
+        Assert.Equal(20.0m, (decimal)sep["porcentaje"]!);
+        Assert.Null(sep["bultosVendidos"]);
         Assert.Null(d["kpis"]!.AsArray()[0]!["porcentaje"]);   // julio: nada facturado
         var cli = d["clientes"]!.AsArray().Single()!;
         Assert.Equal((101, "VENDEDOR UNO", 20.0m), ((int)cli["idCliente"]!, (string?)cli["vendedor"], (decimal)cli["porcentaje"]!));
-        Assert.Equal(1m, (decimal)d["articulos"]!.AsArray().Single()!["bultosDevueltos"]!);
+        Assert.Null(d["articulos"]!.AsArray().Single()!["bultosDevueltos"]);
+        Assert.Equal(1m, (decimal)cli["bultosDevueltos"]!);   // por cliente, sí
 
         // Octubre: lo que retiró en la misma factura es devolución. Entregó 2, retiró 1 → 1 vendido, 1 / 2 = 50 %.
         var oct = (await e.Operario().JsonAsync("/api/devoluciones"))["clientes"]!.AsArray().Single()!;

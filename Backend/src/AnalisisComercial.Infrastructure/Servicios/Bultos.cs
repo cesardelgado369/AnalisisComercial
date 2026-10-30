@@ -46,7 +46,10 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         var totalActual = Volumen.Redondear(filas.Sum(x => x.Dto.BultosActual));
         var bases = filas.Where(x => x.Dto.BultosBase is not null).ToList();
         decimal? totalBase = bases.Count == 0 ? null : Volumen.Redondear(bases.Sum(x => x.Dto.BultosBase!.Value));
-        var total = new TotalVolumenDto(totalActual, totalBase, Volumen.Esperado(c, totalBase), Volumen.Porcentaje(totalActual, totalBase));
+        // Gobernanza (Cesar, 30/10): el operario ve los totales solo en porcentaje; los bultos, por cliente.
+        var total = a.Rol == RolApp.Operario
+            ? new TotalVolumenDto(null, null, null, Volumen.Porcentaje(totalActual, totalBase))
+            : new TotalVolumenDto(totalActual, totalBase, Volumen.Esperado(c, totalBase), Volumen.Porcentaje(totalActual, totalBase));
         int Cuantos(ChipVolumen chip) => filas.Count(x => x.Chip == chip);
         var chips = new ChipsVolumenDto(filas.Count, Cuantos(ChipVolumen.SinCompraAun), Cuantos(ChipVolumen.Nuevos),
             Cuantos(ChipVolumen.Bajaron), Cuantos(ChipVolumen.Subieron));
@@ -100,6 +103,12 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
             .OrderByDescending(x => x.Porcentaje ?? decimal.MaxValue).ThenByDescending(x => x.BultosDevueltos).ThenBy(x => x.IdCliente)
             .ToList();
         var articulos = Detalle.Devueltos(delMes, await Detalle.ArticulosAsync(db, delMes.Select(b => b.IdArticulo), ct));
+        // Gobernanza (Cesar, 30/10): el operario ve los totales y los artículos solo en porcentaje; los bultos, por cliente.
+        if ((await lectura.AlcanceAsync(ct)).Rol == RolApp.Operario)
+        {
+            kpis = kpis.Select(k => k with { BultosVendidos = null, BultosDevueltos = null }).ToList();
+            articulos = articulos.Select(x => x with { BultosVendidos = null, BultosDevueltos = null }).ToList();
+        }
 
         await lectura.RegistrarAsync("devoluciones",
             $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};desde={f.MesDesde};hasta={f.MesHasta}", ct);
