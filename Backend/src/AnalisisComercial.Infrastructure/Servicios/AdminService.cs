@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 namespace AnalisisComercial.Infrastructure.Servicios;
 
 /// <summary>Administración: solo el Admin. Accesos por email, clientes excluidos y sincronización con Chess.</summary>
-public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj reloj, Lectura lectura) : IAdminService
+public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj reloj, Lectura lectura, IPlataforma plataforma)
+    : IAdminService
 {
     private async Task<Alcance> AdminAsync(string pantalla, CancellationToken ct)
     {
@@ -103,6 +104,86 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     private static AccesoDto Dto(AccesoUsuario a, Dictionary<Guid, DateTimeOffset> ingresos)
         => new(a.IdAcceso, a.Email, a.Nombre, a.Rol, a.Vendedores.Select(v => v.IdPersonal).Order().ToList(), a.Activo, a.IdUsuario is not null, a.IdUsuario is { } u && ingresos.TryGetValue(u, out var f) ? f : null,
             a.ActualizadoPor, a.Actualizado, a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    // ---- cuentas de la plataforma (30/10/2026: la API de cuentas de la central, con el token de quien entra)
+
+    public async Task<IReadOnlyList<CuentaMadomiDto>> CuentasAsync(CancellationToken ct = default)
+    {
+        await AdminAsync("admin-cuentas", ct);
+        var cuentas = await plataforma.CuentasAsync(ct);
+        var accesos = await db.Accesos.AsNoTracking().Include(a => a.Vendedores).ToListAsync(ct);
+
+        // Cada cuenta con su acceso: el enlazado a ella o, si todavía no entró, el de su usuario.
+        var porCuenta = accesos.Where(a => a.IdUsuario is not null).ToDictionary(a => a.IdUsuario!.Value);
+        var porEmail = accesos.Where(a => a.IdUsuario is null).ToDictionary(a => a.Email);
+        var usados = new HashSet<int>();
+        var filas = new List<CuentaMadomiDto>();
+        foreach (var c in cuentas)
+        {
+            var acceso = porCuenta.GetValueOrDefault(c.Id) ?? porEmail.GetValueOrDefault(c.Usuario.Trim().ToLowerInvariant());
+            if (acceso is not null)
+                usados.Add(acceso.IdAcceso);
+            filas.Add(Cuenta(c, acceso));
+        }
+        // Accesos sin cuenta en la plataforma (se dieron por email antes de que la persona tuviera cuenta).
+        filas.AddRange(accesos.Where(a => !usados.Contains(a.IdAcceso))
+            .Select(a => new CuentaMadomiDto(a.IdUsuario, a.Email, a.Nombre, false, null, RolDe(a.Rol), a.IdAcceso,
+                IdsPersonal(a), a.Activo, Version(a), false)));
+        return filas.OrderBy(f => f.Nombre ?? f.Usuario, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
+            .ThenBy(f => f.Usuario, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    public async Task<CuentaMadomiDto> CrearCuentaAsync(NuevaCuentaDto dto, CancellationToken ct = default)
+    {
+        var admin = await AdminAsync("admin-cuentas", ct);
+        // Primero lo de esta app (usuario sin acceso, rol, vendedores): si algo no va, no queda una cuenta suelta.
+        var acceso = new AccesoUsuario();
+        try
+        {
+            await AplicarAsync(acceso, new GuardarAccesoDto(dto.Usuario, dto.Nombre, dto.Rol, dto.IdsPersonal), admin, ct);
+        }
+        catch (ValidacionException e) when (e.Campo == "email")
+        {
+            throw new ValidacionException("usuario", e.Message);
+        }
+
+        var comercial = (await plataforma.RolesAsync(ct)).FirstOrDefault(r => r.Nombre == RolesPlataforma.Comercial)
+                        ?? throw new ValidacionException("rol", $"La plataforma no tiene el rol «{RolesPlataforma.Comercial}» para darte.");
+        CuentaPlataforma cuenta;
+        try
+        {
+            cuenta = await plataforma.CrearCuentaAsync(dto.Usuario?.Trim() ?? "", dto.Nombre?.Trim() ?? "", dto.Password ?? "",
+                comercial.Id, ct);
+        }
+        catch (ValidacionException e) when (e.Campo is "clave" or "idRol")
+        {
+            throw new ValidacionException(e.Campo == "clave" ? "password" : "rol", e.Message);
+        }
+
+        // Sin enlazar: se enlaza la primera vez que entra (así «entró» sigue diciendo la verdad).
+        db.Accesos.Add(acceso);
+        await db.GuardarAsync(ct);
+        await alcance.RegistrarAsync("admin-cuentas", $"alta={acceso.Email};rol={acceso.Rol}", denegado: false, ct);
+        return Cuenta(cuenta, acceso);
+    }
+
+    private static CuentaMadomiDto Cuenta(CuentaPlataforma c, AccesoUsuario? acceso)
+    {
+        var esAdmin = c.Roles.Any(r => r.Nombre == RolesPlataforma.Administrador);
+        DateTimeOffset? ingreso = c.UltimoIngreso is { } u
+            ? TimeZoneInfo.ConvertTime(new DateTimeOffset(DateTime.SpecifyKind(u, DateTimeKind.Utc)), Calendario.Argentina)
+            : null;
+        return new CuentaMadomiDto(c.Id, c.Usuario, c.Nombre, c.Activa, ingreso,
+            esAdmin ? RolApp.Admin : acceso is null ? null : RolDe(acceso.Rol), acceso?.IdAcceso,
+            acceso is null ? [] : IdsPersonal(acceso), acceso?.Activo ?? false, acceso is null ? null : Version(acceso), c.Federada);
+    }
+
+    private static RolApp RolDe(RolAcceso rol) => rol == RolAcceso.Supervisor ? RolApp.Supervisor : RolApp.Operario;
+
+    private static List<int> IdsPersonal(AccesoUsuario a) => a.Vendedores.Select(v => v.IdPersonal).Order().ToList();
+
+    private static string Version(AccesoUsuario a) => a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     // ---- exclusiones
 

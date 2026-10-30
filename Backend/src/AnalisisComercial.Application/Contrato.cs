@@ -205,6 +205,16 @@ public record PasoSincronizacionDto(Guid IdCorrida, DateTimeOffset Inicio, DateT
 
 public record SincronizacionesDto(SolicitudSincronizacionDto? Pendiente, IReadOnlyList<PasoSincronizacionDto> Pasos);
 
+/// <summary>Una cuenta de Madomi en la plataforma cruzada con su acceso a esta app (o un acceso sin cuenta todavía).</summary>
+/// <param name="IdUsuario">La cuenta de la plataforma; null = acceso por email de alguien que todavía no tiene cuenta.</param>
+/// <param name="Rol">Admin si tiene el rol «Administrador comercial» de la plataforma; si no, el de su acceso; null = no entra.</param>
+/// <param name="Federada">Entra con su usuario de De Ruta: no tiene clave en la plataforma.</param>
+public record CuentaMadomiDto(Guid? IdUsuario, string Usuario, string? Nombre, bool CuentaActiva, DateTimeOffset? UltimoIngreso,
+    RolApp? Rol, int? IdAcceso, IReadOnlyList<int> IdsPersonal, bool AccesoActivo, string? Version, bool Federada);
+
+/// <summary>Alta en un paso: la cuenta en la plataforma (rol «Comercial») y su acceso a esta app.</summary>
+public record NuevaCuentaDto(string? Usuario, string? Nombre, string? Password, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal);
+
 public interface IAdminService
 {
     Task<IReadOnlyList<AccesoDto>> AccesosAsync(CancellationToken ct = default);
@@ -212,6 +222,12 @@ public interface IAdminService
     Task<AccesoDto> ActualizarAccesoAsync(int idAcceso, GuardarAccesoDto dto, CancellationToken ct = default);
 
     Task<IReadOnlyList<VendedorAdminDto>> VendedoresAsync(CancellationToken ct = default);
+
+    /// <summary>Las cuentas de Madomi de la plataforma con su acceso, y los accesos sin cuenta.</summary>
+    Task<IReadOnlyList<CuentaMadomiDto>> CuentasAsync(CancellationToken ct = default);
+
+    /// <summary>Crea la cuenta en la plataforma y su acceso; valida lo de acá antes, para no dejar una cuenta suelta.</summary>
+    Task<CuentaMadomiDto> CrearCuentaAsync(NuevaCuentaDto dto, CancellationToken ct = default);
 
     Task<IReadOnlyList<ExclusionDto>> ExclusionesAsync(CancellationToken ct = default);
     Task<ExclusionDto> ExcluirClienteAsync(NuevaExclusionDto dto, CancellationToken ct = default);

@@ -31,6 +31,11 @@ public class UsuarioActual(IHttpContextAccessor http) : IUsuarioActual
     public bool EsSuperAdmin => string.Equals(Usuario.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase);
 
     public bool Tiene(string permiso) => (_permisos ??= Usuario.FindAll("perm").Select(c => c.Value).ToHashSet()).Contains(permiso);
+
+    public string? Token
+        => http.HttpContext?.Request.Headers.Authorization.ToString() is { } h && h.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            ? h["Bearer ".Length..].Trim()
+            : null;
 }
 
 /// <summary>

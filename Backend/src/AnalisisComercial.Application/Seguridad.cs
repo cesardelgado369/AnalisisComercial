@@ -18,6 +18,9 @@ public interface IUsuarioActual
     string Email { get; }
     bool EsSuperAdmin { get; }
     bool Tiene(string permiso);
+
+    /// <summary>El token tal como vino (para reenviárselo a la plataforma); null si el request no trajo uno.</summary>
+    string? Token { get; }
 }
 
 /// <summary>

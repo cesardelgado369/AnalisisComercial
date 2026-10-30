@@ -367,6 +367,34 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
   dados de baja (para enlazar el viejo y el nuevo). Personas activas por nombre, después las dadas de baja, la casa al
   final.
 
+**Cuentas de la plataforma** (30/10/2026, con la API de cuentas de la central, script 034): el admin ve las cuentas de
+Madomi y da de alta a un vendedor o supervisor en un paso. La API reenvía a la plataforma el token de quien entra
+(nunca uno de servicio): la plataforma decide con sus permisos (`cuentas.administrar`, que tiene el «Administrador
+comercial») y solo dentro de Madomi. Editar, dar de baja o cambiar la clave de una cuenta todavía no existen (pasan por
+Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
+
+```jsonc
+// GET /api/admin/cuentas → por nombre
+[{ "idUsuario": "uuid" | null,        // null: acceso por email de alguien que todavía no tiene cuenta en la plataforma
+   "usuario": "franco@madomi", "nombre": "Franco" | null,
+   "cuentaActiva": true,              // false también para los accesos sin cuenta
+   "ultimoIngreso": "2026-10-30T09:12:00-03:00" | null,   // último login en la plataforma
+   "rol": "admin" | "supervisor" | "operario" | null,     // admin = rol «Administrador comercial» de la plataforma;
+                                                          // si no, el de su acceso; null = no entra a esta app
+   "idAcceso": 7 | null, "idsPersonal": [2], "accesoActivo": true, "version": "3" | null,   // los de su acceso
+   "federada": false }]               // entra con su usuario de De Ruta: no tiene clave en la plataforma
+```
+
+- Cada cuenta va con su acceso: el enlazado a ella o, si todavía no entró, el de su usuario/email.
+- `POST /api/admin/cuentas` `{ usuario, nombre, password, rol: "operario" | "supervisor", idsPersonal }` → 201 con la
+  fila como en el GET. Crea la cuenta con el rol «Comercial» de la plataforma y el acceso con el rol y los vendedores
+  pedidos (sin enlazar: se enlaza la primera vez que entra). Valida primero lo de esta app (usuario sin acceso, rol,
+  vendedores) para no dejar una cuenta suelta. 400 en `errors.usuario` (también «Ya existe una cuenta con ese
+  usuario.»), `errors.nombre`, `errors.password` (mínimo 8, máximo 64), `errors.rol`, `errors.idsPersonal`; 403 con
+  `title` si la plataforma no lo permite.
+- Sin la plataforma (en desarrollo no corre: `Plataforma:Url` vacío o sin token) → **404**, y el front muestra los
+  accesos de `/api/admin/usuarios`.
+
 **Clientes excluidos** (no cuentan en ninguna cartera):
 
 - `GET /api/admin/exclusiones` → `[{ idCliente, razonSocial, motivo, creadoPor, creadoEn }]`.

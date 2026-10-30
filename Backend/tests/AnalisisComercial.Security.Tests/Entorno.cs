@@ -44,6 +44,9 @@ public sealed class Entorno : IAsyncLifetime
     private readonly string _base = $"AC_Pruebas_{Guid.NewGuid():N}";
     private WebApplicationFactory<Program> _fabrica = null!;
 
+    /// <summary>La API de cuentas de la plataforma, en memoria (la real no corre en las pruebas).</summary>
+    public PlataformaFalsa Plataforma { get; } = new();
+
     private string Conexion => ServidorDePruebas.Conexion(_base);
 
     private sealed class RelojFijo : IReloj
@@ -61,7 +64,11 @@ public sealed class Entorno : IAsyncLifetime
             b.UseSetting("ConnectionStrings:Comercial", Conexion);
             b.UseSetting("Jwt:ClavePublica", publica);
             b.UseSetting("Autenticacion:Desarrollo:Habilitado", "false");
-            b.ConfigureTestServices(s => s.Replace(ServiceDescriptor.Singleton<IReloj, RelojFijo>()));
+            b.ConfigureTestServices(s =>
+            {
+                s.Replace(ServiceDescriptor.Singleton<IReloj, RelojFijo>());
+                s.Replace(ServiceDescriptor.Singleton<IPlataforma>(Plataforma));
+            });
         });
         _fabrica.CreateClient().Dispose();   // arranca la API: crea la base con las migraciones
         await SembrarAsync();

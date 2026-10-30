@@ -1,6 +1,7 @@
 using AnalisisComercial.Application;
 using AnalisisComercial.Infrastructure.Chess;
 using AnalisisComercial.Infrastructure.Datos;
+using AnalisisComercial.Infrastructure.Plataforma;
 using AnalisisComercial.Infrastructure.Servicios;
 using AnalisisComercial.Infrastructure.Sincronizacion;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +48,10 @@ public static class DependencyInjection
             http.Timeout = TimeSpan.FromSeconds(op.TimeoutSegundos);
         });
         services.AddScoped<Sincronizador>();
+
+        services.Configure<OpcionesPlataforma>(configuration.GetSection("Plataforma"));
+        services.AddHttpClient<IPlataforma, PlataformaClient>((sp, http)
+            => http.Timeout = TimeSpan.FromSeconds(sp.GetRequiredService<IOptions<OpcionesPlataforma>>().Value.TimeoutSegundos));
         return services;
     }
 }

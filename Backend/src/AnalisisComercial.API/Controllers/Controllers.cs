@@ -111,6 +111,13 @@ public class AdminController(IAdminService admin) : ControllerBase
     [HttpGet("vendedores")]
     public Task<IReadOnlyList<VendedorAdminDto>> Vendedores(CancellationToken ct) => admin.VendedoresAsync(ct);
 
+    [HttpGet("cuentas")]
+    public Task<IReadOnlyList<CuentaMadomiDto>> Cuentas(CancellationToken ct) => admin.CuentasAsync(ct);
+
+    [HttpPost("cuentas")]
+    public async Task<ActionResult<CuentaMadomiDto>> CrearCuenta(NuevaCuentaDto dto, CancellationToken ct)
+        => StatusCode(StatusCodes.Status201Created, await admin.CrearCuentaAsync(dto, ct));
+
     [HttpGet("clientes/resumen")]
     public Task<IReadOnlyList<GrupoClientesDto>> ResumenClientes(CancellationToken ct) => admin.ResumenClientesAsync(ct);
 

@@ -23,6 +23,8 @@ services:
       # Pública (no es secreta): la del login central de producción, la misma que usa el CashFlow.
       Jwt__ClavePublica: "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEh9177EsUIKdfARksR0CgMdGQF2LKYSX11EYSI5/Bms3SpqOR6wogHIQixVHg1fSGEMC0iAg7FiI+a5Jt895yAA=="
       AllowedHosts: "analistascomercial.vignoliyasconsultoria.com;localhost;127.0.0.1"   # 127.0.0.1: pruebas desde el VPS
+      # Cuentas (/api/admin/cuentas): la API de la plataforma por la red de Docker, con el token de quien entra.
+      Plataforma__Url: "http://plataforma:8080/"
     networks: [default, vignoli]
     mem_limit: 512m                   # VPS compartido: un pico reinicia solo este contenedor
     read_only: true
