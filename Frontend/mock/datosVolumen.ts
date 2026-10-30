@@ -123,13 +123,15 @@ export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[
   const chips = { todos: filas.length, sinCompraAun: 0, nuevos: 0, bajaron: 0, subieron: 0 }
   for (const f of filas) chips[f.grupo]++
 
+  // Gobernanza (30/10): el operario recibe el total de su cartera solo en porcentaje
+  const soloPorcentaje = rol === 'operario'
   return {
     titulo,
     comparacion: comp.publica,
     total: {
-      bultosActual,
-      bultosBase,
-      bultosEsperado: bultosBase === null ? null : uno(bultosBase * comp.ritmo),
+      bultosActual: soloPorcentaje ? null : bultosActual,
+      bultosBase: soloPorcentaje ? null : bultosBase,
+      bultosEsperado: soloPorcentaje || bultosBase === null ? null : uno(bultosBase * comp.ritmo),
       porcentaje: pct(bultosActual, bultosBase),
     },
     chips,
@@ -151,6 +153,8 @@ const porcentajeDevolucion = (vendidos: number, devueltos: number) =>
 export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: number[]) {
   const { unidad, titulo, cartera } = filtros(p, rol, idsOperario)
   const { meses, actual } = rango(p)
+  // Gobernanza (30/10): lo que suma la cartera del operario (por mes y por artículo) va solo en porcentaje
+  const soloPorcentaje = rol === 'operario'
   const kpis = meses.map((mes) => {
     const m = indiceMes(mes)
     const ls = cartera(m).flatMap((c) => lineas(c, m, unidad))
@@ -158,8 +162,8 @@ export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: nu
     const bultosDevueltos = suma(ls, 'devueltos')
     return {
       mes,
-      bultosVendidos,
-      bultosDevueltos,
+      bultosVendidos: soloPorcentaje ? null : bultosVendidos,
+      bultosDevueltos: soloPorcentaje ? null : bultosDevueltos,
       porcentaje: porcentajeDevolucion(bultosVendidos, bultosDevueltos),
       mesEnCurso: m === actual,
       corteAl: m === actual ? ayerArgentina() : null,
@@ -196,6 +200,7 @@ export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: nu
       porcentaje: porcentajeDevolucion(a.vendidos, a.devueltos),
     }))
     .sort((a, b) => b.bultosDevueltos - a.bultosDevueltos)
+    .map((a) => (soloPorcentaje ? { ...a, bultosVendidos: null, bultosDevueltos: null } : a))
 
   return { titulo, meses, kpis, mes, clientes, articulos }
 }

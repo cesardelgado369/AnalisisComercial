@@ -12,7 +12,7 @@ export function ExplicacionVolumen(props: { total: TotalVolumen; c: ComparacionV
   const { total, c, t, ayuda } = props
   const mes = nombreMes(c.mes)
   const base = nombreMes(c.mesBase)
-  const actual = formatoBultos(total.bultosActual)
+  const actual = formatoBultos(total.bultosActual ?? 0)
   const deBase = total.bultosBase === null ? '0' : formatoBultos(total.bultosBase)
   const alDia = c.tipo === 'mismoDiaHabil' && t.enCurso
   const cuenta =

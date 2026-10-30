@@ -164,7 +164,7 @@ export function DevolucionesPage() {
                         </span>
                       ) : (
                         <span className="dev-articulo-numeros">
-                          <span><strong>{formatoBultos(a.bultosDevueltos)}</strong> {a.bultosDevueltos === 1 ? 'bulto' : 'bultos'}</span>
+                          <span><strong>{formatoBultos(a.bultosDevueltos ?? 0)}</strong> {a.bultosDevueltos === 1 ? 'bulto' : 'bultos'}</span>
                           <span className="apagado">{pct(a.porcentaje)} de lo facturado</span>
                         </span>
                       )}

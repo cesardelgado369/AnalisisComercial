@@ -10,8 +10,8 @@ import './volumen.css'
  * (el operario en la sección), el total de su cartera va solo en porcentajes, sin bultos (Cesar, 30/10).
  */
 export function TotalComparado(props: {
-  /** En la ficha, `bultosActual` puede venir null: ese mes el cliente ya no es de quien mira. */
-  total: Omit<TotalVolumen, 'bultosActual'> & { bultosActual: number | null }
+  /** En la ficha, `bultosActual` null: ese mes el cliente ya no es de quien mira (con `soloPorcentaje` no se mira). */
+  total: TotalVolumen
   c: ComparacionVolumen
   t: TextosComparacion
   sinBase: string

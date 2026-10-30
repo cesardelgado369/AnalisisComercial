@@ -192,9 +192,13 @@ export interface ComparacionVolumen {
   baseHasta: string | null
 }
 
+/**
+ * En `/api/volumen`, el operario recibe los tres bultos en null: el total de su cartera va solo en porcentaje (Cesar,
+ * 30/10). En la ficha, `bultosActual` null = ese mes el cliente ya no es de quien mira.
+ */
 export interface TotalVolumen {
-  bultosActual: number
-  /** null si no hay base (operario o supervisor con clientes nuevos en su cartera). */
+  bultosActual: number | null
+  /** null si no hay base (operario o supervisor con clientes nuevos en su cartera) o para el operario. */
   bultosBase: number | null
   /** Lo que debería llevar a esta altura: la base, o el ritmo del mes anterior para el operario. */
   bultosEsperado: number | null
@@ -230,7 +234,7 @@ export interface Volumen {
 export interface FichaVolumen {
   comparacion: ComparacionVolumen
   /** `bultosActual` null: ese mes el cliente ya no es de quien mira (p. ej. pasó a otro equipo). */
-  total: Omit<TotalVolumen, 'bultosActual'> & { bultosActual: number | null }
+  total: TotalVolumen
   /** Por unidad de negocio y descripción. null = ese período no era suyo. */
   articulos: {
     idArticulo: number
@@ -244,7 +248,7 @@ export interface FichaVolumen {
 
 export interface KpiDevolucion {
   mes: string
-  /** null = fuera de tu cartera (solo en la ficha). */
+  /** null = fuera de tu cartera (en la ficha) o el operario en `/api/devoluciones` (solo el porcentaje, 30/10). */
   bultosVendidos: number | null
   bultosDevueltos: number | null
   /** devueltos / (vendidos + devueltos) × 100, un decimal; null si los dos son 0. */
@@ -280,8 +284,8 @@ export interface Devoluciones {
     bultosDevueltos: number
     porcentaje: number | null
   }[]
-  /** De más a menos bultos devueltos. */
-  articulos: ArticuloDevolucion[]
+  /** De más a menos bultos devueltos. Para el operario, los bultos en null: solo el porcentaje (30/10). */
+  articulos: (Omit<ArticuloDevolucion, 'bultosVendidos' | 'bultosDevueltos'> & { bultosVendidos: number | null; bultosDevueltos: number | null })[]
 }
 
 /** `GET /api/clientes/{id}/devoluciones?mesDesde=&mesHasta=&mes=`: la pestaña Devoluciones de la ficha. */
