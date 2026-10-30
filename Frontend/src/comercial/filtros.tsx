@@ -124,14 +124,15 @@ export function useFiltrosComerciales() {
 type Filtros = ReturnType<typeof useFiltrosComerciales>
 
 /**
- * Los desplegables (el dueño suma el mes en el que se para la app). En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
+ * Los desplegables. En el celular el dueño suma el mes en el que se para la app (en la PC lo tiene en la cabecera,
+ * layout/MesCabecera; Volumen tiene el suyo y lo saca con `conMes={false}`). En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
  * del filtro a la vista (el valor elegido ya lo dice: «Todos los días», «Lunes»); el lector de pantalla lo lee igual.
  */
-export function BarraFiltros({ filtros }: { filtros: Filtros }) {
+export function BarraFiltros({ filtros, conMes = true }: { filtros: Filtros; conMes?: boolean }) {
   const { sesion, cambiar, esOperario, eligeVendedor, vendedor, dia, unidad } = filtros
   const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer las unidades de negocio.')
   return (
-    <div className={['cob-filtros', !eligeVendedor && 'sin-vendedor', filtros.referencia.puedeElegir && 'con-mes'].filter(Boolean).join(' ')}>
+    <div className={eligeVendedor ? 'cob-filtros' : 'cob-filtros sin-vendedor'}>
       {eligeVendedor && (
         <label className="cob-filtro">
           <span className="cob-filtro-nombre">Vendedor</span>
@@ -172,16 +173,16 @@ export function BarraFiltros({ filtros }: { filtros: Filtros }) {
           </p>
         )}
       </div>
-      {filtros.referencia.puedeElegir && <SelectorMes referencia={filtros.referencia} />}
+      {conMes && filtros.referencia.puedeElegir && <SelectorMes referencia={filtros.referencia} />}
     </div>
   )
 }
 
 /**
- * El mes en el que se para la app (solo el dueño): elegir otro cambia toda la interfaz y sigue elegido en las otras
- * secciones. Parado en un mes pasado, el desplegable se resalta para que no se olvide.
+ * El mes en el que se para la app (solo el dueño), en la barra de filtros del celular: elegir otro cambia toda la
+ * interfaz y sigue elegido en las otras secciones. Parado en un mes pasado, el desplegable se resalta.
  */
-export function SelectorMes({ referencia }: { referencia: MesReferencia }) {
+function SelectorMes({ referencia }: { referencia: MesReferencia }) {
   const { mes, enCurso, opciones, elegir } = referencia
   const ultimo = opciones[opciones.length - 1]
   return (

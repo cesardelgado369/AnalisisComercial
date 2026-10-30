@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { precargar } from '../rutas'
 import { useEnLinea } from '../utils/useEnLinea'
@@ -15,6 +15,7 @@ import { NOMBRE_ROL, useSesionApp } from '../auth/SesionApp'
 import { LogoEmpresa } from '../images/LogoEmpresa'
 import { formatoInstante, horasDesde, iniciales } from '../utils/formato'
 import { MenuAplicaciones } from './MenuAplicaciones'
+import { AvisoMesPasado, MesCabecera } from './MesCabecera'
 import { PanelCabecera } from './PanelCabecera'
 
 interface ItemMenu {
@@ -96,6 +97,9 @@ export function Layout() {
   // Sin ninguna corrida OK (null) también se avisa: los números pueden estar incompletos
   const viejos = estadoSync !== null && (ultimaOk === null || horasDesde(ultimaOk) > HORAS_DATOS_VIEJOS)
   const cerrarEnCelular = () => !esAncho() && setLateralVisible(false)
+  // El aviso del mes pasado (el dueño), en las pantallas comerciales: Administración y el perfil no cambian con el mes
+  const { pathname } = useLocation()
+  const pantallaComercial = !pathname.startsWith('/admin') && pathname !== '/perfil'
 
   return (
     <div className={clases}>
@@ -112,6 +116,7 @@ export function Layout() {
         </div>
 
         <div className="header-der">
+          <MesCabecera />
           {estadoSync && (
             <span className={viejos ? 'header-datos viejos' : 'header-datos'}>
               <span className="icono icono-chico" aria-hidden>{viejos ? 'warning' : 'cloud_done'}</span>
@@ -222,6 +227,7 @@ export function Layout() {
             <span>Sin conexión. Lo que ves es lo último que se cargó; cuando vuelva la señal, tocá «Probar de nuevo» si algo no carga.</span>
           </p>
         )}
+        {pantallaComercial && <AvisoMesPasado />}
         {/* Las pantallas que no son Cobertura se bajan aparte (rutas.ts): mientras llegan, el círculo de carga */}
         <Suspense fallback={<LoadingDefault texto="Cargando…" />}>
           <Outlet />

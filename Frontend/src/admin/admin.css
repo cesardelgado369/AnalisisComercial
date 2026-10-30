@@ -98,6 +98,14 @@
 /* Formularios de los modales */
 .adm-form { display: flex; flex-direction: column; gap: 16px; }
 .adm-form input[type="text"], .adm-form input[type="password"] { width: 100%; }
+/* El usuario con «@madomi» fijo a la derecha: se escribe solo el nombre */
+.adm-campo-sufijo { display: flex; }
+.adm-campo-sufijo input { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.adm-campo-sufijo.propio input { border-radius: var(--radio); }
+.adm-sufijo {
+  display: flex; align-items: center; padding: 0 12px; border: 1px solid var(--borde-fuerte); border-left: 0;
+  border-radius: 0 var(--radio) var(--radio) 0; background: var(--superficie-baja); font-size: 14px; font-weight: 600; color: var(--texto-2);
+}
 .adm-form-grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .adm-form-doble { grid-column: 1 / -1; }
 .adm-password-campo { display: flex; gap: 8px; }

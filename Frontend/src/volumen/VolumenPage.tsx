@@ -39,11 +39,14 @@ export function VolumenPage() {
   const { sesion, params, cambiar, buscar, elegirChip, verTodos, esOperario, busqueda, conVendedor, titulo, referencia } = filtros
   const chip = deLista(params.get('chip'), CHIPS, 'todos')
   const orden = deLista(params.get('orden'), ORDENES, 'nombre')
-  // Los meses que se ven (el en curso y los tres anteriores), menos julio: es el primero con datos y no tiene base. El
-  // dueño no tiene este desplegable: el mes lo elige en el filtro «Mes», que cambia toda la app.
+  // Los meses que se ven (el en curso y los tres anteriores), menos julio: es el primero con datos y no tiene base.
   const meses = filtros.ventana.filter((m) => m !== PRIMER_MES).reverse()
   const mes = referencia.puedeElegir ? null : filtros.mesElegido(meses)
   const mesVolumen = mes ?? filtros.mesRef
+  // El desplegable del mes: el vendedor, los de su ventana; el dueño elige acá el mes de toda la app (el de la cabecera)
+  const opcionesMes = referencia.puedeElegir ? [...referencia.opciones].reverse() : meses
+  const valorMes = referencia.puedeElegir ? (referencia.enCurso ? '' : referencia.mes) : (mes ?? '')
+  const elegirMes = (m: string | null) => (referencia.puedeElegir ? referencia.elegir(m) : cambiar('mes', m))
   const sinMesAnterior = mesVolumen === PRIMER_MES
 
   const consulta = new URLSearchParams(filtros.consulta)
@@ -65,19 +68,19 @@ export function VolumenPage() {
 
   return (
     <section className="pagina cob vol">
-      <BarraFiltros filtros={filtros} />
+      <BarraFiltros filtros={filtros} conMes={false} />
 
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
         <header className="cob-resumen vol-resumen">
           <div className="cob-resumen-textos">
             <h1>{titulo}</h1>
             <p>{vigentes ? filtros.subtitulo(vigentes.chips.todos) : ' '}</p>
-            {!referencia.puedeElegir && meses.length > 1 && (
+            {opcionesMes.length > 1 && (
               <label className="vol-mes">
                 <span className="sr-solo">Mes</span>
-                <select value={mes ?? ''} onChange={(e) => cambiar('mes', e.target.value || null)}>
-                  {meses.map((m) => (
-                    <option key={m} value={m === filtros.mesRef ? '' : m}>
+                <select value={valorMes} onChange={(e) => elegirMes(e.target.value || null)}>
+                  {opcionesMes.map((m) => (
+                    <option key={m} value={m === sesion.mesEnCurso ? '' : m}>
                       {nombreMesTitulo(m)}{m === sesion.mesEnCurso ? ' (en curso)' : ''}
                     </option>
                   ))}

@@ -198,6 +198,21 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 /* «Datos de Chess al …»: de dónde y de cuándo son los números */
 .header-datos { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: rgba(255, 255, 255, .75); margin-right: 8px; white-space: nowrap; }
 .header-datos.viejos { color: #fde68a; font-weight: 600; }
+/* El mes del dueño (layout/MesCabecera): una píldora con el calendario; en un mes pasado, ámbar para que no se olvide */
+.header-mes {
+  flex-direction: row; align-items: center; gap: 4px; height: 36px; margin-right: 10px; padding: 0 2px 0 12px;
+  border-radius: 999px; background: rgba(255, 255, 255, .14); color: #fff; font-size: 13px; cursor: pointer;
+}
+.header-mes:hover { background: rgba(255, 255, 255, .22); }
+.header-mes select {
+  height: 34px; padding: 0 30px 0 2px; border: 0; border-radius: 999px; font-size: 13px; font-weight: 700; color: inherit;
+  cursor: pointer; appearance: none; -webkit-appearance: none;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23ffffff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center / 16px;
+}
+.header-mes select option { color: var(--texto); background: var(--superficie); }
+.header-mes.pasado { background: #fcd34d; color: #451a03; }
+.header-mes.pasado select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23451a03' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.header-mes select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /* Franja de datos viejos (Layout): visible en todos los anchos */
 .aviso-datos-viejos {
   display: flex; align-items: flex-start; gap: 8px; max-width: 1120px; margin: 0 0 16px; padding: 10px 14px;
@@ -205,6 +220,14 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
   border: 1px solid var(--alerta-borde); border-radius: var(--radio);
 }
 .aviso-datos-viejos .icono { color: var(--alerta-icono, #d97706); margin-top: 1px; }
+/* El dueño parado en un mes pasado: en todas las pantallas comerciales, con la vuelta al mes en curso */
+.aviso-mes-pasado {
+  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; max-width: 1120px; margin: 0 0 16px; padding: 8px 10px 8px 14px;
+  font-size: 13px; font-weight: 600; color: #451a03; background: #fef3c7; border: 1px solid #fcd34d; border-radius: var(--radio);
+}
+.aviso-mes-pasado > span:nth-child(2) { flex: 1; min-width: 200px; }
+.aviso-mes-pasado .icono { color: #d97706; }
+.aviso-mes-pasado .btn { min-height: 36px; }
 /* Sin señal (el vendedor en la calle): pegada arriba, para que se vea aunque esté a mitad de la lista */
 .aviso-sin-conexion {
   position: sticky; top: calc(var(--alto-header) + 8px); z-index: 20;
@@ -385,6 +408,11 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
   .menu a { min-height: 44px; }
   /* Áreas tocables de 44 px: hamburguesa, notificaciones, chat y salir */
   .header-boton { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+}
+
+@media (max-width: 767px) {
+  /* En el celular el mes del dueño va en la barra de filtros: en la cabecera no entra */
+  .header-mes { display: none; }
 }
 
 @media (max-width: 560px) {

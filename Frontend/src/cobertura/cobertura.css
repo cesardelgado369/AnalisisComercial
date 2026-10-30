@@ -4,10 +4,8 @@
 /* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.cob-filtros.con-mes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 1100px) {
-  .cob-filtros.con-mes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+/* El mes del dueño: en la PC está en la cabecera; en la barra, solo en el celular */
+.cob-filtro-mes { display: none; }
 .cob-filtro { gap: 6px; }
 .cob-filtro select {
   height: 44px; padding: 0 40px 0 14px; font-size: 14px; font-weight: 600; color: var(--texto); cursor: pointer;
@@ -193,7 +191,8 @@
 
 @media (max-width: 767px) {
   /* Filtros compactos (con el teléfono en la mano, primero los números): el valor elegido ya dice qué filtra */
-  .cob-filtros, .cob-filtros.sin-vendedor, .cob-filtros.con-mes { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtros, .cob-filtros.sin-vendedor { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtro-mes { display: flex; }
   .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }
   .cob-resumen-textos h1 { font-size: 22px; line-height: 28px; }

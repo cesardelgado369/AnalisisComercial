@@ -46,6 +46,40 @@ const CAMPOS: Record<ModoCuenta['modo'], string[]> = {
  * los de un campo que el formulario no muestra, arriba del pie. Si otro guardó en el medio (409), se toma la versión
  * nueva y se puede guardar de nuevo sin perder lo elegido.
  */
+/** Los usuarios de Madomi terminan en @madomi (Cesar, 30/10): el campo lo pone solo y se escribe solo el nombre. */
+const DOMINIO = '@madomi'
+/** Lo escrito con @madomi al final, salvo que ya traiga su propio @ (otro dominio). */
+const conDominio = (u: string) => {
+  const t = u.trim()
+  return !t || t.includes('@') ? t : `${t}${DOMINIO}`
+}
+
+/** El usuario con «@madomi» fijo a la derecha; si se escribe un @, va tal cual y el sufijo se va. */
+function CampoUsuario(props: { nombre: string; valor: string; onCambio: (v: string) => void; invalido: boolean; autoFoco?: boolean }) {
+  const { nombre, valor, onCambio, invalido, autoFoco = false } = props
+  const propio = valor.includes('@')
+  return (
+    <span className={propio ? 'adm-campo-sufijo propio' : 'adm-campo-sufijo'}>
+      <input
+        type="text"
+        name={nombre}
+        value={valor}
+        autoComplete="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        placeholder="nicolas.cordoba"
+        onChange={(e) => onCambio(e.target.value)}
+        aria-invalid={invalido}
+        data-autofocus={autoFoco || undefined}
+      />
+      {!propio && <span className="adm-sufijo" aria-hidden>{DOMINIO}</span>}
+    </span>
+  )
+}
+
+/** «Con esto entra: nicolas.cordoba@madomi.» */
+const ayudaUsuario = (usuario: string) => `Con esto entra: ${conDominio(usuario) || `nicolas.cordoba${DOMINIO}`}. Sin espacios; si es de otro dominio, escribilo completo.`
+
 export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }: Props) {
   const cuenta = estado.modo === 'nueva' ? null : estado.cuenta
   const escribeUsuario = estado.modo === 'nueva' || (estado.modo === 'acceso' && !estado.cuenta)
@@ -93,14 +127,14 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
     setGuardando(true)
     try {
       if (estado.modo === 'nueva') {
-        const cuerpo: NuevaCuentaOperario = { usuario: usuario.trim(), nombre: nombre.trim(), password, rol: 'operario', idsPersonal: ids }
+        const cuerpo: NuevaCuentaOperario = { usuario: conDominio(usuario), nombre: nombre.trim(), password, rol: 'operario', idsPersonal: ids }
         await api.post<CuentaMadomi>('/admin/cuentas', cuerpo)
-        setCreada({ usuario: usuario.trim().toLowerCase(), password })
+        setCreada({ usuario: conDominio(usuario).toLowerCase(), password })
         onGuardado()
         return
       }
       const cuerpo: AccesoUsuarioEnvio = {
-        email: cuenta ? cuenta.usuario : usuario.trim(),
+        email: cuenta ? cuenta.usuario : conDominio(usuario),
         nombre: cuenta ? cuenta.nombre : null,
         rol,
         idsPersonal: ids,
@@ -224,22 +258,17 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
               {errorDe('nombre') && <span className="campo-error">{errorDe('nombre')}</span>}
             </label>
             <label>
-              Usuario o email
-              <input
-                type="text"
-                name="usuario-nuevo"
-                value={usuario}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="nicolas.cordoba"
-                onChange={(e) => {
-                  setUsuario(e.target.value)
+              Usuario
+              <CampoUsuario
+                nombre="usuario-nuevo"
+                valor={usuario}
+                onCambio={(v) => {
+                  setUsuario(v)
                   limpiar('usuario')
                 }}
-                aria-invalid={!!errorDe('usuario')}
+                invalido={!!errorDe('usuario')}
               />
-              <span className="campo-ayuda">Con esto entra. Sin espacios.</span>
+              <span className="campo-ayuda">{ayudaUsuario(usuario)}</span>
               {errorDe('usuario') && <span className="campo-error">{errorDe('usuario')}</span>}
             </label>
             <label className="adm-form-doble">
@@ -280,24 +309,20 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
 
         {estado.modo === 'acceso' && !estado.cuenta && (
           <label>
-            Usuario o email
-            <input
-              type="text"
-              name="usuario-acceso"
-              value={usuario}
-              autoComplete="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              placeholder="nicolas.cordoba"
-              onChange={(e) => {
-                setUsuario(e.target.value)
+            Usuario
+            <CampoUsuario
+              nombre="usuario-acceso"
+              valor={usuario}
+              onCambio={(v) => {
+                setUsuario(v)
                 limpiar('email')
               }}
-              aria-invalid={!!errorDe('email')}
-              data-autofocus
+              invalido={!!errorDe('email')}
+              autoFoco
             />
             <span className="campo-ayuda">
-              El que usa para entrar a la plataforma de Vignoli. El acceso queda enlazado a su cuenta la primera vez que entra.
+              {ayudaUsuario(usuario)} Es el que usa para entrar a la plataforma de Vignoli: el acceso queda enlazado a su
+              cuenta la primera vez que entra.
             </span>
             {errorDe('email') && <span className="campo-error">{errorDe('email')}</span>}
           </label>

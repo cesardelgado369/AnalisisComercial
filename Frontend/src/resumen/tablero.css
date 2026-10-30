@@ -4,8 +4,6 @@
 .tablero-cabecera h1 { font-size: 22px; line-height: 28px; font-weight: 800; }
 .tablero-cabecera p { color: var(--texto-2); font-weight: 600; }
 .tablero-mes { text-transform: capitalize; }
-/* El mes en el que se para la app (el dueño), a la derecha del título */
-.tablero-mes-filtro { margin-left: auto; min-width: 200px; }
 .tablero-grilla { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .tablero-tarjeta { display: flex; flex-direction: column; min-height: 0; padding: 14px 18px; gap: 8px; overflow: hidden; }
 .tablero-tarjeta h2 { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--titulo-chico); }
