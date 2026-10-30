@@ -33,14 +33,15 @@ const MODO_PRUEBA = import.meta.env.MODE === 'mock'
 
 /**
  * Secciones (CONTEXTO_FRONTEND.md y CONTRATO_API.md; fase 2 del 29/10): todos ven Cobertura, Volumen y Devoluciones;
- * supervisor y admin suman el Tablero; el admin, Administración. Lo que cada uno ve adentro lo filtra la API.
+ * el admin, Administración (el Tablero de supervisor y admin está oculto por ahora). Lo que cada uno ve adentro lo
+ * filtra la API.
  */
 export const MENU: ItemMenu[] = [
   { ruta: '/', texto: 'Cobertura', icono: 'groups', roles: TODOS, grupo: 'comercial' },
   { ruta: '/volumen', texto: 'Volumen', icono: 'inventory_2', roles: TODOS, grupo: 'comercial' },
   { ruta: '/devoluciones', texto: 'Devoluciones', icono: 'assignment_return', roles: TODOS, grupo: 'comercial' },
-  // Mi ruta de hoy, oculta hasta que tenga pantalla (29/10)
-  { ruta: '/resumen', texto: 'Tablero', icono: 'dashboard', roles: ['admin', 'supervisor'], grupo: 'comercial' },
+  // Mi ruta de hoy, oculta hasta que tenga pantalla (29/10). El Tablero, oculto por ahora (30/10, pedido de Cesar):
+  // { ruta: '/resumen', texto: 'Tablero', icono: 'dashboard', roles: ['admin', 'supervisor'], grupo: 'comercial' },
   { ruta: '/admin/usuarios', texto: 'Gestión de cuentas', icono: 'manage_accounts', roles: ['admin'], grupo: 'admin' },
   { ruta: '/admin/exclusiones', texto: 'Clientes excluidos', icono: 'person_off', roles: ['admin'], grupo: 'admin' },
   { ruta: '/admin/sincronizacion', texto: 'Sincronización con Chess', icono: 'sync', roles: ['admin'], grupo: 'admin' },

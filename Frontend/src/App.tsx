@@ -7,7 +7,7 @@ import { CoberturaPage } from './cobertura/CoberturaPage'
 import { Layout } from './layout/Layout'
 import { EnConstruccion } from './pages/EnConstruccion'
 import { LoginPage } from './pages/LoginPage'
-import { ClientesExcluidosPage, CuentasPage, DevolucionesPage, FichaPage, PerfilPage, TableroPage, VolumenPage } from './rutas'
+import { ClientesExcluidosPage, CuentasPage, DevolucionesPage, FichaPage, PerfilPage, VolumenPage } from './rutas'
 
 /** TODO testing: la vitrina solo existe en desarrollo (ni se baja en producción). */
 const VitrinaPage = lazy(() => import('./pages/VitrinaPage').then((m) => ({ default: m.VitrinaPage })))
@@ -32,9 +32,8 @@ export default function App() {
                 <Route path="devoluciones" element={<DevolucionesPage />} />
                 {/* Mi ruta de hoy, oculta (29/10, pedido de Cesar) hasta que tenga pantalla: el link viejo va a Cobertura */}
                 <Route path="mi-ruta" element={<Navigate to="/" replace />} />
-                <Route element={<SoloRoles roles={['admin', 'supervisor']} />}>
-                  <Route path="resumen" element={<TableroPage />} />
-                </Route>
+                {/* El Tablero, oculto por ahora (30/10, pedido de Cesar): la pantalla queda en resumen/TableroPage */}
+                <Route path="resumen" element={<Navigate to="/" replace />} />
                 <Route path="admin" element={<SoloRoles roles={['admin']} />}>
                   <Route index element={<Navigate to="usuarios" replace />} />
                   <Route path="usuarios" element={<CuentasPage />} />

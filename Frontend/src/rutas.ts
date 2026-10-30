@@ -27,8 +27,9 @@ export const ClientesExcluidosPage = lazy(() => cargas.exclusiones().then((m) =>
 const DE_TODOS = [cargas.ficha, cargas.volumen, cargas.devoluciones]
 const POR_ROL: Record<Rol, (() => Promise<unknown>)[]> = {
   operario: DE_TODOS,
-  supervisor: [...DE_TODOS, cargas.tablero],
-  admin: [...DE_TODOS, cargas.tablero, cargas.cuentas, cargas.exclusiones],
+  // El Tablero está oculto por ahora (30/10): no se adelanta
+  supervisor: DE_TODOS,
+  admin: [...DE_TODOS, cargas.cuentas, cargas.exclusiones],
 }
 
 /**
