@@ -120,6 +120,12 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
   visibility: hidden; opacity: 0; transition: opacity .12s ease, visibility 0s linear .2s;
 }
 .ayuda-globo strong { color: #e4d6ff; font-weight: 700; }
+.ayuda-globo .ayuda-parrafo { display: block; }
+.ayuda-globo .ayuda-parrafo + .ayuda-parrafo { margin-top: 8px; }
+/* Con `ayuda-ancla` en un bloque, el globo se abre debajo de todo el bloque y a su ancho: no se sale de la pantalla */
+.ayuda-ancla { position: relative; }
+.ayuda-ancla .ayuda { position: static; margin-left: 4px; }
+.ayuda-ancla .ayuda-globo { top: 100%; left: 0; right: auto; margin-top: 8px; width: min(440px, 100%); }
 .ayuda:hover .ayuda-globo, .ayuda.abierta .ayuda-globo, .ayuda-boton:focus-visible + .ayuda-globo {
   visibility: visible; opacity: 1; transition: opacity .12s ease;
 }
@@ -246,6 +252,15 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 .menu a:hover { color: #fff; }
 .menu a.activo { background: var(--acento); color: #fff; font-weight: 700; box-shadow: 0 4px 14px rgba(124, 58, 237, .35); }
 .lateral-version { margin: 16px 12px 4px; font-size: 12px; color: var(--cabecera-claro); }
+/* Mi perfil y Cerrar sesión: solo en el celular (en la PC están en la cabecera) */
+.lateral-cuenta { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .1); }
+.lateral-cuenta .etiqueta { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; }
+.lateral-cuenta-item {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; border: 0; border-radius: var(--radio);
+  background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--lateral-texto); text-align: left;
+  text-decoration: none; cursor: pointer;
+}
+.lateral-cuenta-item:hover { color: #fff; }
 
 .contenido {
   margin-left: var(--ancho-lateral); padding: calc(var(--alto-header) + 20px) 20px 32px; min-width: 0;
@@ -371,6 +386,8 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 }
 
 @media (max-width: 560px) {
+  .header-salir { display: none; }
+  .lateral-cuenta { display: flex; }
   .header-izq { gap: 8px; }
   .header-der { gap: 2px; }
   .header-prueba { display: none; }

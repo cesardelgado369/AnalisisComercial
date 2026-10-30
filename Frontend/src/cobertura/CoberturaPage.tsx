@@ -10,7 +10,7 @@ import { formatoEntero, nombreMes } from '../utils/formato'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CHIPS, mesesDisponibles, textoChip } from './estados'
-import { ResumenCobertura, type ContextoAyuda } from './ResumenCobertura'
+import { ResumenCobertura } from './ResumenCobertura'
 import { TablaCobertura, type Orden } from './TablaCobertura'
 import './cobertura.css'
 
@@ -59,11 +59,6 @@ export function CoberturaPage() {
 
   const mesFinal = vigentes?.meses.length ? nombreMes(vigentes.meses[vigentes.meses.length - 1]) : null
   const filtrado = !!busqueda || chip !== 'todos'
-  // El dueño ve cómo se calculó cada mes (pedido de Cesar, 30/10)
-  const ayuda: ContextoAyuda | null =
-    sesion.rol === 'admin'
-      ? { vendedor: filtros.vendedor === null ? null : titulo, dia: filtros.dia, unidad: filtros.unidad }
-      : null
 
   return (
     <section className="pagina cob">
@@ -71,7 +66,7 @@ export function CoberturaPage() {
 
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
         {vigentes ? (
-          <ResumenCobertura titulo={titulo} subtitulo={filtros.subtitulo(vigentes.chips.todos)} kpis={vigentes.kpis} ayuda={ayuda} />
+          <ResumenCobertura titulo={titulo} subtitulo={filtros.subtitulo(vigentes.chips.todos)} kpis={vigentes.kpis} ayuda={filtros.ayuda} />
         ) : errores.length === 0 ? (
           <header className="cob-resumen">
             <div className="cob-resumen-textos">

@@ -1,7 +1,7 @@
 /* ---- Cobertura de clientes: la estructura de la web actual con la estética violeta de la app */
 .cob { max-width: 1120px; gap: 16px; }
 
-/* Filtros: tres desplegables en fila (en el celular, uno debajo del otro) */
+/* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .cob-filtro { gap: 6px; }
@@ -57,8 +57,6 @@
 .cob-kpis { position: relative; }
 .cob-kpis .ayuda { position: static; margin-left: 2px; }
 .cob-kpis .ayuda-globo { top: 100%; margin-top: 10px; width: min(440px, 100%); }
-.ayuda-globo .cob-ayuda-parrafo { display: block; }
-.ayuda-globo .cob-ayuda-parrafo + .cob-ayuda-parrafo { margin-top: 8px; }
 
 /* Chips y buscador */
 .cob-barra {
@@ -188,7 +186,9 @@
 }
 
 @media (max-width: 767px) {
-  .cob-filtros, .cob-filtros.sin-vendedor { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  /* Filtros compactos (con el teléfono en la mano, primero los números): el valor elegido ya dice qué filtra */
+  .cob-filtros, .cob-filtros.sin-vendedor { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }
   .cob-resumen-textos h1 { font-size: 22px; line-height: 28px; }
   /* Indicadores en una grilla de 2 × 2 */

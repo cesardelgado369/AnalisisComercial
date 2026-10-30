@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
+import type { ContextoAyuda } from './ayuda'
 import { cantidad } from '../utils/formato'
 
 /** Un valor de la URL, si es uno de los válidos; si no (o si no está), el de siempre. */
@@ -88,6 +89,10 @@ export function useFiltrosComerciales() {
       unidad ? unidadEnFrase(unidad) : 'todas las unidades',
     ].join(', ')
 
+  /** El dueño ve cómo se calculó cada número (comercial/ayuda.tsx); los demás roles, no. */
+  const ayuda: ContextoAyuda | null =
+    sesion.rol === 'admin' ? { vendedor: vendedor === null ? null : titulo, dia, unidad } : null
+
   return {
     sesion,
     params,
@@ -106,12 +111,16 @@ export function useFiltrosComerciales() {
     consulta,
     titulo,
     subtitulo,
+    ayuda,
   }
 }
 
 type Filtros = ReturnType<typeof useFiltrosComerciales>
 
-/** Los tres desplegables (en el celular, uno debajo del otro). */
+/**
+ * Los tres desplegables. En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
+ * del filtro a la vista (el valor elegido ya lo dice: «Todos los días», «Lunes»); el lector de pantalla lo lee igual.
+ */
 export function BarraFiltros({ filtros }: { filtros: Filtros }) {
   const { sesion, cambiar, esOperario, eligeVendedor, vendedor, dia, unidad } = filtros
   const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer las unidades de negocio.')
@@ -119,7 +128,7 @@ export function BarraFiltros({ filtros }: { filtros: Filtros }) {
     <div className={eligeVendedor ? 'cob-filtros' : 'cob-filtros sin-vendedor'}>
       {eligeVendedor && (
         <label className="cob-filtro">
-          Vendedor
+          <span className="cob-filtro-nombre">Vendedor</span>
           <select value={vendedor ?? ''} onChange={(e) => cambiar('vendedor', e.target.value || null)}>
             <option value="">{esOperario ? 'Todos mis vendedores' : 'Todos los vendedores'}</option>
             {sesion.vendedores.map((v) => (
@@ -129,7 +138,7 @@ export function BarraFiltros({ filtros }: { filtros: Filtros }) {
         </label>
       )}
       <label className="cob-filtro">
-        Día de visita
+        <span className="cob-filtro-nombre">Día de visita</span>
         <select value={dia ?? ''} onChange={(e) => cambiar('dia', e.target.value || null)}>
           <option value="">Todos los días</option>
           {DIAS_VISITA.map((d) => (
@@ -139,7 +148,7 @@ export function BarraFiltros({ filtros }: { filtros: Filtros }) {
       </label>
       <div className="cob-filtro-con-aviso">
         <label className="cob-filtro">
-          Unidad de negocio
+          <span className="cob-filtro-nombre">Unidad de negocio</span>
           <select value={unidad ?? ''} onChange={(e) => cambiar('unidad', e.target.value || null)}>
             <option value="">Todas las unidades</option>
             {/* Si la URL trae una unidad que todavía no llegó en la lista, igual se muestra elegida */}

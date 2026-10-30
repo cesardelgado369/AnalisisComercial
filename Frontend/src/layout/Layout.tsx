@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { precargar } from '../rutas'
 import { useEnLinea } from '../utils/useEnLinea'
+import { useMedia } from '../utils/useMedia'
 import { Animacion } from '../animations/Animacion'
 import '../animations/entrada.css'
 import '../animations/ola.css'
@@ -79,6 +80,8 @@ export function Layout() {
   const [entrada] = useState(tomarIngreso)
   const sincronizacion = useConsulta<EstadoSincronizacion>('/sincronizacion/estado', 'No se pudo leer la fecha de los datos.')
   const enLinea = useEnLinea()
+  // El vendedor en el celular ve solo el logo de esta app: no salta a las otras (Cesar, 30/10)
+  const celular = useMedia('(max-width: 767px)')
   // Con la app ya armada, las pantallas del rol se bajan en segundo plano (abrir la ficha en la calle no espera la red)
   useEffect(() => precargar(rol), [rol])
 
@@ -100,7 +103,7 @@ export function Layout() {
           <div className="logos">
             <LogoEmpresa />
             <span className="logos-separador" aria-hidden />
-            <MenuAplicaciones />
+            <MenuAplicaciones soloLogo={celular && rol === 'operario'} />
           </div>
         </div>
 
@@ -149,7 +152,7 @@ export function Layout() {
               </div>
               <span className="usuario-avatar" aria-hidden>{iniciales(nombre)}</span>
             </Link>
-            <button className="header-boton" title="Cerrar sesión" aria-label="Cerrar sesión" onClick={() => void salir()}>
+            <button className="header-boton header-salir" title="Cerrar sesión" aria-label="Cerrar sesión" onClick={() => void salir()}>
               <span className="icono">logout</span>
             </button>
           </div>
@@ -181,6 +184,18 @@ export function Layout() {
             )
           })}
         </nav>
+        {/* En el celular, la cuenta y salir van acá: en la cabecera no entran junto al logo */}
+        <div className="menu-grupo lateral-cuenta">
+          <div className="etiqueta">{nombre}</div>
+          <Link to="/perfil" className="lateral-cuenta-item" onClick={cerrarEnCelular}>
+            <span className="icono">person</span>
+            Mi perfil
+          </Link>
+          <button type="button" className="lateral-cuenta-item" onClick={() => void salir()}>
+            <span className="icono">logout</span>
+            Cerrar sesión
+          </button>
+        </div>
         <p className="lateral-version">Versión {VERSION}</p>
       </Animacion>
       <div className="lateral-velo" aria-hidden onClick={cerrarEnCelular} />

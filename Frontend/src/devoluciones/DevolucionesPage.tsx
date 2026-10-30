@@ -3,12 +3,14 @@ import { useConsulta } from '../api/useConsulta'
 import { mesesDisponibles } from '../cobertura/estados'
 import { BarraFiltros, useFiltrosComerciales } from '../comercial/filtros'
 import { FilaCliente, NombreArticulo, TarjetaCliente, useAbrirFicha } from '../comercial/lista'
+import { Ayuda } from '../components/Ayuda'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { formatoBultos, formatoFechaCorta, formatoPorcentajeDecimal as pct, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import '../cobertura/cobertura.css'
+import { ExplicacionDevoluciones } from './ExplicacionDevoluciones'
 import './devoluciones.css'
 
 /**
@@ -16,10 +18,12 @@ import './devoluciones.css'
  * fórmula de la nota del dueño), y en el mes elegido, los clientes y los artículos con devoluciones. Los números los
  * arma la API (CONTRATO_API.md). Qué cuenta como devolución lo decide el backend (hoy: las notas de crédito y las líneas
  * con cantidad negativa de las facturas, los «cambios»; falta que Cesar lo confirme con Madomi).
+ * El vendedor ve lo que suma su cartera (por mes y por artículo) solo en porcentajes, sin bultos (Cesar, 30/10); lo de
+ * cada cliente, con bultos. El dueño tiene la ayuda del mes elegido.
  */
 export function DevolucionesPage() {
   const filtros = useFiltrosComerciales()
-  const { sesion, cambiar, conVendedor, titulo } = filtros
+  const { sesion, cambiar, conVendedor, esOperario, titulo } = filtros
   const angosto = useMedia('(max-width: 767px)')
   const mes = filtros.mesElegido(mesesDisponibles(sesion.mesEnCurso))
 
@@ -38,6 +42,7 @@ export function DevolucionesPage() {
   const ficha = useAbrirFicha('Devoluciones', `pestana=devoluciones${mes ? `&mesDev=${mes}` : ''}`)
   useRecordarAltura(!!d)
   const nombreDelMes = d ? nombreMes(d.mes) : ''
+  const kpiElegido = resumen.errores.length ? null : resumen.datos?.kpis.find((k) => k.mes === (mes ?? sesion.mesEnCurso))
 
   return (
     <section className="pagina cob dev">
@@ -45,9 +50,16 @@ export function DevolucionesPage() {
 
       <div className={resumen.cargando || detalle.cargando ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'}>
         <header className="cob-resumen">
-          <div className="cob-resumen-textos">
+          <div className="cob-resumen-textos ayuda-ancla">
             <h1>{titulo}</h1>
-            <p>Bultos devueltos sobre lo facturado (vendidos + devueltos), por mes.</p>
+            <p>
+              Bultos devueltos sobre lo facturado (vendidos + devueltos), por mes.
+              {filtros.ayuda && kpiElegido && (
+                <Ayuda etiqueta={`Cómo se calculó ${nombreMes(kpiElegido.mes)}`}>
+                  <ExplicacionDevoluciones k={kpiElegido} ayuda={filtros.ayuda} />
+                </Ayuda>
+              )}
+            </p>
           </div>
           {resumen.datos && !resumen.errores.length && (
             <ol className="dev-kpis" aria-label="Devoluciones por mes">
@@ -67,7 +79,9 @@ export function DevolucionesPage() {
                         {k.mesEnCurso && k.corteAl && <span className="dev-kpi-corte"> al {formatoFechaCorta(k.corteAl)}</span>}
                       </span>
                       <span className="dev-kpi-detalle">
-                        {formatoBultos(k.bultosDevueltos ?? 0)} de {formatoBultos((k.bultosVendidos ?? 0) + (k.bultosDevueltos ?? 0))} bultos
+                        {esOperario
+                          ? 'de lo facturado'
+                          : `${formatoBultos(k.bultosDevueltos ?? 0)} de ${formatoBultos((k.bultosVendidos ?? 0) + (k.bultosDevueltos ?? 0))} bultos`}
                       </span>
                     </button>
                   </li>
@@ -143,10 +157,17 @@ export function DevolucionesPage() {
                   {d.articulos.map((a) => (
                     <li key={a.idArticulo}>
                       <NombreArticulo articulo={a} className="dev-articulo-nombre" />
-                      <span className="dev-articulo-numeros">
-                        <span><strong>{formatoBultos(a.bultosDevueltos)}</strong> {a.bultosDevueltos === 1 ? 'bulto' : 'bultos'}</span>
-                        <span className="apagado">{pct(a.porcentaje)} de lo facturado</span>
-                      </span>
+                      {esOperario ? (
+                        <span className="dev-articulo-numeros">
+                          <strong>{pct(a.porcentaje)}</strong>
+                          <span className="apagado">de lo facturado</span>
+                        </span>
+                      ) : (
+                        <span className="dev-articulo-numeros">
+                          <span><strong>{formatoBultos(a.bultosDevueltos)}</strong> {a.bultosDevueltos === 1 ? 'bulto' : 'bultos'}</span>
+                          <span className="apagado">{pct(a.porcentaje)} de lo facturado</span>
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ol>

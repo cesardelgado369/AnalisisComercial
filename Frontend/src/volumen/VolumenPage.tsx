@@ -5,12 +5,14 @@ import { BuscadorCobertura } from '../cobertura/BuscadorCobertura'
 import { mesesDisponibles } from '../cobertura/estados'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { CabeceraOrden, Chips, FilaCliente, SinClientes, TarjetaCliente, porNombre, useAbrirFicha } from '../comercial/lista'
+import { Ayuda } from '../components/Ayuda'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { formatoBultos, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { Avance, TotalComparado } from './Avance'
 import { textosComparacion as textos } from './comparacion'
+import { ExplicacionVolumen } from './ExplicacionVolumen'
 import '../cobertura/cobertura.css'
 import './volumen.css'
 
@@ -29,7 +31,8 @@ const CHIP_SIN_DATOS: Record<ChipVolumen, string> = {
 /**
  * Volumen (`/volumen`): cuántos bultos lleva cada cliente en el mes contra la base que le toca a cada rol
  * (CONTRATO_API.md). Todos los números los arma la API; acá se muestran, se ordenan y se filtran por chip.
- * Gobernanza: un cliente que en el mes base no era de la cartera de quien mira viene sin base («nuevo»).
+ * Gobernanza: un cliente que en el mes base no era de la cartera de quien mira viene sin base («nuevo»), y el
+ * vendedor ve el total de su cartera solo en porcentajes, sin bultos (Cesar, 30/10). El dueño tiene la ayuda del total.
  */
 export function VolumenPage() {
   const filtros = useFiltrosComerciales()
@@ -81,6 +84,14 @@ export function VolumenPage() {
               c={vigentes.comparacion}
               t={t}
               sinBase={`Sin base para comparar: son clientes nuevos en ${esOperario ? 'tu' : 'la'} cartera.`}
+              soloPorcentaje={esOperario}
+              ayuda={
+                filtros.ayuda && (
+                  <Ayuda etiqueta="Cómo se calculó el volumen">
+                    <ExplicacionVolumen total={vigentes.total} c={vigentes.comparacion} t={t} ayuda={filtros.ayuda} />
+                  </Ayuda>
+                )
+              }
             />
           ) : null}
         </header>

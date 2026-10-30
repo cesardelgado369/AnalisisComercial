@@ -16,9 +16,10 @@ const ICONOS: Record<string, string> = {
  * Logo de Análisis Comercial en la cabecera (como el de De Ruta y Mantenimiento). Si el usuario puede entrar a más de una
  * aplicación de Vignoli (`usuario.aplicaciones`, en cualquiera de sus empresas), el logo abre, animado, el menú
  * para saltar entre ellas; con una sola, es solo el logo. El salto navega a la `urlBase` de la otra aplicación y
- * allá se entra con la cookie de la plataforma, sin volver a loguearse.
+ * allá se entra con la cookie de la plataforma, sin volver a loguearse. Con `soloLogo` (el vendedor en el celular),
+ * es solo el logo: no se pasa a otra aplicación.
  */
-export function MenuAplicaciones() {
+export function MenuAplicaciones({ soloLogo = false }: { soloLogo?: boolean }) {
   const { usuario } = useAuth()
   const [abierto, setAbierto] = useState(false)
   const caja = useRef<HTMLDivElement>(null)
@@ -41,7 +42,7 @@ export function MenuAplicaciones() {
   }, [abierto])
 
   const logo = <LogoApp className="logo-app" />
-  if (aplicaciones.length < 2) return logo
+  if (soloLogo || aplicaciones.length < 2) return logo
 
   function ir(app: AplicacionPlataforma) {
     if (app.codigo === ESTA_APP || !app.urlBase) return

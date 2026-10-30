@@ -1,15 +1,8 @@
 import type { KpiMes } from '../api/types'
+import { conUnidad, FACTURAS_QUE_CUENTAN, Parrafo, ParrafoCartera, ParrafoEnCurso, type ContextoAyuda } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
 import { formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
-import { DIAS_VISITA, nombrePropio, unidadEnFrase } from './estados'
-
-/** Lo que hace falta para explicar cada mes: de quién es la cartera y los filtros que la recortan. */
-export interface ContextoAyuda {
-  /** El vendedor elegido («Mateo Rojas»); null = todos los vendedores. */
-  vendedor: string | null
-  dia: number | null
-  unidad: string | null
-}
+import { nombrePropio } from './estados'
 
 /**
  * Cabecera de la tarjeta de Cobertura, como la web actual: a la izquierda el vendedor elegido y el resumen de la
@@ -67,41 +60,24 @@ export function ResumenCobertura(props: { titulo: string; subtitulo: string; kpi
  */
 function ExplicacionMes({ k, ayuda }: { k: KpiMes; ayuda: ContextoAyuda }) {
   const mes = nombreMes(k.mes)
-  const dia = ayuda.dia === null ? null : DIAS_VISITA.find((d) => d.codigo === ayuda.dia)?.nombre.toLowerCase()
-  // «los lunes», «los sábados»
-  const visita = dia ? `, con visita los ${dia.endsWith('o') ? `${dia}s` : dia}` : ''
   return (
     <>
-      <span className="cob-ayuda-parrafo">
-        <strong>
-          {nombreMesTitulo(k.mes)}: {formatoEntero(k.clientesConCompra)} de {formatoEntero(k.clientesCartera)}.
-        </strong>{' '}
+      <Parrafo titulo={`${nombreMesTitulo(k.mes)}: ${formatoEntero(k.clientesConCompra)} de ${formatoEntero(k.clientesCartera)}.`}>
         De los {formatoEntero(k.clientesCartera)} clientes que tenía la cartera en {mes}, {formatoEntero(k.clientesConCompra)}{' '}
         compraron ({formatoPorcentaje(k.porcentaje)}).
-      </span>
-      <span className="cob-ayuda-parrafo">
-        <strong>Cartera de {mes}:</strong> los clientes que figuraron en las rutas de{' '}
-        {ayuda.vendedor ?? 'todos los vendedores (sin las cuentas de la casa)'} en {mes}
-        {visita}, sin los clientes excluidos.
-      </span>
-      <span className="cob-ayuda-parrafo">
+      </Parrafo>
+      <ParrafoCartera mes={k.mes} ayuda={ayuda} />
+      <Parrafo>
         Un cliente puede existir desde antes y no contar en los meses anteriores: si ese mes no estaba asignado a{' '}
         {ayuda.vendedor ? `la ruta de ${ayuda.vendedor} (estaba en la de otro vendedor o en ninguna)` : 'la ruta de ningún vendedor'}
         , no es parte de la cartera de ese mes. Por eso el total de clientes cambia de un mes a otro.
-      </span>
-      <span className="cob-ayuda-parrafo">
-        <strong>Compró:</strong> tuvo al menos una factura de {mes} no anulada (Factura o Factura cierre consig.)
-        {ayuda.unidad ? ` con artículos de ${unidadEnFrase(ayuda.unidad)}` : ''} y, descontado lo que se le retiró en la
-        misma factura y las notas de crédito del mes, le quedó algo comprado de al menos un artículo. La Factura
-        presupuesto no cuenta.
-      </span>
-      {k.mesEnCurso && (
-        <span className="cob-ayuda-parrafo">
-          <strong>{nombreMesTitulo(k.mes)} está en curso:</strong> cuenta las facturas
-          {k.corteAl ? ` hasta el ${formatoFechaCorta(k.corteAl)}` : ''}. Se completa a fin de mes; hasta entonces no se
-          compara de igual a igual con los meses cerrados.
-        </span>
-      )}
+      </Parrafo>
+      <Parrafo titulo="Compró:">
+        tuvo al menos una factura de {mes} no anulada ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)} y, descontado lo que se
+        le retiró en la misma factura y las notas de crédito del mes, le quedó algo comprado de al menos un artículo. La
+        Factura presupuesto no cuenta.
+      </Parrafo>
+      {k.mesEnCurso && <ParrafoEnCurso mes={k.mes} corteAl={k.corteAl} />}
     </>
   )
 }
