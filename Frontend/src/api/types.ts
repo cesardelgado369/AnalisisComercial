@@ -362,15 +362,18 @@ export interface VendedorChess {
 }
 
 // ---- Gestión de cuentas
-// TODO: forma propuesta al backend el 29/10 y **sin contrato**: la plataforma todavía no tiene endpoints para listar
-// ni crear cuentas (lo decide Cesar). Hoy la responde solo el mock; los nombres pueden cambiar.
+// La API las cruza con las cuentas de la plataforma (en producción desde el 30/10: listar y crear; editar, dar de baja
+// o cambiar la clave todavía no existe). Sin la plataforma (en local), `GET /api/admin/cuentas` da 404 y la pantalla
+// muestra solo los accesos de `/admin/usuarios`.
 
 /**
- * Una cuenta de Madomi en la plataforma con su acceso a esta app (`GET /api/admin/cuentas`). `rol` null = la cuenta
- * existe pero no entra a Análisis Comercial. El admin sale del permiso de la plataforma: no se edita acá.
+ * Una cuenta de Madomi en la plataforma con su acceso a esta app (`GET /api/admin/cuentas`, por nombre). `rol` null =
+ * la cuenta existe pero no entra a Análisis Comercial; `admin` = tiene el rol «Administrador comercial» de la
+ * plataforma (sin acceso en la app: no se edita acá).
  */
 export interface CuentaMadomi {
-  idUsuario: string
+  /** null: un acceso dado por email a alguien que todavía no tiene cuenta en la plataforma. */
+  idUsuario: string | null
   /** Con lo que entra (email o usuario sin dominio, como `jimena`). */
   usuario: string
   nombre: string | null
@@ -382,6 +385,8 @@ export interface CuentaMadomi {
   idsPersonal: number[]
   accesoActivo: boolean
   version: string | null
+  /** Entra con su usuario de De Ruta: no tiene clave en la plataforma. */
+  federada?: boolean
 }
 
 /** `POST /api/admin/cuentas`: crea la cuenta en la plataforma y su acceso de operario, en un paso. */

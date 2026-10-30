@@ -17,7 +17,8 @@ export const VENDEDORES_CHESS = [
 ]
 
 interface Cuenta {
-  idUsuario: string
+  /** null: acceso dado por email a alguien sin cuenta en la plataforma (todavía no puede entrar). */
+  idUsuario: string | null
   usuario: string
   nombre: string | null
   cuentaActiva: boolean
@@ -27,6 +28,8 @@ interface Cuenta {
   idsPersonal: number[]
   accesoActivo: boolean
   version: string | null
+  /** Entra con su usuario de De Ruta (sin clave en la plataforma). */
+  federada?: boolean
 }
 
 const hace = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOString()
@@ -35,12 +38,13 @@ let siguienteVersion = 1
 const nuevaVersion = () => `v${siguienteVersion++}`
 
 const cuentas: Cuenta[] = [
-  { idUsuario: 'u-checho', usuario: 'checho@madomi', nombre: 'Checho', cuentaActiva: true, ultimoIngreso: hace(0), rol: 'admin', idAcceso: null, idsPersonal: [], accesoActivo: true, version: null },
-  { idUsuario: 'u-nicolas', usuario: 'nicolas.cordoba', nombre: 'Nicolás Córdoba', cuentaActiva: true, ultimoIngreso: hace(1), rol: 'operario', idAcceso: 11, idsPersonal: [1, 7], accesoActivo: true, version: nuevaVersion() },
+  { idUsuario: 'u-checho', usuario: 'checho@madomi', nombre: 'Checho', cuentaActiva: true, ultimoIngreso: hace(0), rol: 'admin', idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
+  { idUsuario: 'u-nicolas', usuario: 'nicolas.cordoba', nombre: 'Nicolás Córdoba', cuentaActiva: true, ultimoIngreso: hace(1), rol: 'operario', idAcceso: 11, idsPersonal: [1, 7], accesoActivo: true, version: nuevaVersion(), federada: true },
   { idUsuario: 'u-franco', usuario: 'franco@madomi', nombre: 'Franco Baigorria', cuentaActiva: true, ultimoIngreso: null, rol: 'operario', idAcceso: 12, idsPersonal: [2], accesoActivo: true, version: nuevaVersion() },
   { idUsuario: 'u-mauricio', usuario: 'mauricio.soria', nombre: 'Mauricio Soria', cuentaActiva: true, ultimoIngreso: hace(9), rol: 'operario', idAcceso: 13, idsPersonal: [3], accesoActivo: false, version: nuevaVersion() },
   { idUsuario: 'u-super', usuario: 'supervisor@madomi', nombre: 'Supervisor PRUEBA', cuentaActiva: true, ultimoIngreso: hace(3), rol: 'supervisor', idAcceso: 14, idsPersonal: [2, 3], accesoActivo: true, version: nuevaVersion() },
   { idUsuario: 'u-adm', usuario: 'administracion@madomi', nombre: 'Administración', cuentaActiva: true, ultimoIngreso: hace(20), rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
+  { idUsuario: null, usuario: 'jimena@madomi', nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: 'operario', idAcceso: 15, idsPersonal: [4], accesoActivo: true, version: nuevaVersion() },
   { idUsuario: 'u-mateo', usuario: 'mateo.rojas', nombre: 'Mateo Rojas', cuentaActiva: true, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
 ]
 
@@ -110,7 +114,8 @@ export function darAcceso(cuerpo: Record<string, unknown>) {
   const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el acceso.', errores)
   if (!cuenta) {
-    cuenta = { idUsuario: `u-${usuario}`, usuario, nombre: null, cuentaActiva: true, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null }
+    // Como la API: el acceso queda a la espera de que la plataforma tenga la cuenta
+    cuenta = { idUsuario: null, usuario, nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null }
     cuentas.push(cuenta)
   }
   Object.assign(cuenta, { rol, idsPersonal, idAcceso: siguienteAcceso++, accesoActivo: true, version: nuevaVersion() })

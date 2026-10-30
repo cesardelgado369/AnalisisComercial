@@ -162,10 +162,13 @@ export function CuentasPage() {
               </thead>
               <tbody>
                 {visibles.map((c) => (
-                  <tr key={c.idUsuario} className={c.rol === 'admin' ? 'adm-fija' : 'cliqueable'} onClick={() => abrir(c)}>
+                  <tr key={c.idUsuario ?? `acceso-${c.idAcceso}`} className={c.rol === 'admin' ? 'adm-fija' : 'cliqueable'} onClick={() => abrir(c)}>
                     <td>
                       <div className="celda-principal">{c.nombre ?? c.usuario}</div>
-                      <div className="celda-secundaria">{c.usuario}</div>
+                      <div className="celda-secundaria">
+                        {c.usuario}
+                        {c.federada && ' · entra con De Ruta'}
+                      </div>
                     </td>
                     <td>{c.rol ? NOMBRE_ROL[c.rol] : <span className="apagado">Sin acceso</span>}</td>
                     <td>
@@ -229,13 +232,17 @@ function VendedoresDeCuenta({ cuenta, porId }: { cuenta: CuentaMadomi; porId: Ma
 /** Activa o pausada, y cuándo entró por última vez (o que nunca entró). */
 function EstadoCuenta({ cuenta: c }: { cuenta: CuentaMadomi }) {
   const ingreso = c.ultimoIngreso ? `Entró ${haceCuanto(fechaUtc(c.ultimoIngreso))}` : 'Nunca entró'
+  // Un acceso dado por email a alguien sin cuenta en la plataforma: no es una baja, todavía no puede entrar
+  if (c.idUsuario === null) return <span className="celda-secundaria">Todavía sin cuenta en la plataforma</span>
   if (!c.cuentaActiva) return <span className="aviso-fila"><span className="icono icono-chico" aria-hidden>block</span>Dada de baja en la plataforma</span>
   if (c.rol === null) return <span className="celda-secundaria">{ingreso}</span>
+  // El admin no tiene acceso en la app (sale del rol de la plataforma): con la cuenta activa, está activo
+  const activa = c.rol === 'admin' || c.accesoActivo
   return (
     <>
-      <div className={c.accesoActivo ? 'adm-estado' : 'adm-estado pausada'}>
-        <span className="icono icono-chico" aria-hidden>{c.accesoActivo ? 'check_circle' : 'pause_circle'}</span>
-        {c.accesoActivo ? 'Activa' : 'Pausada'}
+      <div className={activa ? 'adm-estado' : 'adm-estado pausada'}>
+        <span className="icono icono-chico" aria-hidden>{activa ? 'check_circle' : 'pause_circle'}</span>
+        {activa ? 'Activa' : 'Pausada'}
       </div>
       <div className="celda-secundaria">{ingreso}</div>
     </>
