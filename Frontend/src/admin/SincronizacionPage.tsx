@@ -9,8 +9,11 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { fechaUtc, formatoEntero, formatoFecha, formatoFechaCorta, formatoInstante, haceCuanto } from '../utils/formato'
 import './admin.css'
 
+const RUTA = '/admin/sincronizaciones?cantidad=60'
 /** Mientras hay una actualización pedida o en curso, se vuelve a mirar cada tanto. */
 const CADA_MS = 5000
+/** Con el freno de pedidos (429) se espera el minuto que pide la API antes de volver a mirar. */
+const FRENADO_MS = 60_000
 /** Una corrida sin pasos nuevos en este tiempo se da por cortada (p. ej. se reinició el proceso a la mitad). */
 const CORTADA_MS = 30 * 60_000
 
@@ -82,10 +85,12 @@ const hora = (iso: string) => formatoInstante(iso).slice(-5)
  * las otras pantallas para que se vuelvan a leer (la cabecera, Cobertura). CONTRATO_API.md, «Sincronización con Chess».
  */
 export function SincronizacionPage() {
-  const sinc = useConsulta<Sincronizaciones>('/admin/sincronizaciones?cantidad=60', 'No pudimos leer las sincronizaciones.')
+  const sinc = useConsulta<Sincronizaciones>(RUTA, 'No pudimos leer las sincronizaciones.')
   const estado = useConsulta<EstadoSincronizacion>('/sincronizacion/estado', 'No pudimos leer de cuándo son los datos.')
   const [pidiendo, setPidiendo] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** «Ya se actualizó hace poco: podés pedir otra desde las…» (el 409 de la espera entre pedidos, tal cual). */
+  const [aviso, setAviso] = useState<string | null>(null)
   /** Lo que pidió esta persona desde acá (`solicitadoEn`): para mostrar cómo terminó. */
   const [pedidoEn, setPedidoEn] = useState<string | null>(null)
 
@@ -97,13 +102,14 @@ export function SincronizacionPage() {
   const pedida = pedidoEn ? corridas.find((c) => fechaUtc(c.inicio) >= fechaUtc(pedidoEn)) ?? null : null
   const fase: 'pedida' | 'corriendo' | 'quieta' = pendiente || (pedidoEn && !pedida) ? 'pedida' : enCurso ? 'corriendo' : 'quieta'
 
-  // Mientras hay algo pedido o corriendo, se vuelve a mirar cada tanto
+  // Mientras hay algo pedido o corriendo, se vuelve a mirar cada tanto (con el freno, una vez por minuto)
   const { recargar } = sinc
+  const cada = sinc.estadoError === 429 ? FRENADO_MS : CADA_MS
   useEffect(() => {
     if (fase === 'quieta') return
-    const t = setInterval(recargar, CADA_MS)
+    const t = setInterval(recargar, cada)
     return () => clearInterval(t)
-  }, [fase, recargar])
+  }, [fase, recargar, cada])
 
   // Al terminar una corrida que se estaba mirando, las otras pantallas se vuelven a leer (y la cabecera, «Datos al…»)
   const faseAntes = useRef(fase)
@@ -115,13 +121,18 @@ export function SincronizacionPage() {
   async function actualizar() {
     setPidiendo(true)
     setError(null)
+    setAviso(null)
     try {
       const r = await api.post<{ solicitadoEn: string }>('/admin/sincronizaciones')
       setPedidoEn(r.solicitadoEn)
     } catch (e) {
-      // 409: ya había una pedida sin tomar (otra persona): se sigue esa
-      if (e instanceof ApiError && e.status === 409) setPedidoEn(pendiente?.solicitadoEn ?? new Date().toISOString())
-      else setError(e instanceof ApiError ? e.mensajes.join(' ') : 'No pudimos pedir la actualización. Probá de nuevo.')
+      if (e instanceof ApiError && e.status === 409) {
+        // Dos casos, y el 409 no trae un campo que los separe: otra persona pidió una que todavía no arrancó (se sigue
+        // esa) o se pidió otra hace menos de 10 minutos (el `title` dice desde qué hora). Lo dice la lista recién leída.
+        const ahora = await api.get<Sincronizaciones>(RUTA).catch(() => null)
+        if (ahora?.pendiente) setPedidoEn(ahora.pendiente.solicitadoEn)
+        else setAviso(e.message)
+      } else setError(e instanceof ApiError ? e.mensajes.join(' ') : 'No pudimos pedir la actualización. Probá de nuevo.')
     } finally {
       setPidiendo(false)
       recargar()
@@ -168,6 +179,12 @@ export function SincronizacionPage() {
         <p className="aviso-bloque adm-error-carga" role="alert">
           <span className="icono icono-chico" aria-hidden>error</span>
           {error}
+        </p>
+      )}
+      {aviso && (
+        <p className="aviso aviso-alerta adm-aviso" role="status">
+          <span className="icono icono-chico" aria-hidden>info</span>
+          <span>{aviso}</span>
         </p>
       )}
       {sinc.errores.length > 0 && <ErrorCarga errores={sinc.errores} onReintentar={recargar} className="adm-error-carga" />}

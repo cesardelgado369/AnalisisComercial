@@ -338,8 +338,14 @@ export interface AccesoUsuario {
   /** Operario y supervisor: sus vendedores, uno o más (desde el 29/10 el operario también puede tener varios). */
   idsPersonal: number[]
   activo: boolean
-  /** false = todavía no entró nunca (el acceso se enlaza a la cuenta la primera vez). */
+  /** false = todavía no entró nunca. */
   entro: boolean
+  /**
+   * El acceso está atado a una cuenta de la plataforma (se ata cuando el Admin lo guarda, nunca al entrar: revisión de
+   * seguridad del 04/11). false = pendiente: no deja entrar a nadie hasta que se guarde con la cuenta ya creada. Una API
+   * anterior no lo manda.
+   */
+  enlazado?: boolean
   ultimoIngreso: string | null
   actualizadoPor: string
   actualizado: string
@@ -393,6 +399,11 @@ export interface CuentaMadomi {
   /** Operario: 1 a N vendedores (si Chess renombra a uno con otro id, se suman los dos); supervisor: sus vendedores. */
   idsPersonal: number[]
   accesoActivo: boolean
+  /**
+   * El acceso está atado a esta cuenta. false con `idAcceso` = pendiente: se le pegó por el usuario, pero la persona
+   * recibe 403 hasta que el Admin guarde el acceso de nuevo. Una API anterior no lo manda.
+   */
+  accesoEnlazado?: boolean
   version: string | null
   /** Entra con su usuario de De Ruta: no tiene clave en la plataforma. */
   federada?: boolean

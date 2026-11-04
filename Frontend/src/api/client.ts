@@ -165,6 +165,8 @@ async function pedir<T>(
     if (base === BASE && ruta !== '/sesion') alNegar()
     throw await aError(r, 'No tenés permiso para esta acción.')
   }
+  // El freno de pedidos (240 por minuto por persona): se muestra el aviso y no se reintenta solo
+  if (r.status === 429) throw await aError(r, 'Demasiados pedidos seguidos: esperá un minuto.')
   if (!r.ok) throw await aError(r)
   if (r.status === 204) return undefined as T
   if (comoArchivo) return (await r.blob()) as T

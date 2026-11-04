@@ -9,6 +9,8 @@ const PASOS = ['personalComercial/', 'rutasVenta/', 'clientes/', 'articulos/', '
 const REGISTROS = [6, 41, 1315, 214, 2097, 1290, 5260]
 const TOMA_MS = 4000
 const PASO_MS = 2000
+/** Como `Comercial:EsperaSincronizacionMinutos` de la API: entre un pedido y el siguiente. */
+const ESPERA_MS = 10 * 60_000
 
 interface Paso {
   idCorrida: string
@@ -43,6 +45,8 @@ const cincoDeHoy = Date.parse(`${hoyArgentina()}T05:00:00-03:00`)
 /** Del más viejo al más nuevo (se dan vuelta al responder). */
 let pasos: Paso[] = [...corrida('ayer', cincoDeHoy - 86_400_000, 'ventas/'), ...corrida('hoy', cincoDeHoy)]
 let pendiente: { solicitadoPor: string; solicitadoEn: string; en: number } | null = null
+/** Cuándo se pidió la última (ms), para la espera entre pedidos. */
+let ultimoPedido = 0
 let enCurso: { id: string; empezo: number } | null = null
 
 /** Avanza lo pedido según el reloj: la toma, los pasos y el final. */
@@ -96,11 +100,17 @@ export function listar(cantidad: number) {
   }
 }
 
-/** `POST /api/admin/sincronizaciones` → 202, o 409 si ya hay una pedida sin tomar. */
+/** «14:35», en la hora de Argentina (como la API). */
+const horaArgentina = (ms: number) => new Date(ms - 3 * 3_600_000).toISOString().slice(11, 16)
+
+/** `POST /api/admin/sincronizaciones` → 202, o 409 si ya hay una pedida sin tomar o se pidió otra hace menos de 10 minutos. */
 export function pedir(por: string) {
   avanzar()
-  if (pendiente) throw new ErrorMock(409, 'Ya hay una actualización pedida: arranca en menos de un minuto.')
+  if (pendiente) throw new ErrorMock(409, 'Ya hay una actualización pedida: se va a hacer en menos de un minuto.')
   const ahora = Date.now()
+  if (ahora - ultimoPedido < ESPERA_MS)
+    throw new ErrorMock(409, `Ya se actualizó hace poco: podés pedir otra desde las ${horaArgentina(ultimoPedido + ESPERA_MS)}.`)
+  ultimoPedido = ahora
   pendiente = { solicitadoPor: por, solicitadoEn: iso(ahora), en: ahora }
   return { solicitadoEn: pendiente.solicitadoEn }
 }

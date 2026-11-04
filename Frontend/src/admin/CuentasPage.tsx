@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { api } from '../api/client'
-import type { AccesoUsuario, CuentaMadomi, Rol, VendedorChess } from '../api/types'
+import { ApiError, api } from '../api/client'
+import type { AccesoUsuario, AccesoUsuarioEnvio, CuentaMadomi, Rol, VendedorChess } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
@@ -9,7 +9,7 @@ import { fechaUtc, formatoEntero, haceCuanto } from '../utils/formato'
 import { ModalCuenta, type ModoCuenta } from './ModalCuenta'
 import './admin.css'
 
-type Filtro = 'todas' | Rol | 'sin'
+type Filtro = 'todas' | Rol | 'sin' | 'pendientes'
 
 const FILTROS: { clave: Filtro; texto: string }[] = [
   { clave: 'todas', texto: 'Todas' },
@@ -17,11 +17,21 @@ const FILTROS: { clave: Filtro; texto: string }[] = [
   { clave: 'supervisor', texto: 'Supervisores' },
   { clave: 'admin', texto: 'Administradores' },
   { clave: 'sin', texto: 'Sin acceso' },
+  { clave: 'pendientes', texto: 'Por habilitar' },
 ]
 
 const NOMBRE_ROL: Record<Rol, string> = { admin: 'Administrador', supervisor: 'Supervisor', operario: 'Vendedor' }
 
-const coincide = (c: CuentaMadomi, filtro: Filtro) => (filtro === 'todas' ? true : filtro === 'sin' ? c.rol === null : c.rol === filtro)
+/**
+ * Un acceso que todavía no deja entrar a nadie (revisión de seguridad del 04/11): se ata a la cuenta cuando el Admin lo
+ * guarda, nunca al entrar. Sin cuenta en la plataforma, o con la cuenta ya creada y sin volver a guardarlo.
+ */
+const pendiente = (c: CuentaMadomi) => c.idAcceso !== null && c.accesoEnlazado === false
+/** Pendiente con la cuenta ya creada: se habilita guardando el acceso de nuevo, sin cambiar nada. */
+const porHabilitar = (c: CuentaMadomi) => pendiente(c) && c.idUsuario !== null && c.cuentaActiva
+
+const coincide = (c: CuentaMadomi, filtro: Filtro) =>
+  filtro === 'todas' ? true : filtro === 'sin' ? c.rol === null : filtro === 'pendientes' ? pendiente(c) : c.rol === filtro
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /** Un acceso de `/admin/usuarios` como una fila de la lista de cuentas (mientras la plataforma no liste cuentas). */
@@ -35,6 +45,7 @@ const cuentaDeAcceso = (a: AccesoUsuario): CuentaMadomi => ({
   idAcceso: a.idAcceso,
   idsPersonal: a.idsPersonal,
   accesoActivo: a.activo,
+  accesoEnlazado: a.enlazado,
   version: a.version,
 })
 
@@ -56,6 +67,9 @@ export function CuentasPage() {
   const [filtroElegido, setFiltro] = useState<Filtro>('todas')
   const [texto, setTexto] = useState('')
   const [modal, setModal] = useState<ModoCuenta | null>(null)
+  /** El acceso que se está habilitando (`idAcceso`) y cómo salió el último. */
+  const [habilitando, setHabilitando] = useState<number | null>(null)
+  const [habilitado, setHabilitado] = useState<{ ok: boolean; texto: string } | null>(null)
 
   const porId = useMemo(() => new Map((vendedores.datos ?? []).map((v) => [v.id, v])), [vendedores.datos])
   const lista = useMemo(
@@ -63,8 +77,10 @@ export function CuentasPage() {
     [soloAccesos, accesos.datos, cuentas.datos],
   )
   const cargada = soloAccesos ? accesos.datos !== null : cuentas.datos !== null
-  // Sin listado de cuentas no hay administradores ni cuentas sin acceso para mostrar
-  const filtros = soloAccesos ? FILTROS.filter((f) => f.clave !== 'admin' && f.clave !== 'sin') : FILTROS
+  // Sin listado de cuentas no hay administradores ni cuentas sin acceso para mostrar; «Por habilitar», solo si hay
+  const filtros = (soloAccesos ? FILTROS.filter((f) => f.clave !== 'admin' && f.clave !== 'sin') : FILTROS).filter(
+    (f) => f.clave !== 'pendientes' || lista.some(pendiente),
+  )
   const filtro: Filtro = filtros.some((f) => f.clave === filtroElegido) ? filtroElegido : 'todas'
   const buscado = sinTildes(texto.trim())
   const visibles = lista
@@ -83,6 +99,35 @@ export function CuentasPage() {
   const abrir = (c: CuentaMadomi) => {
     if (c.rol === 'admin' || !vendedores.datos) return
     setModal(c.idAcceso === null ? { modo: 'acceso', cuenta: c } : { modo: 'editar', cuenta: c })
+  }
+
+  /** Guarda el acceso tal como está: la API lo ata a la cuenta cuyo usuario es ese (CONTRATO_API.md, Accesos). */
+  async function habilitar(c: CuentaMadomi) {
+    if (c.idAcceso === null || c.rol === null || c.rol === 'admin' || habilitando !== null) return
+    const quien = c.nombre ?? c.usuario
+    setHabilitando(c.idAcceso)
+    setHabilitado(null)
+    try {
+      const cuerpo: AccesoUsuarioEnvio = {
+        email: c.usuario,
+        nombre: c.nombre,
+        rol: c.rol,
+        idsPersonal: c.idsPersonal,
+        activo: c.accesoActivo,
+        version: c.version ?? undefined,
+      }
+      const r = await api.put<AccesoUsuario>(`/admin/usuarios/${c.idAcceso}`, cuerpo)
+      setHabilitado(
+        r.enlazado === false
+          ? { ok: false, texto: `${quien} todavía no tiene cuenta en la plataforma: cuando la tenga, habilitalo de nuevo.` }
+          : { ok: true, texto: `Listo: ${quien} ya puede entrar a Análisis Comercial.` },
+      )
+    } catch (e) {
+      setHabilitado({ ok: false, texto: e instanceof ApiError ? e.mensajes.join(' ') : `No pudimos habilitar a ${quien}. Probá de nuevo.` })
+    } finally {
+      setHabilitando(null)
+      recargar()
+    }
   }
 
   return (
@@ -142,6 +187,12 @@ export function CuentasPage() {
           className="adm-error-carga"
         />
       )}
+      {habilitado && (
+        <p className={habilitado.ok ? 'sinc-resultado ok' : 'aviso-bloque adm-error-carga'} role={habilitado.ok ? 'status' : 'alert'}>
+          <span className="icono icono-chico" aria-hidden>{habilitado.ok ? 'check_circle' : 'error'}</span>
+          {habilitado.texto}
+        </p>
+      )}
 
       <div className="tarjeta adm-tarjeta">
         {!cargada ? (
@@ -180,6 +231,19 @@ export function CuentasPage() {
                     <td className="adm-col-accion">
                       {c.rol === 'admin' ? (
                         <span className="celda-secundaria">Desde la plataforma</span>
+                      ) : porHabilitar(c) ? (
+                        <button
+                          type="button"
+                          className="btn btn-acento"
+                          disabled={habilitando !== null}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void habilitar(c)
+                          }}
+                        >
+                          <span className="icono icono-chico" aria-hidden>key</span>
+                          {habilitando === c.idAcceso ? 'Habilitando…' : 'Habilitar'}
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -233,9 +297,29 @@ function VendedoresDeCuenta({ cuenta, porId }: { cuenta: CuentaMadomi; porId: Ma
 function EstadoCuenta({ cuenta: c }: { cuenta: CuentaMadomi }) {
   const ingreso = c.ultimoIngreso ? `Entró ${haceCuanto(fechaUtc(c.ultimoIngreso))}` : 'Nunca entró'
   // Un acceso dado por email a alguien sin cuenta en la plataforma: no es una baja, todavía no puede entrar
-  if (c.idUsuario === null) return <span className="celda-secundaria">Todavía sin cuenta en la plataforma</span>
+  if (c.idUsuario === null)
+    return (
+      <>
+        <div className="adm-estado pendiente">
+          <span className="icono icono-chico" aria-hidden>person_off</span>
+          Pendiente: sin cuenta
+        </div>
+        <div className="celda-secundaria">Cuando tenga cuenta en la plataforma, guardá el acceso de nuevo.</div>
+      </>
+    )
   if (!c.cuentaActiva) return <span className="aviso-fila"><span className="icono icono-chico" aria-hidden>block</span>Dada de baja en la plataforma</span>
   if (c.rol === null) return <span className="celda-secundaria">{ingreso}</span>
+  // La cuenta ya existe pero el acceso no está atado a ella: la persona recibe «sin acceso» hasta que se habilite
+  if (pendiente(c))
+    return (
+      <>
+        <div className="adm-estado pendiente">
+          <span className="icono icono-chico" aria-hidden>link_off</span>
+          Falta habilitarla
+        </div>
+        <div className="celda-secundaria">No puede entrar hasta que la habilites.</div>
+      </>
+    )
   // El admin no tiene acceso en la app (sale del rol de la plataforma): con la cuenta activa, está activo
   const activa = c.rol === 'admin' || c.accesoActivo
   return (

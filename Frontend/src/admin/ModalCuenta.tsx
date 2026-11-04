@@ -150,8 +150,10 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
       }
       const porCampo = Object.fromEntries(Object.entries(err.errores).map(([k, v]) => [k, v.join(' ')]))
       setErrores(porCampo)
+      // Dando acceso a una cuenta de la lista no se dibuja el usuario: su error («Esa cuenta ya tiene otro acceso.») va suelto
+      const campos = escribeUsuario || estado.modo !== 'acceso' ? CAMPOS[estado.modo] : CAMPOS.editar
       const sueltos = Object.entries(porCampo)
-        .filter(([k]) => !CAMPOS[estado.modo].includes(k.toLowerCase()))
+        .filter(([k]) => !campos.includes(k.toLowerCase()))
         .map(([, v]) => v)
       if (err.status === 409 && estado.modo === 'editar') {
         // Otro guardó en el medio: se toma su versión y se deja guardar de nuevo con lo que se eligió acá
@@ -321,8 +323,8 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
               autoFoco
             />
             <span className="campo-ayuda">
-              {ayudaUsuario(usuario)} Es el que usa para entrar a la plataforma de Vignoli: el acceso queda enlazado a su
-              cuenta la primera vez que entra.
+              {ayudaUsuario(usuario)} Es el que usa para entrar a la plataforma de Vignoli. Si todavía no tiene cuenta, el
+              acceso queda pendiente: cuando la tenga, habilitalo desde la lista.
             </span>
             {errorDe('email') && <span className="campo-error">{errorDe('email')}</span>}
           </label>

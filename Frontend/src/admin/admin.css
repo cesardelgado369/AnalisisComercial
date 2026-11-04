@@ -31,6 +31,9 @@
 .adm-estado .icono { color: var(--ok); }
 .adm-estado.pausada .icono { color: var(--texto-3); }
 .adm-estado.pausada { color: var(--texto-2); }
+/* Un acceso que no deja entrar todavía: sin cuenta, o con la cuenta creada y sin habilitar */
+.adm-estado.pendiente { color: var(--alerta-texto); }
+.adm-estado.pendiente .icono { color: var(--alerta-icono, #d97706); }
 
 /* Clientes: los excluidos atenuados, con la marca y su motivo */
 .adm-tabla-clientes tr.adm-excluido { background: var(--superficie-baja); }

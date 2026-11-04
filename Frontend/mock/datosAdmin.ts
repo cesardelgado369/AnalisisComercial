@@ -28,6 +28,8 @@ interface Cuenta {
   idAcceso: number | null
   idsPersonal: number[]
   accesoActivo: boolean
+  /** El acceso está atado a esta cuenta (se ata al guardarlo con la cuenta ya creada, nunca al entrar). */
+  accesoEnlazado: boolean
   version: string | null
   /** Entra con su usuario de De Ruta (sin clave en la plataforma). */
   federada?: boolean
@@ -39,14 +41,15 @@ let siguienteVersion = 1
 const nuevaVersion = () => `v${siguienteVersion++}`
 
 const cuentas: Cuenta[] = [
-  { idUsuario: 'u-checho', usuario: 'checho@madomi', nombre: 'Checho', cuentaActiva: true, ultimoIngreso: hace(0), rol: 'admin', idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
-  { idUsuario: 'u-nicolas', usuario: 'nicolas.cordoba', nombre: 'Nicolás Córdoba', cuentaActiva: true, ultimoIngreso: hace(1), rol: 'operario', idAcceso: 11, idsPersonal: [1, 7], accesoActivo: true, version: nuevaVersion(), federada: true },
-  { idUsuario: 'u-franco', usuario: 'franco@madomi', nombre: 'Franco Baigorria', cuentaActiva: true, ultimoIngreso: null, rol: 'operario', idAcceso: 12, idsPersonal: [2], accesoActivo: true, version: nuevaVersion() },
-  { idUsuario: 'u-mauricio', usuario: 'mauricio.soria', nombre: 'Mauricio Soria', cuentaActiva: true, ultimoIngreso: hace(9), rol: 'operario', idAcceso: 13, idsPersonal: [3], accesoActivo: false, version: nuevaVersion() },
-  { idUsuario: 'u-super', usuario: 'supervisor@madomi', nombre: 'Supervisor PRUEBA', cuentaActiva: true, ultimoIngreso: hace(3), rol: 'supervisor', idAcceso: 14, idsPersonal: [2, 3], accesoActivo: true, version: nuevaVersion() },
-  { idUsuario: 'u-adm', usuario: 'administracion@madomi', nombre: 'Administración', cuentaActiva: true, ultimoIngreso: hace(20), rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
-  { idUsuario: null, usuario: 'jimena@madomi', nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: 'operario', idAcceso: 15, idsPersonal: [4], accesoActivo: true, version: nuevaVersion() },
-  { idUsuario: 'u-mateo', usuario: 'mateo.rojas', nombre: 'Mateo Rojas', cuentaActiva: true, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null },
+  { idUsuario: 'u-checho', usuario: 'checho@madomi', nombre: 'Checho', cuentaActiva: true, ultimoIngreso: hace(0), rol: 'admin', idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null },
+  { idUsuario: 'u-nicolas', usuario: 'nicolas.cordoba', nombre: 'Nicolás Córdoba', cuentaActiva: true, ultimoIngreso: hace(1), rol: 'operario', idAcceso: 11, idsPersonal: [1, 7], accesoActivo: true, accesoEnlazado: true, version: nuevaVersion(), federada: true },
+  // Un acceso viejo (de antes del 04/11) de alguien que nunca entró: la cuenta existe pero falta habilitarlo
+  { idUsuario: 'u-franco', usuario: 'franco@madomi', nombre: 'Franco Baigorria', cuentaActiva: true, ultimoIngreso: null, rol: 'operario', idAcceso: 12, idsPersonal: [2], accesoActivo: true, accesoEnlazado: false, version: nuevaVersion() },
+  { idUsuario: 'u-mauricio', usuario: 'mauricio.soria', nombre: 'Mauricio Soria', cuentaActiva: true, ultimoIngreso: hace(9), rol: 'operario', idAcceso: 13, idsPersonal: [3], accesoActivo: false, accesoEnlazado: true, version: nuevaVersion() },
+  { idUsuario: 'u-super', usuario: 'supervisor@madomi', nombre: 'Supervisor PRUEBA', cuentaActiva: true, ultimoIngreso: hace(3), rol: 'supervisor', idAcceso: 14, idsPersonal: [2, 3], accesoActivo: true, accesoEnlazado: true, version: nuevaVersion() },
+  { idUsuario: 'u-adm', usuario: 'administracion@madomi', nombre: 'Administración', cuentaActiva: true, ultimoIngreso: hace(20), rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null },
+  { idUsuario: null, usuario: 'jimena@madomi', nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: 'operario', idAcceso: 15, idsPersonal: [4], accesoActivo: true, accesoEnlazado: false, version: nuevaVersion() },
+  { idUsuario: 'u-mateo', usuario: 'mateo.rojas', nombre: 'Mateo Rojas', cuentaActiva: true, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null },
 ]
 
 export const listarCuentas = () => [...cuentas].sort((a, b) => (a.nombre ?? a.usuario).localeCompare(b.nombre ?? b.usuario, 'es'))
@@ -77,7 +80,7 @@ export function crearCuenta(cuerpo: Record<string, unknown>) {
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá los datos de la cuenta.', errores)
   const cuenta: Cuenta = {
     idUsuario: `u-${usuario}`, usuario, nombre, cuentaActiva: true, ultimoIngreso: null, rol: 'operario',
-    idAcceso: siguienteAcceso++, idsPersonal, accesoActivo: true, version: nuevaVersion(),
+    idAcceso: siguienteAcceso++, idsPersonal, accesoActivo: true, accesoEnlazado: true, version: nuevaVersion(),
   }
   cuentas.push(cuenta)
   return cuenta
@@ -92,6 +95,7 @@ const acceso = (c: Cuenta) => ({
   idsPersonal: c.idsPersonal,
   activo: c.accesoActivo,
   entro: c.ultimoIngreso !== null,
+  enlazado: c.accesoEnlazado,
   ultimoIngreso: c.ultimoIngreso,
   actualizadoPor: 'checho@madomi',
   actualizado: new Date().toISOString(),
@@ -103,7 +107,7 @@ export const listarAccesos = () => listarCuentas().filter((c) => c.idAcceso !== 
 
 /**
  * `POST /api/admin/usuarios`: da acceso a un usuario. Como la API real, no hace falta que la cuenta ya esté en la lista:
- * el acceso queda enlazado a la cuenta de la plataforma la primera vez que esa persona entra.
+ * si existe, el acceso queda atado a ella; si no, queda pendiente hasta que se lo vuelva a guardar con la cuenta creada.
  */
 export function darAcceso(cuerpo: Record<string, unknown>) {
   const usuario = textoCuerpo(cuerpo.email).toLowerCase()
@@ -116,14 +120,17 @@ export function darAcceso(cuerpo: Record<string, unknown>) {
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el acceso.', errores)
   if (!cuenta) {
     // Como la API: el acceso queda a la espera de que la plataforma tenga la cuenta
-    cuenta = { idUsuario: null, usuario, nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, version: null }
+    cuenta = { idUsuario: null, usuario, nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null }
     cuentas.push(cuenta)
   }
-  Object.assign(cuenta, { rol, idsPersonal, idAcceso: siguienteAcceso++, accesoActivo: true, version: nuevaVersion() })
+  Object.assign(cuenta, { rol, idsPersonal, idAcceso: siguienteAcceso++, accesoActivo: true, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
   return acceso(cuenta)
 }
 
-/** `PUT /api/admin/usuarios/{idAcceso}`: rol, vendedores y si está activo, con `version` (409 si otro guardó). */
+/**
+ * `PUT /api/admin/usuarios/{idAcceso}`: rol, vendedores y si está activo, con `version` (409 si otro guardó). Como la
+ * API, guardarlo lo ata a la cuenta si ya existe (así se habilita un acceso pendiente).
+ */
 export function editarAcceso(idAcceso: number, cuerpo: Record<string, unknown>) {
   const cuenta = cuentas.find((c) => c.idAcceso === idAcceso)
   if (!cuenta) throw new ErrorMock(404, 'No existe ese acceso.')
@@ -133,7 +140,7 @@ export function editarAcceso(idAcceso: number, cuerpo: Record<string, unknown>) 
   const rol = cuerpo.rol === 'supervisor' ? 'supervisor' : 'operario'
   const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el acceso.', errores)
-  Object.assign(cuenta, { rol, idsPersonal, accesoActivo: cuerpo.activo !== false, version: nuevaVersion() })
+  Object.assign(cuenta, { rol, idsPersonal, accesoActivo: cuerpo.activo !== false, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
   return acceso(cuenta)
 }
 
