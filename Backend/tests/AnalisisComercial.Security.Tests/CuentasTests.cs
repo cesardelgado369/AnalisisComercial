@@ -48,6 +48,8 @@ public class CuentasTests(Entorno e)
         // Un acceso por email de alguien que todavía no tiene cuenta en la plataforma.
         var nuevo = cuentas["nuevo@madomi"]!;
         Assert.Null(nuevo["idUsuario"]);
+        Assert.False((bool)nuevo["accesoEnlazado"]!);
+        Assert.True((bool)cuentas["supervisor@madomi"]!["accesoEnlazado"]!);
         Assert.Equal(("operario", false), ((string?)nuevo["rol"], (bool)nuevo["cuentaActiva"]!));
 
         await e.Operario().EstadoAsync("/api/admin/cuentas", HttpStatusCode.Forbidden);
@@ -70,6 +72,7 @@ public class CuentasTests(Entorno e)
             // El acceso queda enlazado a la cuenta recién creada (nunca se enlaza al entrar).
             var acceso = await e.ConBaseAsync(db => db.Accesos.Include(a => a.Vendedores).SingleAsync(a => a.Email == usuario));
             Assert.Equal((Guid)c["idUsuario"]!, acceso.IdUsuario);
+            Assert.True((bool)c["accesoEnlazado"]!);
             Assert.Equal([2], acceso.Vendedores.Select(v => v.IdPersonal));
 
             var fila = (await admin.JsonAsync("/api/admin/cuentas")).AsArray().Single(x => (string?)x!["usuario"] == usuario)!;

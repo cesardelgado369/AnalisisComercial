@@ -384,7 +384,8 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
   medio. Que la persona entre **no** la cambia.
 - Al guardar, el acceso se enlaza a la cuenta de la plataforma cuyo usuario es el email, si existe (si no, queda
   pendiente). Uno ya enlazado conserva su cuenta mientras no le cambien el email. 400 en `errors.email` «Esa cuenta ya
-  tiene otro acceso.». `entro` = la persona ya entró alguna vez (sale del registro de accesos).
+  tiene otro acceso.». `entro` = la persona ya entró alguna vez (sale del registro de accesos). `enlazado` = el acceso
+  ya está atado a una cuenta (false = pendiente: no deja entrar a nadie hasta que se guarde con la cuenta creada).
 - Validaciones (400 por campo): `email` (o usuario) sin espacios, 2–200, se guarda en minúsculas, único entre los
   accesos (`errors.email`); `nombre` ≤ 100;
   `rol` `supervisor` u `operario`; `idsPersonal` con al menos uno, todos vendedores que sean personas (no la casa:
@@ -411,7 +412,9 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
    "federada": false }]               // entra con su usuario de De Ruta: no tiene clave en la plataforma
 ```
 
-- Cada cuenta va con su acceso: el enlazado a ella o, si todavía no entró, el de su usuario/email.
+- Cada cuenta va con su acceso: el enlazado a ella o, si no, el pendiente con su usuario/email. `accesoEnlazado`
+  = el acceso está atado a esa cuenta; false con `idAcceso` = pendiente (la persona recibe 403 hasta que el Admin
+  guarde el acceso de nuevo con `PUT /api/admin/usuarios/{idAcceso}`); también false si no hay acceso o no hay cuenta.
 - `POST /api/admin/cuentas` `{ usuario, nombre, password, rol: "operario" | "supervisor", idsPersonal }` → 201 con la
   fila como en el GET. Crea la cuenta con el rol «Comercial» de la plataforma y el acceso con el rol y los vendedores
   pedidos, ya enlazado a la cuenta nueva. Valida primero lo de esta app (usuario sin acceso, rol,

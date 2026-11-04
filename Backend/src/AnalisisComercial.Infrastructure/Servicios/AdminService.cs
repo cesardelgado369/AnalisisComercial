@@ -121,7 +121,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
 
     private static AccesoDto Dto(AccesoUsuario a, Dictionary<Guid, DateTimeOffset> ingresos)
         => new(a.IdAcceso, a.Email, a.Nombre, a.Rol, a.Vendedores.Select(v => v.IdPersonal).Order().ToList(), a.Activo, a.IdUsuario is { } e && ingresos.ContainsKey(e), a.IdUsuario is { } u && ingresos.TryGetValue(u, out var f) ? f : null,
-            a.ActualizadoPor, a.Actualizado, a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            a.ActualizadoPor, a.Actualizado, a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            Enlazado: a.IdUsuario is not null);
 
     // ---- cuentas de la plataforma (30/10/2026: la API de cuentas de la central, con el token de quien entra)
 
@@ -146,7 +147,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         // Accesos sin cuenta en la plataforma (se dieron por email antes de que la persona tuviera cuenta).
         filas.AddRange(accesos.Where(a => !usados.Contains(a.IdAcceso))
             .Select(a => new CuentaMadomiDto(a.IdUsuario, a.Email, a.Nombre, false, null, RolDe(a.Rol), a.IdAcceso,
-                IdsPersonal(a), a.Activo, Version(a), false)));
+                IdsPersonal(a), a.Activo, Version(a), false, AccesoEnlazado: false)));
         return filas.OrderBy(f => f.Nombre ?? f.Usuario, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
             .ThenBy(f => f.Usuario, StringComparer.Ordinal)
             .ToList();
@@ -195,7 +196,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             : null;
         return new CuentaMadomiDto(c.Id, c.Usuario, c.Nombre, c.Activa, ingreso,
             esAdmin ? RolApp.Admin : acceso is null ? null : RolDe(acceso.Rol), acceso?.IdAcceso,
-            acceso is null ? [] : IdsPersonal(acceso), acceso?.Activo ?? false, acceso is null ? null : Version(acceso), c.Federada);
+            acceso is null ? [] : IdsPersonal(acceso), acceso?.Activo ?? false, acceso is null ? null : Version(acceso), c.Federada,
+            AccesoEnlazado: acceso?.IdUsuario == c.Id);
     }
 
     private static RolApp RolDe(RolAcceso rol) => rol == RolAcceso.Supervisor ? RolApp.Supervisor : RolApp.Operario;

@@ -137,14 +137,20 @@ public class SeguridadTests(Entorno e)
         var admin = e.Admin();
         var r = await admin.PostAsJsonAsync("/api/admin/usuarios", new { email = "pendiente@madomi", rol = "operario", idsPersonal = new[] { 1 } });
         var creado = (await r.Content.ReadFromJsonAsync<JsonNode>())!;
+        Assert.False((bool)creado["enlazado"]!);
         await e.Como("pendiente@madomi").EstadoAsync("/api/sesion", HttpStatusCode.Forbidden);   // todavía sin cuenta
 
-        // Le crean la cuenta en la plataforma; al volver a guardar el acceso, el Admin lo enlaza a esa cuenta.
+        // Le crean la cuenta en la plataforma: en Cuentas se ve con su acceso, pero sin enlazar todavía.
         var cuenta = e.Plataforma.Agregar("pendiente@madomi");
+        var fila = (await admin.JsonAsync("/api/admin/cuentas")).AsArray().Single(x => (string?)x!["usuario"] == "pendiente@madomi")!;
+        Assert.Equal(((int)creado["idAcceso"]!, false), ((int)fila["idAcceso"]!, (bool)fila["accesoEnlazado"]!));
+
+        // Al volver a guardar el acceso, el Admin lo enlaza a esa cuenta.
         var ok = await admin.PutAsJsonAsync($"/api/admin/usuarios/{creado["idAcceso"]}",
             new { email = "pendiente@madomi", rol = "operario", idsPersonal = new[] { 1 }, version = (string?)creado["version"] });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        Assert.False((bool)(await ok.Content.ReadFromJsonAsync<JsonNode>())!["entro"]!);
+        var guardado = (await ok.Content.ReadFromJsonAsync<JsonNode>())!;
+        Assert.Equal((false, true), ((bool)guardado["entro"]!, (bool)guardado["enlazado"]!));
         Assert.Equal(cuenta, await e.ConBaseAsync(db => db.Accesos.Where(a => a.Email == "pendiente@madomi").Select(a => a.IdUsuario).SingleAsync()));
         await e.Como("pendiente@madomi").JsonAsync("/api/sesion");
         await e.Como("pendiente@madomi", idUsuario: Guid.NewGuid()).EstadoAsync("/api/sesion", HttpStatusCode.Forbidden);

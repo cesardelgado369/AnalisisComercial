@@ -169,7 +169,8 @@ public interface IResumenService
 
 /// <param name="IdsPersonal">Los vendedores que ve: los del operario (uno o varios) o los del equipo del supervisor.</param>
 public record AccesoDto(int IdAcceso, string Email, string? Nombre, RolAcceso Rol, IReadOnlyList<int> IdsPersonal, bool Activo,
-    bool Entro, DateTimeOffset? UltimoIngreso, string ActualizadoPor, DateTimeOffset Actualizado, string Version);
+    bool Entro, DateTimeOffset? UltimoIngreso, string ActualizadoPor, DateTimeOffset Actualizado, string Version,
+    bool Enlazado);
 
 /// <summary>Alta (sin Activo ni Version) o edición (con Version obligatoria).</summary>
 public record GuardarAccesoDto(string? Email, string? Nombre, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal,
@@ -218,7 +219,8 @@ public record SincronizacionesDto(SolicitudSincronizacionDto? Pendiente, IReadOn
 /// <param name="Rol">Admin si tiene el rol «Administrador comercial» de la plataforma; si no, el de su acceso; null = no entra.</param>
 /// <param name="Federada">Entra con su usuario de De Ruta: no tiene clave en la plataforma.</param>
 public record CuentaMadomiDto(Guid? IdUsuario, string Usuario, string? Nombre, bool CuentaActiva, DateTimeOffset? UltimoIngreso,
-    RolApp? Rol, int? IdAcceso, IReadOnlyList<int> IdsPersonal, bool AccesoActivo, string? Version, bool Federada);
+    RolApp? Rol, int? IdAcceso, IReadOnlyList<int> IdsPersonal, bool AccesoActivo, string? Version, bool Federada,
+    bool AccesoEnlazado);
 
 /// <summary>Alta en un paso: la cuenta en la plataforma (rol «Comercial») y su acceso a esta app.</summary>
 public record NuevaCuentaDto(string? Usuario, string? Nombre, string? Password, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal);
