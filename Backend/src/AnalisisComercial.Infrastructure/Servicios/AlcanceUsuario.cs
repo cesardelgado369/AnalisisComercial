@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Datos;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +9,9 @@ namespace AnalisisComercial.Infrastructure.Servicios;
 /// <summary>
 /// Resuelve qué ve el usuario del request (CONTEXTO_BACKEND §7). Scoped: se calcula una vez por request.
 /// - Admin: permiso analisis-comercial.admin de la plataforma, o SuperAdmin. Ve todo, incluida la casa.
-/// - Supervisor / operario: un AccesoUsuario activo (por cuenta, o por email la primera vez, y ahí se enlaza).
+/// - Supervisor / operario: un AccesoUsuario activo enlazado a su cuenta (IdUsuario). Se enlaza cuando el Admin lo da,
+///   nunca por el email al entrar: la plataforma deja cambiar el email propio sin verificarlo, y con el enlace por
+///   email cualquiera se ponía el de un acceso pendiente y lo heredaba (revisión de seguridad del 04/11/2026).
 /// - Cualquier otro caso: sin acceso (el acceso se otorga, no se presupone).
 /// </summary>
 public class AlcanceUsuario(ComercialDbContext db, IUsuarioActual usuario, IReloj reloj, IOptions<OpcionesComercial> opciones)
@@ -33,17 +35,6 @@ public class AlcanceUsuario(ComercialDbContext db, IUsuarioActual usuario, IRelo
             throw new AccesoDenegadoException(AccesoDenegadoException.SinAcceso);
 
         var acceso = await db.Accesos.Include(a => a.Vendedores).FirstOrDefaultAsync(a => a.IdUsuario == usuario.IdUsuario, ct);
-        if (acceso is null)
-        {
-            // Primera vez: se reconoce por el email y queda enlazado a la cuenta.
-            var email = usuario.Email.Trim().ToLowerInvariant();
-            acceso = await db.Accesos.Include(a => a.Vendedores).FirstOrDefaultAsync(a => a.IdUsuario == null && a.Email == email, ct);
-            if (acceso is not null)
-            {
-                acceso.IdUsuario = usuario.IdUsuario;
-                await db.GuardarAsync(ct);
-            }
-        }
         if (acceso is null || !acceso.Activo)
             throw new AccesoDenegadoException(AccesoDenegadoException.SinAcceso);
 
@@ -62,12 +53,23 @@ public class AlcanceUsuario(ComercialDbContext db, IUsuarioActual usuario, IRelo
 
     public async Task RegistrarAsync(string pantalla, string? parametros, bool denegado, CancellationToken ct = default)
     {
+        Guid? empresa;
+        try
+        {
+            empresa = usuario.IdEmpresa;
+        }
+        catch (AccesoDenegadoException)
+        {
+            empresa = null;
+        }
         db.AccesoLogs.Add(new AccesoLog
         {
             IdUsuario = usuario.IdUsuario,
-            Email = usuario.Email,
+            Email = usuario.Email is { Length: > 200 } e ? e[..200] : usuario.Email,
+            IdEmpresa = empresa,
+            Canal = usuario.Canal is { Length: > 20 } c ? c[..20] : usuario.Canal,
             Fecha = reloj.Ahora,
-            Pantalla = pantalla,
+            Pantalla = pantalla.Length > 60 ? pantalla[..60] : pantalla,
             Parametros = parametros is { Length: > 500 } ? parametros[..500] : parametros,
             Denegado = denegado,
         });

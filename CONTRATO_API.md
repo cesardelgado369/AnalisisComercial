@@ -1,4 +1,4 @@
-# AnálisisComercial — contrato de la API
+﻿# AnálisisComercial — contrato de la API
 
 Fuente de verdad del contrato entre `Backend/` y `Frontend/` (26/10/2026). Si `Frontend/src/api/types.ts` y este
 archivo se contradicen, vale este. Lo escribe la sesión del **backend**; un cambio se le avisa al front **antes** de
@@ -27,8 +27,11 @@ codificarlo. Reemplaza a la sección 8 de `CONTEXTO_BACKEND.md` (y la 9 de `CONT
   | `operario` | cargado en Administración con **un** vendedor de Chess | solo los clientes de las rutas vigentes de su vendedor |
 
   Supervisor y operario se dan **por email** (o usuario sin dominio, como `jimena`: el que use para entrar a la
-  plataforma) en `/api/admin/usuarios` (la cuenta la crea la plataforma); el acceso queda enlazado a la cuenta la
-  primera vez que esa persona entra, y desde ahí vale aunque cambie su email. Sin acceso cargado → **403** en todo,
+  plataforma) en `/api/admin/usuarios` (la cuenta la crea la plataforma). El acceso se enlaza a la cuenta **cuando el
+  Admin lo guarda** (la cuenta cuyo usuario es ese email), y desde ahí vale aunque cambie su email. **Nunca se enlaza
+  al entrar** (revisión de seguridad del 04/11/2026: la plataforma deja cambiar el email propio sin verificarlo, y
+  cualquiera podía ponerse el de un acceso pendiente y heredarlo). Si la cuenta todavía no existe, el acceso queda
+  pendiente y no deja entrar a nadie: cuando la creen, el Admin lo vuelve a guardar. Sin acceso cargado → **403** en todo,
   con un `title` legible («Todavía no tenés acceso a Análisis Comercial. Pedíselo al administrador.»).
 - **Desarrollo** (`// TODO testing`, solo en Development): un request **sin** `Authorization` entra como Admin de
   Madomi (`desarrollo@analisis.local`). Para probar otro rol, en `appsettings.Development.json` de la API:
@@ -69,7 +72,14 @@ Operario y supervisor ven un cliente **solo en los meses en que estuvo en la car
 - «Hoy» y el mes en curso son los de Argentina.
 - Errores `{ status, title, errors?, traceId }` con `errors = { campo: [mensajes] }`:
   400 validación · 401 sin sesión · 403 sin permiso o fuera de alcance · 404 no existe o fuera de alcance ·
-  409 otro lo cambió.
+  409 otro lo cambió · 429 demasiados pedidos seguidos.
+- **Empresa:** las políticas exigen `tenant_id` = Madomi (comparado como GUID). Otra empresa → 403 «Análisis Comercial
+  no está disponible para esta empresa.» en todo, también SuperAdmin. Los 403 de la autorización (otra empresa, sin
+  permiso, `/api/admin` sin ser Admin) traen el mismo `{ status, title }` y quedan en el registro de accesos.
+- **Chatbot:** con el token del chatbot (claim `canal` = `chatbot`) solo se lee. Todo lo que no sea GET/HEAD → 403
+  «Desde el chatbot, los cambios se hacen con una propuesta que la persona confirma.». Ver `CHATBOT.md` de la raíz.
+- **Freno de pedidos:** 240 por minuto por persona y canal (`Freno:PedidosPorMinuto`) → 429
+  `{ status: 429, title: "Demasiados pedidos seguidos: esperá un minuto." }`.
 - Edición con `version` (texto opaco): el GET la trae, el PUT la exige y responde 409 si otro guardó en el medio.
 - **Rango de meses** (`mesDesde`, `mesHasta`, donde se indica): por defecto `mesHasta` = mes en curso y `mesDesde` =
   tres meses antes (cuatro meses, como la web actual). Máximo 12 meses. No antes del primer mes con datos
@@ -371,7 +381,10 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
 - `PUT /api/admin/usuarios/{idAcceso}` → el acceso. Mismo body + `activo` + `version`.
 - No se borra: `activo: false`. Corta el acceso en el próximo request de esa persona.
 - `version` es un texto opaco: la manda el GET, el PUT la exige (400 si falta) y responde 409 si otro guardó en el
-  medio. Que la persona entre por primera vez (el enlace con su cuenta) **no** la cambia.
+  medio. Que la persona entre **no** la cambia.
+- Al guardar, el acceso se enlaza a la cuenta de la plataforma cuyo usuario es el email, si existe (si no, queda
+  pendiente). Uno ya enlazado conserva su cuenta mientras no le cambien el email. 400 en `errors.email` «Esa cuenta ya
+  tiene otro acceso.». `entro` = la persona ya entró alguna vez (sale del registro de accesos).
 - Validaciones (400 por campo): `email` (o usuario) sin espacios, 2–200, se guarda en minúsculas, único entre los
   accesos (`errors.email`); `nombre` ≤ 100;
   `rol` `supervisor` u `operario`; `idsPersonal` con al menos uno, todos vendedores que sean personas (no la casa:
@@ -401,7 +414,7 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
 - Cada cuenta va con su acceso: el enlazado a ella o, si todavía no entró, el de su usuario/email.
 - `POST /api/admin/cuentas` `{ usuario, nombre, password, rol: "operario" | "supervisor", idsPersonal }` → 201 con la
   fila como en el GET. Crea la cuenta con el rol «Comercial» de la plataforma y el acceso con el rol y los vendedores
-  pedidos (sin enlazar: se enlaza la primera vez que entra). Valida primero lo de esta app (usuario sin acceso, rol,
+  pedidos, ya enlazado a la cuenta nueva. Valida primero lo de esta app (usuario sin acceso, rol,
   vendedores) para no dejar una cuenta suelta. 400 en `errors.usuario` (también «Ya existe una cuenta con ese
   usuario.»), `errors.nombre`, `errors.password` (mínimo 8, máximo 64), `errors.rol`, `errors.idsPersonal`; 403 con
   `title` si la plataforma no lo permite.
@@ -465,7 +478,8 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
 ```
 
 - `POST /api/admin/sincronizaciones` → 202 `{ solicitadoEn }`: pide una corrida ya (la toma el proceso de
-  sincronización en menos de un minuto). 409 si ya hay una pedida sin tomar.
+  sincronización en menos de un minuto). 409 si ya hay una pedida sin tomar, o si la última se pidió hace menos de
+  10 minutos (`Comercial:EsperaSincronizacionMinutos`): el `title` dice desde qué hora se puede pedir otra.
 
 ## Estado
 
@@ -481,6 +495,9 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
   completan con `--recargar-ventas`. Sin publicar.
 - 30/10: operario con totales solo en porcentaje (`a35b943`) y **ventana de 4 meses** para operario y supervisor (ver
   Gobernanza). Salen en la 1.1.
+- 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
+  chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
+  de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).
 - 30/10: **clientes Vitales** (`PUT`/`DELETE /api/admin/clientes/{id}/vital`, `vital` en la base de clientes, filtro
   `vitales`, `vitales` en el resumen). Migración `ClientesVitales` (una tabla nueva). Publicado como 1.1.
 - 30/10: **el operario ve solo Cobertura y la ficha** (`sesion.veBultos`; Volumen y Devoluciones → 403). Sale en la 1.2.

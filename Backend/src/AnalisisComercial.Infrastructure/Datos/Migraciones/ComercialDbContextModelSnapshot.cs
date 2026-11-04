@@ -30,6 +30,10 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("Canal")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<bool>("Denegado")
                         .HasColumnType("bit");
 
@@ -40,6 +44,9 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
 
                     b.Property<DateTimeOffset>("Fecha")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("IdEmpresa")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("IdUsuario")
                         .HasColumnType("uniqueidentifier");

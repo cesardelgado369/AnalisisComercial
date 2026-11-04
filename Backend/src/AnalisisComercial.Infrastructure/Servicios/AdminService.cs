@@ -35,6 +35,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         var admin = await AdminAsync("admin-usuarios", ct);
         var acceso = new AccesoUsuario();
         await AplicarAsync(acceso, dto, admin, ct);
+        await EnlazarAsync(acceso, emailAnterior: null, ct);
         db.Accesos.Add(acceso);
         await db.GuardarAsync(ct);
         return Dto(acceso, []);
@@ -51,12 +52,29 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new ValidacionException("version", "Versión inválida.");
         // El UPDATE va con WHERE Version = la que leyó el Admin: si otro guardó en el medio, 409.
         db.Entry(acceso).Property(a => a.Version).OriginalValue = leida;
+        var emailAnterior = acceso.Email;
         await AplicarAsync(acceso, dto, admin, ct);
+        await EnlazarAsync(acceso, emailAnterior, ct);
         acceso.Activo = dto.Activo ?? acceso.Activo;
         acceso.Version = leida + 1;
         await db.GuardarAsync(ct);
         var ingresos = acceso.IdUsuario is { } u ? await UltimosIngresosAsync([u], ct) : [];
         return Dto(acceso, ingresos);
+    }
+
+    /// <summary>
+    /// El acceso se enlaza a la cuenta de la plataforma cuando el Admin lo guarda, nunca al entrar (ver AlcanceUsuario):
+    /// la cuenta cuyo usuario es el email, si existe. Si todavía no existe, queda pendiente y no deja entrar a nadie
+    /// hasta que el Admin lo vuelva a guardar. Uno ya enlazado conserva su cuenta mientras no le cambien el email.
+    /// </summary>
+    private async Task EnlazarAsync(AccesoUsuario acceso, string? emailAnterior, CancellationToken ct)
+    {
+        if (acceso.IdUsuario is not null && acceso.Email == emailAnterior)
+            return;
+        var cuenta = (await plataforma.CuentasAsync(ct)).FirstOrDefault(c => c.Usuario.Trim().ToLowerInvariant() == acceso.Email);
+        if (cuenta is not null && await db.Accesos.AnyAsync(a => a.IdUsuario == cuenta.Id && a.IdAcceso != acceso.IdAcceso, ct))
+            throw new ValidacionException("email", "Esa cuenta ya tiene otro acceso.");
+        acceso.IdUsuario = cuenta?.Id;
     }
 
     private async Task AplicarAsync(AccesoUsuario acceso, GuardarAccesoDto dto, Alcance admin, CancellationToken ct)
@@ -102,7 +120,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .ToDictionaryAsync(x => x.Key, x => x.Fecha, ct);
 
     private static AccesoDto Dto(AccesoUsuario a, Dictionary<Guid, DateTimeOffset> ingresos)
-        => new(a.IdAcceso, a.Email, a.Nombre, a.Rol, a.Vendedores.Select(v => v.IdPersonal).Order().ToList(), a.Activo, a.IdUsuario is not null, a.IdUsuario is { } u && ingresos.TryGetValue(u, out var f) ? f : null,
+        => new(a.IdAcceso, a.Email, a.Nombre, a.Rol, a.Vendedores.Select(v => v.IdPersonal).Order().ToList(), a.Activo, a.IdUsuario is { } e && ingresos.ContainsKey(e), a.IdUsuario is { } u && ingresos.TryGetValue(u, out var f) ? f : null,
             a.ActualizadoPor, a.Actualizado, a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     // ---- cuentas de la plataforma (30/10/2026: la API de cuentas de la central, con el token de quien entra)
@@ -161,7 +179,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new ValidacionException(e.Campo == "clave" ? "password" : "rol", e.Message);
         }
 
-        // Sin enlazar: se enlaza la primera vez que entra (así «entró» sigue diciendo la verdad).
+        // Enlazado ya a la cuenta recién creada («entró» sale de sus ingresos, no del enlace).
+        acceso.IdUsuario = cuenta.Id;
         db.Accesos.Add(acceso);
         await db.GuardarAsync(ct);
         await alcance.RegistrarAsync("admin-cuentas", $"alta={acceso.Email};rol={acceso.Rol}", denegado: false, ct);
@@ -455,6 +474,11 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         var admin = await AdminAsync("admin-sincronizacion", ct);
         if (await db.SyncSolicitudes.AnyAsync(s => s.TomadoEn == null, ct))
             throw new ConflictoException("Ya hay una actualización pedida: se va a hacer en menos de un minuto.");
+        // Una espera entre pedidos: cada actualización vuelve a bajar de Chess y recalcula las carteras.
+        var desde = reloj.Ahora.AddMinutes(-lectura.Op.EsperaSincronizacionMinutos);
+        if (await db.SyncSolicitudes.Where(s => s.SolicitadoEn > desde).MaxAsync(s => (DateTimeOffset?)s.SolicitadoEn, ct) is { } ultima)
+            throw new ConflictoException(
+                $"Ya se actualizó hace poco: podés pedir otra desde las {ultima.AddMinutes(lectura.Op.EsperaSincronizacionMinutos).ToOffset(TimeSpan.FromHours(-3)):HH:mm}.");
         var s = new SyncSolicitud { SolicitadoPor = admin.Email, SolicitadoEn = reloj.Ahora };
         db.SyncSolicitudes.Add(s);
         await db.GuardarAsync(ct);

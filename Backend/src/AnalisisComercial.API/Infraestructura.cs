@@ -3,8 +3,10 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using AnalisisComercial.Application;
+using AnalisisComercial.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Options;
@@ -28,7 +30,9 @@ public class UsuarioActual(IHttpContextAccessor http) : IUsuarioActual
 
     public string Email => Usuario.FindFirst("email")?.Value ?? "";
 
-    public bool EsSuperAdmin => string.Equals(Usuario.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase);
+    public bool EsSuperAdmin => Politicas.EsSuperAdmin(Usuario);
+
+    public string? Canal => Usuario.FindFirst(Politicas.ClaimCanal)?.Value;
 
     public bool Tiene(string permiso) => (_permisos ??= Usuario.FindAll("perm").Select(c => c.Value).ToHashSet()).Contains(permiso);
 
@@ -39,18 +43,95 @@ public class UsuarioActual(IHttpContextAccessor http) : IUsuarioActual
 }
 
 /// <summary>
-/// Cada política con punto en el nombre es un código de permiso (<c>[Authorize(Policy = "analisis-comercial.ver")]</c>):
-/// pide sesión, el módulo contratado (claim <c>mod=analisis-comercial</c>) y el permiso (claim <c>perm</c>), o SuperAdmin.
-/// No hay que registrar nada.
+/// La base de toda política: sesión, el módulo contratado (claim <c>mod=analisis-comercial</c>) y que la empresa del
+/// token sea Madomi (revisión de seguridad del 04/11/2026: así un endpoint nuevo que se olvide de mirarla igual queda
+/// cerrado). La empresa se compara como GUID: la plataforma la manda en minúsculas y la configuración la tiene en
+/// mayúsculas.
 /// </summary>
-public class PoliticaPorPermiso(IOptions<AuthorizationOptions> options) : DefaultAuthorizationPolicyProvider(options)
+public static class Politicas
+{
+    public const string ClaimCanal = "canal";
+    public const string CanalChatbot = "chatbot";
+
+    public static AuthorizationPolicyBuilder Base(Guid idEmpresa) => new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser().RequireClaim("mod", Permisos.Modulo)
+        .RequireAssertion(c => Guid.TryParse(c.User.FindFirst("tenant_id")?.Value, out var t) && t == idEmpresa);
+
+    public static bool EsSuperAdmin(ClaimsPrincipal u)
+        => string.Equals(u.FindFirst("is_superadmin")?.Value, "true", StringComparison.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// Cada política con punto en el nombre es un código de permiso (<c>[Authorize(Policy = "analisis-comercial.ver")]</c>):
+/// la base de <see cref="Politicas"/> y el permiso (claim <c>perm</c>), o SuperAdmin. No hay que registrar nada.
+/// </summary>
+public class PoliticaPorPermiso(IOptions<AuthorizationOptions> options, IOptions<OpcionesComercial> comercial)
+    : DefaultAuthorizationPolicyProvider(options)
 {
     public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
         => policyName.Contains('.')
-            ? new AuthorizationPolicyBuilder().RequireAuthenticatedUser().RequireClaim("mod", Permisos.Modulo)
-                .RequireAssertion(c => c.User.HasClaim("perm", policyName) || c.User.HasClaim("is_superadmin", "true"))
+            ? Politicas.Base(comercial.Value.IdEmpresa)
+                .RequireAssertion(c => c.User.HasClaim("perm", policyName) || Politicas.EsSuperAdmin(c.User))
                 .Build()
             : await base.GetPolicyAsync(policyName);
+}
+
+/// <summary>
+/// Con el token del chatbot (claim <c>canal=chatbot</c>) solo se lee: todo lo que no sea GET o HEAD da 403 (CHATBOT.md,
+/// «freno por canal»). Cuando haya propuestas, se eximen solo sus tres rutas, no todo <c>/api/bot</c>.
+/// </summary>
+public class CanalChatbot(RequestDelegate next)
+{
+    public const string Mensaje = "Desde el chatbot, los cambios se hacen con una propuesta que la persona confirma.";
+
+    public Task InvokeAsync(HttpContext ctx)
+    {
+        if (ctx.User.HasClaim(Politicas.ClaimCanal, Politicas.CanalChatbot)
+            && !HttpMethods.IsGet(ctx.Request.Method) && !HttpMethods.IsHead(ctx.Request.Method))
+            throw new AccesoDenegadoException(Mensaje);
+        return next(ctx);
+    }
+}
+
+/// <summary>
+/// Los rechazos de la autorización (otra empresa, sin el módulo, sin el permiso) quedan en AccesoLog como cualquier otro
+/// denegado, con la ruta como pantalla (antes no se registraban: no llegaban a los servicios), y responden con el
+/// formato del sistema, <c>{ status, title }</c>, como los 403 de los servicios.
+/// </summary>
+public class RegistroDeRechazos(ILogger<RegistroDeRechazos> log, IOptions<OpcionesComercial> comercial)
+    : IAuthorizationMiddlewareResultHandler
+{
+    private readonly AuthorizationMiddlewareResultHandler _base = new();
+
+    public async Task HandleAsync(RequestDelegate next, HttpContext ctx, AuthorizationPolicy policy, PolicyAuthorizationResult resultado)
+    {
+        if (!resultado.Forbidden)
+        {
+            await _base.HandleAsync(next, ctx, policy, resultado);
+            return;
+        }
+        if (Guid.TryParse(ctx.User.FindFirst("sub")?.Value, out _))
+        {
+            try
+            {
+                await ctx.RequestServices.GetRequiredService<IAlcanceUsuario>()
+                    .RegistrarAsync($"rechazo {ctx.Request.Method} {ctx.Request.Path}", null, denegado: true, ctx.RequestAborted);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log.LogWarning(ex, "No se pudo registrar el rechazo de {Ruta}", ctx.Request.Path.ToString());
+            }
+        }
+        var titulo = !(Guid.TryParse(ctx.User.FindFirst("tenant_id")?.Value, out var t) && t == comercial.Value.IdEmpresa)
+            ? "Análisis Comercial no está disponible para esta empresa."
+            : ctx.Request.Path.StartsWithSegments("/api/admin", StringComparison.OrdinalIgnoreCase)
+                ? "La administración es solo para administradores."
+                : AccesoDenegadoException.SinAcceso;
+        ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync(JsonSerializer.Serialize(new { status = 403, title = titulo, traceId = ctx.TraceIdentifier },
+            new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }));
+    }
 }
 
 /// <summary>

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
 using AnalisisComercial.API;
 using AnalisisComercial.Application;
 using AnalisisComercial.Infrastructure;
@@ -67,9 +68,32 @@ if (desarrollo)
 
 // Todo exige sesión y que la empresa tenga la app contratada (claim `mod`); cada controller pide además su permiso.
 // El rol en la app (admin / supervisor / operario) y el alcance los resuelve IAlcanceUsuario en cada request.
+// La DefaultPolicy es igual a la Fallback: un [Authorize] suelto tampoco se saltea el módulo ni la empresa.
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PoliticaPorPermiso>();
-builder.Services.AddAuthorization(o => o.FallbackPolicy = new AuthorizationPolicyBuilder()
-    .RequireAuthenticatedUser().RequireClaim("mod", Permisos.Modulo).Build());
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, RegistroDeRechazos>();
+var idEmpresa = builder.Configuration.GetValue("Comercial:IdEmpresa", new OpcionesComercial().IdEmpresa);
+builder.Services.AddAuthorization(o => o.FallbackPolicy = o.DefaultPolicy = Politicas.Base(idEmpresa).Build());
+
+// Freno de pedidos por persona y canal (CHATBOT.md, regla 5): cada lectura escribe en AccesoLog y algunas calculan
+// toda la cartera, así que un bot o un script no puede pedir sin parar. Sin sesión, por IP (el login lo frena Nginx).
+var pedidosPorMinuto = builder.Configuration.GetValue("Freno:PedidosPorMinuto", 240);
+builder.Services.AddRateLimiter(o =>
+{
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.User.FindFirst("sub")?.Value is { } sub
+            ? $"{sub}|{ctx.User.FindFirst(Politicas.ClaimCanal)?.Value}"
+            : $"ip|{ctx.Connection.RemoteIpAddress}",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = pedidosPorMinuto, Window = TimeSpan.FromMinutes(1) }));
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.OnRejected = (c, ct) =>
+    {
+        c.HttpContext.Response.ContentType = "application/json";
+        return new ValueTask(c.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            status = 429, title = "Demasiados pedidos seguidos: esperá un minuto.", traceId = c.HttpContext.TraceIdentifier,
+        }), ct));
+    };
+});
 
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
@@ -92,6 +116,8 @@ if (desarrollo)
 app.UseForwardedHeaders();
 app.UseMiddleware<ManejoDeErrores>();
 app.UseAuthentication();
+app.UseRateLimiter();
+app.UseMiddleware<CanalChatbot>();   // con el token del chatbot, solo lectura
 app.UseAuthorization();
 app.MapControllers();
 

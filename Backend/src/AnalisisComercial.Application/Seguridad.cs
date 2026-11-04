@@ -1,4 +1,4 @@
-using AnalisisComercial.Domain;
+﻿using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Application;
 
@@ -17,6 +17,9 @@ public interface IUsuarioActual
     Guid IdEmpresa { get; }
     string Email { get; }
     bool EsSuperAdmin { get; }
+
+    /// <summary>El claim <c>canal</c> del token (<c>chatbot</c> si viene del chatbot central); null en la web.</summary>
+    string? Canal { get; }
     bool Tiene(string permiso);
 
     /// <summary>El token tal como vino (para reenviárselo a la plataforma); null si el request no trajo uno.</summary>

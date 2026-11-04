@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
@@ -67,9 +67,9 @@ public class CuentasTests(Entorno e)
             Assert.Equal(("operario", usuario, true), ((string?)c["rol"], (string?)c["usuario"], (bool)c["cuentaActiva"]!));
             Assert.NotNull(c["idUsuario"]);
 
-            // El acceso queda por email y sin enlazar: se enlaza la primera vez que entra.
+            // El acceso queda enlazado a la cuenta recién creada (nunca se enlaza al entrar).
             var acceso = await e.ConBaseAsync(db => db.Accesos.Include(a => a.Vendedores).SingleAsync(a => a.Email == usuario));
-            Assert.Null(acceso.IdUsuario);
+            Assert.Equal((Guid)c["idUsuario"]!, acceso.IdUsuario);
             Assert.Equal([2], acceso.Vendedores.Select(v => v.IdPersonal));
 
             var fila = (await admin.JsonAsync("/api/admin/cuentas")).AsArray().Single(x => (string?)x!["usuario"] == usuario)!;

@@ -169,6 +169,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.Property(x => x.Email).HasMaxLength(200);
             e.Property(x => x.Pantalla).HasMaxLength(60);
             e.Property(x => x.Parametros).HasMaxLength(500);
+            e.Property(x => x.Canal).HasMaxLength(20);
             e.HasIndex(x => x.Fecha);
         });
     }

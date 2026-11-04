@@ -34,6 +34,9 @@ public class OpcionesComercial
     /// <summary>Operario y supervisor ven solo estos meses hasta el en curso (Cesar, 30/10/2026); el admin, desde <see cref="PrimerMes"/>.</summary>
     public int MesesVisibles { get; set; } = 4;
 
+    /// <summary>Minutos entre dos pedidos de «Actualizar ahora» (revisión de seguridad del 04/11/2026).</summary>
+    public int EsperaSincronizacionMinutos { get; set; } = 10;
+
     /// <summary>
     /// El operario ve solo Cobertura y la ficha: Volumen y Devoluciones (también las pestañas de la ficha) → 403
     /// (Cesar, 30/10/2026, versión 1.2 para vendedores). false para abrírselas sin publicar código.

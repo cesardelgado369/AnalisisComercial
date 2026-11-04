@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 
 namespace AnalisisComercial.Security.Tests;
 
@@ -45,4 +45,12 @@ public sealed class PlataformaFalsa : IPlataforma
     }
 
     public void Quitar(string usuario) => _cuentas.RemoveAll(c => c.Usuario == usuario);
+
+    /// <summary>Una cuenta Comercial creada en la plataforma (no desde esta app), con el id de <see cref="Entorno.IdDe"/>.</summary>
+    public Guid Agregar(string usuario)
+    {
+        var id = Entorno.IdDe(usuario);
+        _cuentas.Add(new CuentaPlataforma(id, usuario, usuario, true, [Comercial], false, null));
+        return id;
+    }
 }

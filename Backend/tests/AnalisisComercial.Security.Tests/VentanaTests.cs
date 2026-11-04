@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json.Nodes;
+using AnalisisComercial.Application;
 
 namespace AnalisisComercial.Security.Tests;
 
@@ -48,5 +49,21 @@ public class VentanaTests(EntornoVentana e)
         Assert.True((bool)(await e.Supervisor().JsonAsync("/api/sesion"))["veBultos"]!);
         await e.Supervisor().JsonAsync("/api/volumen");
         await e.Admin().JsonAsync("/api/devoluciones");
+    }
+
+    [Fact]
+    public async Task Freno_de_pedidos_por_persona_y_canal()
+    {
+        var web = e.Como("apurado@madomi", permisos: [Permisos.Ver, Permisos.Admin]);
+        // Ventana fija de un minuto: en 61 pedidos seguidos hay un 429 aunque cambie el minuto en el medio.
+        HttpResponseMessage? frenado = null;
+        for (var i = 0; i < 61 && frenado is null; i++)
+            if (await web.GetAsync("/api/sesion") is { StatusCode: HttpStatusCode.TooManyRequests } r)
+                frenado = r;
+        Assert.NotNull(frenado);
+        Assert.Equal(429, (int)JsonNode.Parse(await frenado.Content.ReadAsStringAsync())!["status"]!);
+        // El mismo usuario por el chatbot tiene su propio contador, y otra persona no se frena.
+        await e.Como("apurado@madomi", permisos: [Permisos.Ver, Permisos.Admin], canal: "chatbot").JsonAsync("/api/sesion");
+        await e.Admin().JsonAsync("/api/sesion");
     }
 }

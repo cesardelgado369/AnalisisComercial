@@ -77,10 +77,13 @@ public class BultosController(IVolumenService volumen, IDevolucionesService devo
         => devoluciones.ObtenerAsync(new FiltroDevoluciones(vendedor, dia, unidad, mesDesde, mesHasta), ct);
 }
 
-/// <summary>Solo Admin: lo controla AdminService (el rol Admin sale del permiso analisis-comercial.admin o SuperAdmin).</summary>
+/// <summary>
+/// Solo Admin (permiso analisis-comercial.admin o SuperAdmin): lo exige la política y, además, AdminService, por si un
+/// endpoint nuevo se pusiera en otro controller.
+/// </summary>
 [ApiController]
 [Route("api/admin")]
-[Authorize(Policy = Permisos.Ver)]
+[Authorize(Policy = Permisos.Admin)]
 public class AdminController(IAdminService admin) : ControllerBase
 {
     [HttpGet("usuarios")]

@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text;
 using AnalisisComercial.Application;
 using AnalisisComercial.Infrastructure.Plataforma;
@@ -15,6 +15,7 @@ public class PlataformaClientTests
         public Guid IdEmpresa => Guid.Empty;
         public string Email => "checho@madomi";
         public bool EsSuperAdmin => false;
+        public string? Canal => null;
         public bool Tiene(string permiso) => false;
         public string? Token => token;
     }

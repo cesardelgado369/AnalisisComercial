@@ -65,6 +65,7 @@ public class Entorno : IAsyncLifetime
             b.UseSetting("Jwt:ClavePublica", publica);
             b.UseSetting("Autenticacion:Desarrollo:Habilitado", "false");
             b.UseSetting("Comercial:OperarioSoloCobertura", "false");   // las pruebas de la fase 2 miran todo
+            b.UseSetting("Freno:PedidosPorMinuto", "100000");             // el freno se prueba en EntornoVentana
             Ajustar(b);
             b.ConfigureTestServices(s =>
             {
@@ -101,11 +102,13 @@ public class Entorno : IAsyncLifetime
     public HttpClient SinToken() => _fabrica.CreateClient();
 
     public HttpClient Como(string email, IEnumerable<string>? permisos = null, Guid? idUsuario = null, Guid? empresa = null,
-        bool superAdmin = false, bool conModulo = true, ECDsa? firmadoCon = null)
+        bool superAdmin = false, bool conModulo = true, ECDsa? firmadoCon = null, string? canal = null,
+        string? superAdminTexto = null)
     {
         var cliente = _fabrica.CreateClient();
         cliente.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer",
-            Token(email, permisos ?? [Permisos.Ver], idUsuario ?? IdDe(email), empresa ?? Madomi, superAdmin, conModulo, firmadoCon ?? _clave));
+            Token(email, permisos ?? [Permisos.Ver], idUsuario ?? IdDe(email), empresa ?? Madomi,
+                superAdminTexto ?? (superAdmin ? "true" : "false"), conModulo, firmadoCon ?? _clave, canal));
         return cliente;
     }
 
@@ -116,14 +119,16 @@ public class Entorno : IAsyncLifetime
     /// <summary>Un id de cuenta estable por email (como la plataforma: siempre el mismo para la misma persona).</summary>
     public static Guid IdDe(string email) => new(MD5.HashData(System.Text.Encoding.UTF8.GetBytes(email)));
 
-    private static string Token(string email, IEnumerable<string> permisos, Guid idUsuario, Guid empresa, bool superAdmin,
-        bool conModulo, ECDsa clave)
+    private static string Token(string email, IEnumerable<string> permisos, Guid idUsuario, Guid empresa, string superAdmin,
+        bool conModulo, ECDsa clave, string? canal)
     {
         var claims = new List<Claim>
         {
             new("sub", idUsuario.ToString()), new("email", email), new("tenant_id", empresa.ToString()),
-            new("is_superadmin", superAdmin ? "true" : "false"),
+            new("is_superadmin", superAdmin),
         };
+        if (canal is not null)
+            claims.Add(new Claim("canal", canal));
         claims.AddRange(permisos.Select(p => new Claim("perm", p)));
         if (conModulo)
             claims.Add(new Claim("mod", Permisos.Modulo));
@@ -230,7 +235,7 @@ public class ColeccionEntorno : ICollectionFixture<Entorno>
 
 /// <summary>
 /// Los mismos datos con la configuración de producción que se prueba aparte: la ventana de operario y supervisor en
-/// 2 meses (septiembre y octubre) y el operario solo con Cobertura.
+/// 2 meses (septiembre y octubre), el operario solo con Cobertura y el freno en 30 pedidos por minuto.
 /// </summary>
 public sealed class EntornoVentana : Entorno
 {
@@ -238,6 +243,7 @@ public sealed class EntornoVentana : Entorno
     {
         b.UseSetting("Comercial:MesesVisibles", "2");
         b.UseSetting("Comercial:OperarioSoloCobertura", "true");
+        b.UseSetting("Freno:PedidosPorMinuto", "30");
     }
 }
 

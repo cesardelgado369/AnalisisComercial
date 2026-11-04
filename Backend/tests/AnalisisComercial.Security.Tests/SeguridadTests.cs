@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json.Nodes;
@@ -120,16 +120,34 @@ public class SeguridadTests(Entorno e)
     }
 
     [Fact]
-    public async Task El_acceso_por_email_se_enlaza_a_la_primera_cuenta_que_entra()
+    public async Task Un_acceso_pendiente_no_se_hereda_poniendose_su_email()
     {
-        var cuenta = Guid.NewGuid();
-        var s = await e.Como("NUEVO@madomi", idUsuario: cuenta).JsonAsync("/api/sesion");   // sin distinguir mayúsculas
-        Assert.Equal("operario", (string?)s["rol"]);
-        Assert.Equal(cuenta, await e.ConBaseAsync(db => db.Accesos.Where(a => a.Email == "nuevo@madomi").Select(a => a.IdUsuario).SingleAsync()));
-        // Otra cuenta con el mismo email ya no entra: el acceso es de la primera.
+        // Revisión de seguridad del 04/11/2026: la plataforma deja cambiar el email propio sin verificarlo. Quien se pone
+        // el email de un acceso pendiente no lo hereda: el acceso se enlaza cuando el Admin lo guarda, no al entrar.
         await e.Como("nuevo@madomi", idUsuario: Guid.NewGuid()).EstadoAsync("/api/sesion", HttpStatusCode.Forbidden);
+        Assert.Null(await e.ConBaseAsync(db => db.Accesos.Where(a => a.Email == "nuevo@madomi").Select(a => a.IdUsuario).SingleAsync()));
+
         // Y la cuenta enlazada sigue entrando aunque cambie su email en la plataforma.
-        await e.Como("otro.email@madomi", idUsuario: cuenta).JsonAsync("/api/sesion");
+        await e.Como("otro.email@madomi", idUsuario: Entorno.IdDe("operario@madomi")).JsonAsync("/api/sesion");
+    }
+
+    [Fact]
+    public async Task El_admin_enlaza_el_acceso_a_la_cuenta_al_guardarlo()
+    {
+        var admin = e.Admin();
+        var r = await admin.PostAsJsonAsync("/api/admin/usuarios", new { email = "pendiente@madomi", rol = "operario", idsPersonal = new[] { 1 } });
+        var creado = (await r.Content.ReadFromJsonAsync<JsonNode>())!;
+        await e.Como("pendiente@madomi").EstadoAsync("/api/sesion", HttpStatusCode.Forbidden);   // todavía sin cuenta
+
+        // Le crean la cuenta en la plataforma; al volver a guardar el acceso, el Admin lo enlaza a esa cuenta.
+        var cuenta = e.Plataforma.Agregar("pendiente@madomi");
+        var ok = await admin.PutAsJsonAsync($"/api/admin/usuarios/{creado["idAcceso"]}",
+            new { email = "pendiente@madomi", rol = "operario", idsPersonal = new[] { 1 }, version = (string?)creado["version"] });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.False((bool)(await ok.Content.ReadFromJsonAsync<JsonNode>())!["entro"]!);
+        Assert.Equal(cuenta, await e.ConBaseAsync(db => db.Accesos.Where(a => a.Email == "pendiente@madomi").Select(a => a.IdUsuario).SingleAsync()));
+        await e.Como("pendiente@madomi").JsonAsync("/api/sesion");
+        await e.Como("pendiente@madomi", idUsuario: Guid.NewGuid()).EstadoAsync("/api/sesion", HttpStatusCode.Forbidden);
     }
 
     // ---- supervisor
@@ -216,12 +234,13 @@ public class SeguridadTests(Entorno e)
     public async Task Un_acceso_desactivado_deja_de_entrar_en_el_proximo_request()
     {
         var admin = e.Admin();
+        e.Plataforma.Agregar("temporal@madomi");
         var creado = await (await admin.PostAsJsonAsync("/api/admin/usuarios",
             new { email = "temporal@madomi", rol = "operario", idsPersonal = new[] { 2 } })).Content.ReadFromJsonAsync<JsonNode>();
         var temporal = e.Como("temporal@madomi");
-        Assert.Equal([201], (await temporal.JsonAsync("/api/cobertura"))["clientes"].Ids());   // acá se enlaza la cuenta
+        Assert.Equal([201], (await temporal.JsonAsync("/api/cobertura"))["clientes"].Ids());
 
-        // El enlace no cambia la versión: el Admin guarda con la que leyó al crearlo, sin 409 falso.
+        // Entrar no cambia la versión: el Admin guarda con la que leyó al crearlo, sin 409 falso.
         var r = await admin.PutAsJsonAsync($"/api/admin/usuarios/{creado!["idAcceso"]}",
             new { email = "temporal@madomi", rol = "operario", idsPersonal = new[] { 2 }, activo = false, version = (string?)creado["version"] });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);

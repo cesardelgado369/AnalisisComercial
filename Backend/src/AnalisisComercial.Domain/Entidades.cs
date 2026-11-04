@@ -219,6 +219,10 @@ public class AccesoLog
     public long Id { get; set; }
     public Guid IdUsuario { get; set; }
     public string Email { get; set; } = "";
+    /// <summary>La empresa del token (null si no traía): para ver los intentos desde otra empresa.</summary>
+    public Guid? IdEmpresa { get; set; }
+    /// <summary>El canal del token (<c>chatbot</c>); null = la web.</summary>
+    public string? Canal { get; set; }
     public DateTimeOffset Fecha { get; set; }
     public string Pantalla { get; set; } = "";
     public string? Parametros { get; set; }
