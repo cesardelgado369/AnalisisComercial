@@ -14,6 +14,7 @@ import type { Plugin } from 'vite'
 import * as admi from './datosAdmin.ts'
 import { ErrorMock, UNIDADES, ayerArgentina, cobertura, hoyArgentina, vendedoresVisibles, type RolPrueba } from './datosCobertura.ts'
 import { ficha, fichaDevoluciones, fichaVolumen } from './datosFicha.ts'
+import * as focos from './datosFocos.ts'
 import * as sinc from './datosSincronizacion.ts'
 import { devoluciones, volumen } from './datosVolumen.ts'
 
@@ -111,9 +112,10 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
     if (ruta === '/api/sincronizacion/estado') return responder(res, 200, sinc.estado(ayerArgentina()))
     if (ruta === '/api/cobertura/vendedores') return responder(res, 200, vendedoresVisibles(rol, vendedoresDelOperario(email)))
     if (ruta === '/api/cobertura/unidades') return responder(res, 200, UNIDADES)
+    if (ruta === '/api/cobertura/focos') return responder(res, 200, focos.listar(true))
     if (ruta === '/api/cobertura') {
       await demora(350)
-      return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email)))
+      return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
     }
     const cliente = ruta.match(/^\/api\/clientes\/(\d+)(\/volumen|\/devoluciones)?$/)
     // Sin veBultos (el operario), Volumen y Devoluciones y sus pestañas dan 403, como la API
@@ -126,7 +128,7 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
     }
     if (ruta === '/api/volumen' || ruta === '/api/devoluciones') {
       await demora(350)
-      return responder(res, 200, (ruta === '/api/volumen' ? volumen : devoluciones)(p, rol, vendedoresDelOperario(email)))
+      return responder(res, 200, (ruta === '/api/volumen' ? volumen : devoluciones)(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
     }
     if (ruta.startsWith('/api/admin/')) return await admin(ruta, p, req, res, rol, email)
     return responder(res, 503, { status: 503, title: 'Esta parte de la API todavía no está en el modo de prueba.' })
@@ -144,6 +146,7 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   const acceso = ruta.match(/^\/api\/admin\/usuarios\/(\d+)$/)
   const exclusion = ruta.match(/^\/api\/admin\/exclusiones\/(\d+)$/)
   const vital = ruta.match(/^\/api\/admin\/clientes\/(\d+)\/vital$/)
+  const foco = ruta.match(/^\/api\/admin\/focos\/(\d+)$/)
   // Con «sincuentas» en el usuario, /admin/cuentas responde 404 sin cuerpo, como la API real de hoy (sin ese endpoint)
   if (ruta.startsWith('/api/admin/cuentas') && /sincuentas/i.test(email)) return responder(res, 404)
   if (metodo === 'GET' && ruta === '/api/admin/cuentas') return responder(res, 200, admi.listarCuentas())
@@ -167,6 +170,14 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   }
   if (metodo === 'GET' && ruta === '/api/admin/sincronizaciones') return responder(res, 200, sinc.listar(Number(p.get('cantidad')) || 30))
   if (metodo === 'POST' && ruta === '/api/admin/sincronizaciones') return responder(res, 202, sinc.pedir(email))
+  if (metodo === 'GET' && ruta === '/api/admin/focos') return responder(res, 200, focos.listar(false))
+  if (metodo === 'GET' && ruta === '/api/admin/articulos') return responder(res, 200, focos.articulos())
+  if (metodo === 'POST' && ruta === '/api/admin/focos') return responder(res, 201, focos.crear(await leerCuerpo(req), email))
+  if (metodo === 'PUT' && foco) return responder(res, 200, focos.editar(Number(foco[1]), await leerCuerpo(req), email))
+  if (metodo === 'DELETE' && foco) {
+    focos.borrar(Number(foco[1]))
+    return responder(res, 204)
+  }
   if (metodo === 'PUT' && vital) return responder(res, 200, admi.marcarVital(Number(vital[1]), email))
   if (metodo === 'DELETE' && vital) {
     admi.quitarVital(Number(vital[1]))

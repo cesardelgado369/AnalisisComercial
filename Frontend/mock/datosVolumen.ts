@@ -14,6 +14,7 @@ import {
   datos,
   enCartera,
   excluidos,
+  filtroCompra,
   hoyArgentina,
   indiceMes,
   mesDe,
@@ -21,6 +22,7 @@ import {
   sinTildes,
   sumarMeses,
   type ClienteFake,
+  type FocoConsulta,
   type RolPrueba,
 } from './datosCobertura.ts'
 
@@ -72,13 +74,14 @@ export function comparacion(rol: RolPrueba, mesParam: string | null) {
   }
 }
 
-function filtros(p: URLSearchParams, rol: RolPrueba, idsOperario: number[]) {
+function filtros(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco: FocoConsulta | null) {
   const vendedor = p.get('vendedor') ? Number(p.get('vendedor')) : null
   const ids = alcance(rol, vendedor, idsOperario)
   const dia = p.get('dia') ? Number(p.get('dia')) : null
   const unidadTexto = p.get('unidad')
-  const unidad = unidadTexto ? UNIDADES.indexOf(unidadTexto) : null
-  if (unidad === -1) throw new ErrorMock(400, 'La unidad de negocio no existe.', { unidad: ['No es una de las unidades.'] })
+  const unidadElegida = unidadTexto ? UNIDADES.indexOf(unidadTexto) : null
+  if (unidadElegida === -1) throw new ErrorMock(400, 'La unidad de negocio no existe.', { unidad: ['No es una de las unidades.'] })
+  const unidad = filtroCompra(unidadElegida, foco)
   const titulo =
     vendedor !== null
       ? VENDEDORES.find((v) => v.id === vendedor)!.nombre
@@ -100,8 +103,8 @@ const fila = (c: ClienteFake) => {
 type ChipVolumen = 'todos' | 'sinCompraAun' | 'nuevos' | 'bajaron' | 'subieron'
 
 /** `GET /api/volumen` (CONTRATO_API.md). */
-export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[]) {
-  const { unidad, titulo, cartera } = filtros(p, rol, idsOperario)
+export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco: FocoConsulta | null = null) {
+  const { unidad, titulo, cartera } = filtros(p, rol, idsOperario, foco)
   const comp = comparacion(rol, p.get('mes'))
   const estricto = rol !== 'admin'
   const chip = (p.get('chip') ?? 'todos') as ChipVolumen
@@ -150,8 +153,8 @@ const porcentajeDevolucion = (vendidos: number, devueltos: number) =>
   vendidos + devueltos > 0 ? uno((devueltos / (vendidos + devueltos)) * 100) : null
 
 /** `GET /api/devoluciones` (CONTRATO_API.md). */
-export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: number[]) {
-  const { unidad, titulo, cartera } = filtros(p, rol, idsOperario)
+export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco: FocoConsulta | null = null) {
+  const { unidad, titulo, cartera } = filtros(p, rol, idsOperario, foco)
   const { meses, actual } = rango(p)
   // Gobernanza (30/10): lo que suma la cartera del operario (por mes y por artículo) va solo en porcentaje
   const soloPorcentaje = rol === 'operario'

@@ -2,7 +2,7 @@
  * TODO testing — artículos, bultos y devoluciones inventados para `npm run dev:mock` (ficha, Volumen y Devoluciones).
  * Siempre los mismos para un cliente y un mes. **No es la lógica oficial** (la del backend).
  */
-import { UNIDADES, azar, compro, hoyArgentina, indiceMes, mesDe, type ClienteFake } from './datosCobertura.ts'
+import { UNIDADES, azar, compro, hoyArgentina, indiceMes, mesDe, type ClienteFake, type FiltroCompra } from './datosCobertura.ts'
 
 /** Artículos por unidad de negocio (en el orden de `UNIDADES`). */
 export const ARTICULOS: string[][] = [
@@ -20,7 +20,7 @@ export const articuloDe = (id: number) => {
 }
 
 /** Qué artículos de la unidad `u` compró el cliente en el mes `m` (sus preferidos, casi siempre). */
-function articulosDelMes(idCliente: number, m: number, u: number) {
+export function articulosDelMes(idCliente: number, m: number, u: number) {
   const lista = ARTICULOS[u]
   const preferidos = azar(idCliente * 31 + u)
   const cuantos = 1 + Math.floor(preferidos() * Math.min(3, lista.length))
@@ -48,17 +48,21 @@ export interface Linea {
 }
 
 /**
- * Las líneas del cliente en el mes `m` (índice desde julio 2026), de la unidad `unidad` (null: todas). En el mes en
- * curso, la parte del mes que ya pasó. Las devoluciones: uno de cada cuatro artículos devuelve algo.
+ * Las líneas del cliente en el mes `m` (índice desde julio 2026), de la unidad `filtro` (null: todas; con un foco, solo
+ * sus artículos). En el mes en curso, la parte del mes que ya pasó. Las devoluciones: uno de cada cuatro artículos
+ * devuelve algo.
  */
-export function lineas(c: ClienteFake, m: number, unidad: number | null): Linea[] {
-  if (!compro(c, m, unidad)) return []
+export function lineas(c: ClienteFake, m: number, filtro: FiltroCompra): Linea[] {
+  if (!compro(c, m, filtro)) return []
+  const unidad = filtro !== null && typeof filtro === 'object' ? filtro.unidad : filtro
+  const delFoco = filtro !== null && typeof filtro === 'object' ? filtro.articulos : null
   const enCurso = m === indiceMes(mesDe(hoyArgentina()))
   const factor = enCurso ? avanceMesActual() : 1
   const resultado: Linea[] = []
   for (const u of c.compras[m]) {
     if (unidad !== null && u !== unidad) continue
     for (const a of articulosDelMes(c.idCliente, m, u)) {
+      if (delFoco && !delFoco.has(idArticulo(u, a))) continue
       const r = azar(c.idCliente * 389 + m * 41 + u * 13 + a)
       const bultos = Math.max(0.5, medio((1 + r() * 7) * factor))
       const devueltos = r() < 0.25 ? Math.max(0.5, medio(bultos * (0.05 + r() * 0.3))) : 0

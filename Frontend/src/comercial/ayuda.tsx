@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { DIAS_VISITA, unidadEnFrase } from '../cobertura/estados'
+import type { Foco } from '../api/types'
+import { DIAS_VISITA, nombrePropio, unidadEnFrase } from '../cobertura/estados'
 import { formatoFechaCorta, nombreMes, nombreMesTitulo } from '../utils/formato'
 
 /**
@@ -13,6 +14,8 @@ export interface ContextoAyuda {
   vendedor: string | null
   dia: number | null
   unidad: string | null
+  /** El foco del mes elegido (cuentan solo sus artículos); null = todos los productos. */
+  foco?: Foco | null
 }
 
 /** Las facturas que cuentan para «compró», los bultos y las devoluciones. */
@@ -28,8 +31,15 @@ export function Parrafo({ titulo, children }: { titulo?: ReactNode; children: Re
   )
 }
 
-/** « con artículos de pastas frescas» (o nada, sin unidad elegida). */
-export const conUnidad = (ayuda: ContextoAyuda) => (ayuda.unidad ? ` con artículos de ${unidadEnFrase(ayuda.unidad)}` : '')
+/**
+ * « con artículos de pastas frescas», « con artículos del foco Manteca (Manteca Madomi X100g o Manteca Madomi X200g)»,
+ * las dos cosas juntas, o nada sin unidad ni foco.
+ */
+export function conUnidad({ unidad, foco }: ContextoAyuda) {
+  if (!unidad && !foco) return ''
+  const articulos = foco ? ` (${foco.articulos.map((a) => nombrePropio(a.descripcion)).join(' o ')})` : ''
+  return ` con artículos${unidad ? ` de ${unidadEnFrase(unidad)}` : ''}${foco ? ` del foco ${foco.nombre}${articulos}` : ''}`
+}
 
 /** De quiénes es la cartera de un mes: la de las rutas de ese mes, con los filtros de la pantalla. */
 export function ParrafoCartera({ mes, ayuda, children }: { mes: string; ayuda: ContextoAyuda; children?: ReactNode }) {

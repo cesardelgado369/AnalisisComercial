@@ -521,3 +521,44 @@ export interface Sincronizaciones {
   /** Del más nuevo al más viejo. */
   pasos: PasoSincronizacion[]
 }
+
+// ---- Focos del mes (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»)
+
+/** Un artículo de un foco. */
+export interface ArticuloFoco {
+  idArticulo: number
+  descripcion: string
+}
+
+/**
+ * Un foco: un grupo de artículos con nombre («Manteca» = MANTECA MADOMI X100G + X200G: las dos presentaciones cuentan
+ * como una). `GET /api/cobertura/focos` trae solo los prendidos, por nombre (el filtro «Foco» de Cobertura, Volumen y
+ * Devoluciones); `GET /api/admin/focos`, todos.
+ */
+export interface Foco {
+  idFoco: number
+  nombre: string
+  activo: boolean
+  articulos: ArticuloFoco[]
+  actualizadoPor: string
+  actualizado: string
+}
+
+/** Body de `POST /api/admin/focos` y `PUT /{idFoco}` (reemplaza nombre y artículos; `activo`, si viene). */
+export interface FocoEnvio {
+  nombre: string
+  idsArticulo: number[]
+  activo?: boolean
+}
+
+/** `GET /api/admin/articulos`: para armar los focos. No anulados primero, por `division` y descripción. */
+export interface ArticuloChess {
+  idArticulo: number
+  descripcion: string
+  unidadNegocio: string | null
+  /** La agrupación «DIVISION» de Chess (DULCE DE LECHE, TACOS…); null = sin división, como la manteca o el pionono. */
+  division: string | null
+  anulado: boolean
+  /** Clientes que lo compraron el mes pasado. */
+  clientesMesAnterior: number
+}

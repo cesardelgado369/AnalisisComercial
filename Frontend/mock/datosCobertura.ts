@@ -179,14 +179,29 @@ export { RUTAS, indiceMes, mesDe, PRIMER_MES, sumarMeses, estadoMes as estado, c
 
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 const enCartera = (c: ClienteFake, m: number) => m >= c.alta && (c.baja === null || m < c.baja)
-const compro = (c: ClienteFake, m: number, unidad: number | null) =>
-  m >= 0 && m < c.compras.length && (unidad === null ? c.compras[m].length > 0 : c.compras[m].includes(unidad))
+
+/** Un foco del mes en la consulta (`?foco=`): solo cuentan sus artículos. `delFoco`: si en el mes `m` le compró alguno de la unidad `u`. */
+export interface FocoConsulta {
+  nombre: string
+  articulos: ReadonlySet<number>
+  delFoco: (c: ClienteFake, m: number, u: number) => boolean
+}
+/** Qué cuenta como compra: todas las unidades (null), una unidad, o un foco (con su unidad, si se eligió). */
+export type FiltroCompra = number | null | (FocoConsulta & { unidad: number | null })
+export const filtroCompra = (unidad: number | null, foco: FocoConsulta | null): FiltroCompra => (foco ? { ...foco, unidad } : unidad)
+
+function compro(c: ClienteFake, m: number, f: FiltroCompra) {
+  if (m < 0 || m >= c.compras.length) return false
+  if (f === null) return c.compras[m].length > 0
+  if (typeof f === 'number') return c.compras[m].includes(f)
+  return c.compras[m].some((u) => (f.unidad === null || u === f.unidad) && f.delFoco(c, m, u))
+}
 
 /**
  * `estricto` (operario y supervisor, Gobernanza del contrato): el mes anterior solo cuenta si también era de su cartera;
  * si no, «dejó de comprar» revelaría que el cliente le compraba a otro vendedor. El admin mira el anterior siempre.
  */
-function estadoMes(c: ClienteFake, m: number, unidad: number | null, mesActual: number, estricto = false): EstadoMes {
+function estadoMes(c: ClienteFake, m: number, unidad: FiltroCompra, mesActual: number, estricto = false): EstadoMes {
   if (!enCartera(c, m)) return 'fueraDeCartera'
   if (compro(c, m, unidad)) return 'compro'
   if (m === mesActual) return 'sinCompraAun'
@@ -231,20 +246,21 @@ function rango(p: URLSearchParams) {
 }
 
 /** `GET /api/cobertura` (CONTRATO_API.md). */
-export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: number[] = [1]) {
+export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: number[] = [1], foco: FocoConsulta | null = null) {
   const vendedor = p.get('vendedor') ? Number(p.get('vendedor')) : null
   const ids = alcance(rol, vendedor, idsOperario)
   const dia = p.get('dia') ? Number(p.get('dia')) : null
   const unidadTexto = p.get('unidad')
-  const unidad = unidadTexto ? UNIDADES.indexOf(unidadTexto) : null
-  if (unidad === -1) throw new ErrorMock(400, 'La unidad de negocio no existe.', { unidad: ['No es una de las unidades.'] })
+  const unidadElegida = unidadTexto ? UNIDADES.indexOf(unidadTexto) : null
+  if (unidadElegida === -1) throw new ErrorMock(400, 'La unidad de negocio no existe.', { unidad: ['No es una de las unidades.'] })
+  const unidad = filtroCompra(unidadElegida, foco)
   const chip = (p.get('chip') ?? 'todos') as Chip
   const busqueda = sinTildes(p.get('busqueda')?.trim() ?? '')
   const { meses, actual } = rango(p)
   const indices = meses.map(indiceMes)
   const ultimo = indices[indices.length - 1]
   const estricto = rol !== 'admin'
-  const estado = (c: ClienteFake, m: number, u: number | null, a: number) => estadoMes(c, m, u, a, estricto)
+  const estado = (c: ClienteFake, m: number, u: FiltroCompra, a: number) => estadoMes(c, m, u, a, estricto)
 
   // Los excluidos no cuentan en ninguna cartera (CONTRATO_API.md)
   const delFiltro = datos().filter(
@@ -299,7 +315,7 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
 
   return {
     titulo: nombreVendedor ?? 'Todos los vendedores',
-    subtitulo: `${cartera.length} clientes, ${dia ? DIAS[dia] : 'todos los días'}, ${unidadTexto ?? 'todas las unidades'}`,
+    subtitulo: `${cartera.length} clientes, ${dia ? DIAS[dia] : 'todos los días'}, ${unidadTexto ?? 'todas las unidades'}${foco ? `, foco ${foco.nombre}` : ''}`,
     meses,
     kpis,
     chips,

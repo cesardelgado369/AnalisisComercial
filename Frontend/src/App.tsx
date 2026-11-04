@@ -13,6 +13,7 @@ import {
   CuentasPage,
   DevolucionesPage,
   FichaPage,
+  FocosPage,
   PerfilPage,
   SincronizacionPage,
   VolumenPage,
@@ -51,6 +52,7 @@ export default function App() {
                   <Route path="usuarios" element={<CuentasPage />} />
                   <Route path="exclusiones" element={<ClientesExcluidosPage />} />
                   <Route path="clasificacion" element={<ClasificacionClientesPage />} />
+                  <Route path="focos" element={<FocosPage />} />
                   <Route path="sincronizacion" element={<SincronizacionPage />} />
                 </Route>
                 <Route path="perfil" element={<PerfilPage />} />

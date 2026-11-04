@@ -48,6 +48,7 @@ export const MENU: ItemMenu[] = [
   { ruta: '/admin/usuarios', texto: 'Gestión de cuentas', icono: 'manage_accounts', roles: ['admin'], grupo: 'admin' },
   { ruta: '/admin/exclusiones', texto: 'Clientes excluidos', icono: 'person_off', roles: ['admin'], grupo: 'admin' },
   { ruta: '/admin/clasificacion', texto: 'Clasificación de clientes', icono: 'star', roles: ['admin'], grupo: 'admin' },
+  { ruta: '/admin/focos', texto: 'Focos del mes', icono: 'filter_alt', roles: ['admin'], grupo: 'admin' },
   { ruta: '/admin/sincronizacion', texto: 'Sincronización con Chess', icono: 'sync', roles: ['admin'], grupo: 'admin' },
   // TODO testing: vitrina de los componentes genéricos (modales, cargas, la animación), solo en desarrollo
   ...(import.meta.env.DEV

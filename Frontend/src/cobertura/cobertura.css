@@ -4,6 +4,9 @@
 /* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Con focos del mes prendidos, uno más */
+.cob-filtros.con-foco { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cob-filtros.sin-vendedor.con-foco { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 /* El mes del dueño: en la PC está en la cabecera; en la barra, solo en el celular */
 .cob-filtro-mes { display: none; }
 .cob-filtro { gap: 6px; }
@@ -16,6 +19,8 @@
 .cob-filtro select:hover { border-color: var(--acento-claro); }
 /* El dueño parado en un mes pasado: que se note en todas las secciones */
 .cob-filtro-pasado select { border-color: var(--acento); background-color: var(--superficie-baja); color: var(--acento); }
+/* Un foco elegido recorta mucho los números: que se note cuál está puesto */
+.cob-filtro-activo select { border-color: var(--acento); color: var(--acento); }
 .cob-filtro select:focus-visible { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124, 58, 237, .16); }
 .cob-filtro-con-aviso { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cob-filtro-aviso { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 12px; font-weight: 600; color: var(--texto); }
@@ -191,7 +196,7 @@
 
 @media (max-width: 767px) {
   /* Filtros compactos (con el teléfono en la mano, primero los números): el valor elegido ya dice qué filtra */
-  .cob-filtros, .cob-filtros.sin-vendedor { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtros, .cob-filtros.sin-vendedor, .cob-filtros.con-foco, .cob-filtros.sin-vendedor.con-foco { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .cob-filtro-mes { display: flex; }
   .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }

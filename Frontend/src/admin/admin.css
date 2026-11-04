@@ -180,6 +180,54 @@
 .adm-credenciales dd { margin: 0; font-weight: 700; word-break: break-all; }
 .adm-password { font-family: ui-monospace, 'Cascadia Mono', monospace; letter-spacing: .06em; }
 
+/* Focos del mes: la lista con su interruptor y el modal para elegir los artículos */
+.foco-resumen { padding: 12px 20px 4px; font-size: 13px; color: var(--texto-2); }
+.foco-tabla tr.foco-apagado .celda-principal, .foco-tabla tr.foco-apagado .adm-lista-vendedores { color: var(--texto-2); }
+.foco-interruptor {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--texto-2); background: none; border: none; border-radius: var(--radio);
+}
+.foco-interruptor:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.foco-interruptor:disabled { cursor: progress; opacity: .7; }
+.foco-interruptor-riel {
+  position: relative; flex-shrink: 0; width: 40px; height: 24px; border-radius: 999px;
+  background: var(--borde-fuerte); transition: background .15s;
+}
+.foco-interruptor-perilla {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s;
+}
+.foco-interruptor.prendido { color: var(--acento); }
+.foco-interruptor.prendido .foco-interruptor-riel { background: var(--acento); }
+.foco-interruptor.prendido .foco-interruptor-perilla { transform: translateX(16px); }
+@media (prefers-reduced-motion: reduce) {
+  .foco-interruptor-riel, .foco-interruptor-perilla { transition: none; }
+}
+.foco-articulos { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: none; min-width: 0; }
+.foco-articulos legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.foco-elegidos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.foco-elegidos-titulo { font-size: 13px; font-weight: 700; color: var(--texto); margin-right: 4px; }
+.foco-elegido {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 6px 0 12px; cursor: pointer;
+  font: inherit; font-size: 12px; font-weight: 600; color: var(--acento);
+  background: var(--superficie-media); border: 1px solid var(--acento-claro); border-radius: 999px;
+}
+.foco-elegido:hover { border-color: var(--acento); }
+.foco-buscar { display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; }
+.foco-buscar .buscador-pagina { flex: 1 1 260px; }
+.foco-buscar .buscador-pagina input { height: 44px; width: 100%; }
+.foco-grupos { display: flex; flex-direction: column; gap: 12px; }
+.foco-grupo { display: flex; flex-direction: column; gap: 6px; }
+.foco-grupo h3 { margin: 0; }
+.foco-grupo-cantidad { font-weight: 600; color: var(--texto-3); }
+.foco-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px; }
+.foco-articulo-textos { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.foco-articulo-detalle { font-size: 11px; font-weight: 500; color: var(--texto-2); }
+.foco-btn-borrar-abrir, .foco-borrar { margin-right: auto; }
+.foco-btn-borrar-abrir { color: var(--rojo); }
+.foco-borrar { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
+.foco-btn-borrar { background: var(--rojo); border-color: var(--rojo); color: #fff; }
+
 /* Celular: las tablas pasan a tarjetas (sin scroll horizontal) y todo lo que se toca mide 44 px */
 @media (max-width: 720px) {
   .adm-barra .buscador-pagina, .adm-barra .buscador-pagina input { width: 100%; }
