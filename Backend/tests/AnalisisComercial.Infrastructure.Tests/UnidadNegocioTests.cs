@@ -1,4 +1,4 @@
-using AnalisisComercial.Infrastructure.Sincronizacion;
+﻿using AnalisisComercial.Infrastructure.Sincronizacion;
 
 namespace AnalisisComercial.Infrastructure.Tests;
 
@@ -14,6 +14,14 @@ public class UnidadNegocioTests
 
     [Fact]
     public void Sale_de_la_agrupacion_unidad_de_negocio() => Assert.Equal("TAPAS", UnidadNegocio.Desde(Tapas));
+
+    [Fact]
+    public void La_division_sale_de_su_agrupacion_y_si_no_esta_es_null()
+    {
+        Assert.Equal("PASCUALINAS", UnidadNegocio.Division(Tapas));
+        Assert.Null(UnidadNegocio.Division("""[{ "idFormaAgrupar": "UNIDAD DE NEGOCIO", "desAgrupacion": "TAPAS" }]"""));
+        Assert.Null(UnidadNegocio.Division("no es json"));
+    }
 
     [Theory]
     [InlineData(null)]

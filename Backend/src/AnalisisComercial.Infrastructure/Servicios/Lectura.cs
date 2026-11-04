@@ -6,6 +6,12 @@ using Microsoft.Extensions.Options;
 
 namespace AnalisisComercial.Infrastructure.Servicios;
 
+/// <summary>Qué artículos cuentan: los de una unidad de negocio, los de un foco, o los dos a la vez. null = todos.</summary>
+public record FiltroArticulos(string? Unidad, int? Foco, string? NombreFoco = null)
+{
+    public static FiltroArticulos? De(string? unidad) => string.IsNullOrWhiteSpace(unidad) ? null : new(unidad, null);
+}
+
 /// <summary>
 /// Qué vendedores se están mirando, ya validados contra el alcance. <see cref="SinVendedor"/>: también las rutas sin
 /// vendedor (van con la casa).
@@ -102,6 +108,19 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     public async Task<IReadOnlyList<DateOnly>> MesesAsync(DateOnly? desde, DateOnly? hasta, CancellationToken ct)
         => Meses(desde, hasta, await PrimerMesVisibleAsync(ct));
 
+    /// <summary>
+    /// El filtro de artículos de un pedido. El foco tiene que existir (400 en <c>foco</c>); vale también uno apagado,
+    /// para que un enlace guardado no se rompa, aunque el filtro de la pantalla muestre solo los prendidos.
+    /// </summary>
+    public async Task<FiltroArticulos?> ArticulosAsync(string? unidad, int? foco, CancellationToken ct)
+    {
+        if (foco is null)
+            return FiltroArticulos.De(unidad);
+        var nombre = await db.Focos.AsNoTracking().Where(x => x.IdFoco == foco).Select(x => x.Nombre).FirstOrDefaultAsync(ct)
+                     ?? throw new ValidacionException("foco", "No existe ese foco.");
+        return new FiltroArticulos(string.IsNullOrWhiteSpace(unidad) ? null : unidad, foco, nombre);
+    }
+
     /// <summary>Volumen y Devoluciones: 403 para el operario mientras vea solo Cobertura (<see cref="OpcionesComercial.OperarioSoloCobertura"/>).</summary>
     public async Task ExigirBultosAsync(CancellationToken ct)
     {
@@ -151,14 +170,16 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     /// operario y supervisor, solo los meses en que el cliente era de su cartera (gobernanza): la compra de un mes que
     /// era de otro vendedor no existe, así que ese mes no puede dar «dejó de comprar».
     /// </summary>
-    public async Task<HashSet<(int IdCliente, DateOnly Mes)>> ComprasAsync(IEnumerable<DateOnly> meses, string? unidad,
+    public async Task<HashSet<(int IdCliente, DateOnly Mes)>> ComprasAsync(IEnumerable<DateOnly> meses, FiltroArticulos? articulos,
         CancellationToken ct)
     {
         var alcance = await AlcanceAsync(ct);
         var lista = meses.SelectMany(m => new[] { m, m.AddMonths(-1) }).Distinct().ToList();
         var q = db.ComprasMes.AsNoTracking().Where(c => c.Compro && lista.Contains(c.Mes));
-        if (!string.IsNullOrWhiteSpace(unidad))
+        if (articulos?.Unidad is { Length: > 0 } unidad)
             q = q.Where(c => db.Articulos.Any(a => a.IdArticulo == c.IdArticulo && a.UnidadNegocio == unidad));
+        if (articulos?.Foco is { } foco)
+            q = q.Where(c => db.FocoArticulos.Any(x => x.IdFoco == foco && x.IdArticulo == c.IdArticulo));
         if (!alcance.EsAdmin)
         {
             var vendedores = alcance.Vendedores.ToList();
@@ -235,7 +256,7 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     /// de <see cref="ReglaCompra"/> y <see cref="Volumen.Repartir"/>. Sin <paramref name="clientes"/>, todos.
     /// </summary>
     public async Task<List<BultosMes>> BultosAsync(DateOnly desde, DateOnly hasta, IReadOnlyCollection<int>? clientes,
-        string? unidad, CancellationToken ct)
+        FiltroArticulos? articulos, CancellationToken ct)
     {
         var regla = Op.Regla();
         var tipos = regla.TiposFactura.Concat(regla.TiposCredito).ToList();
@@ -246,8 +267,10 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
             var ids = clientes.ToList();
             q = q.Where(l => ids.Contains(l.IdCliente));
         }
-        if (!string.IsNullOrWhiteSpace(unidad))
+        if (articulos?.Unidad is { Length: > 0 } unidad)
             q = q.Where(l => db.Articulos.Any(a => a.IdArticulo == l.IdArticulo && a.UnidadNegocio == unidad));
+        if (articulos?.Foco is { } foco)
+            q = q.Where(l => db.FocoArticulos.Any(x => x.IdFoco == foco && x.IdArticulo == l.IdArticulo));
         // Agrupado también por documento: clasificarlo dentro del SUM no se puede en SQL Server (es una subconsulta).
         var filas = await q
             .GroupBy(l => new { l.IdCliente, l.IdArticulo, l.Fecha.Year, l.Fecha.Month, l.TipoDocumento })
@@ -307,10 +330,10 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
 
     /// <summary>Los bultos del mes (del 1 al corte) y los de la base (del 1 a BaseHasta) de una comparación.</summary>
     public async Task<(List<BultosMes> Actual, List<BultosMes> Base)> BultosComparadosAsync(Comparacion c,
-        IReadOnlyCollection<int>? clientes, string? unidad, CancellationToken ct)
+        IReadOnlyCollection<int>? clientes, FiltroArticulos? articulos, CancellationToken ct)
     {
-        var actual = c.CorteAl is { } corte ? await BultosAsync(c.Mes, corte, clientes, unidad, ct) : [];
-        var enBase = c.BaseHasta is { } hasta ? await BultosAsync(c.MesBase, hasta, clientes, unidad, ct) : [];
+        var actual = c.CorteAl is { } corte ? await BultosAsync(c.Mes, corte, clientes, articulos, ct) : [];
+        var enBase = c.BaseHasta is { } hasta ? await BultosAsync(c.MesBase, hasta, clientes, articulos, ct) : [];
         return (actual, enBase);
     }
 

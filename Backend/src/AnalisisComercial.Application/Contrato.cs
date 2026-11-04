@@ -44,8 +44,9 @@ public enum ChipCobertura
 
 /// <param name="Vendedor">idPersonal; null = todos los visibles sin la casa.</param>
 /// <param name="Dia">Código de Chess (2 lunes … 7 sábado).</param>
+/// <param name="Foco">idFoco de <c>/api/cobertura/focos</c>: cuenta como compra solo la de sus artículos.</param>
 public record FiltroCobertura(int? Vendedor = null, int? Dia = null, string? Unidad = null, string? Busqueda = null,
-    ChipCobertura Chip = ChipCobertura.Todos, DateOnly? MesDesde = null, DateOnly? MesHasta = null);
+    ChipCobertura Chip = ChipCobertura.Todos, DateOnly? MesDesde = null, DateOnly? MesHasta = null, int? Foco = null);
 
 public record KpiMesDto(DateOnly Mes, int ClientesConCompra, int ClientesCartera, decimal Porcentaje, bool MesEnCurso,
     DateOnly? CorteAl);
@@ -64,7 +65,24 @@ public interface ICoberturaService
     Task<CoberturaDto> ObtenerAsync(FiltroCobertura filtro, CancellationToken ct = default);
     Task<IReadOnlyList<OpcionVendedorDto>> VendedoresAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> UnidadesAsync(CancellationToken ct = default);
+
+    /// <summary>Los focos prendidos, para el filtro (cualquiera con acceso).</summary>
+    Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default);
 }
+
+// ---- Focos del mes (Checho, 03/11/2026) -------------------------------------------------------------------------
+
+public record ArticuloFocoDto(int IdArticulo, string Descripcion);
+
+public record FocoDto(int IdFoco, string Nombre, bool Activo, IReadOnlyList<ArticuloFocoDto> Articulos,
+    string ActualizadoPor, DateTimeOffset Actualizado);
+
+/// <summary>Alta o edición de un foco (la edición reemplaza nombre, artículos y estado).</summary>
+public record GuardarFocoDto(string? Nombre, IReadOnlyList<int>? IdsArticulo, bool? Activo = null);
+
+/// <param name="ClientesMesAnterior">Clientes que lo compraron el mes pasado (para ver qué se mueve).</param>
+public record ArticuloAdminDto(int IdArticulo, string Descripcion, string? UnidadNegocio, string? Division, bool Anulado,
+    int ClientesMesAnterior);
 
 // ---- Ficha de cliente ------------------------------------------------------------------------------------------
 
@@ -112,7 +130,7 @@ public interface IClienteService
 
 /// <param name="Mes">Por defecto, el mes en curso.</param>
 public record FiltroVolumen(int? Vendedor = null, int? Dia = null, string? Unidad = null, string? Busqueda = null,
-    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null);
+    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null, int? Foco = null);
 
 public record ChipsVolumenDto(int Todos, int SinCompraAun, int Nuevos, int Bajaron, int Subieron);
 
@@ -131,7 +149,7 @@ public interface IVolumenService
 // ---- Devoluciones ----------------------------------------------------------------------------------------------
 
 public record FiltroDevoluciones(int? Vendedor = null, int? Dia = null, string? Unidad = null, DateOnly? MesDesde = null,
-    DateOnly? MesHasta = null);
+    DateOnly? MesHasta = null, int? Foco = null);
 
 public record ClienteDevolucionDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
     decimal BultosVendidos, decimal BultosDevueltos, decimal? Porcentaje);
@@ -250,6 +268,15 @@ public interface IAdminService
 
     /// <summary>Le saca la marca Vital (si no la tenía, no hace nada).</summary>
     Task QuitarVitalAsync(int idCliente, CancellationToken ct = default);
+
+    /// <summary>Todos los focos, prendidos y apagados.</summary>
+    Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default);
+    Task<FocoDto> CrearFocoAsync(GuardarFocoDto dto, CancellationToken ct = default);
+    Task<FocoDto> ActualizarFocoAsync(int idFoco, GuardarFocoDto dto, CancellationToken ct = default);
+    Task BorrarFocoAsync(int idFoco, CancellationToken ct = default);
+
+    /// <summary>Los artículos para armar los focos.</summary>
+    Task<IReadOnlyList<ArticuloAdminDto>> ArticulosAsync(CancellationToken ct = default);
 
     Task<SincronizacionesDto> SincronizacionesAsync(int cantidad, CancellationToken ct = default);
     Task<SolicitudSincronizacionDto> SolicitarSincronizacionAsync(CancellationToken ct = default);

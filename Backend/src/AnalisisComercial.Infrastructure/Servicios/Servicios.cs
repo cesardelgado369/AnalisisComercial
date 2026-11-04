@@ -61,8 +61,9 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
         var mesRef = meses[^1];
         var mesEnCurso = lectura.MesEnCurso;
 
+        var articulos = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
         var carteras = await lectura.CarterasAsync(mirada, meses, f.Dia, ct);
-        var compras = await lectura.ComprasAsync(meses, f.Unidad, ct);
+        var compras = await lectura.ComprasAsync(meses, articulos, ct);
         var ventasHasta = await lectura.VentasHastaAsync(ct);
         var rutas = await db.Rutas.AsNoTracking().ToDictionaryAsync(r => r.IdRuta, r => r.Nombre, ct);
         var vendedores = await lectura.VendedoresAsync(ct);
@@ -98,7 +99,9 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
         var subtitulo = string.Join(", ",
             $"{filas.Count} {(filas.Count == 1 ? "cliente" : "clientes")}",
             f.Dia is { } dia ? DiasSemana.Nombre(dia).ToLowerInvariant() : "todos los días",
-            string.IsNullOrWhiteSpace(f.Unidad) ? "todas las unidades" : f.Unidad);
+            articulos?.NombreFoco is { } nombreFoco
+                ? string.IsNullOrWhiteSpace(f.Unidad) ? $"foco {nombreFoco}" : $"{f.Unidad}, foco {nombreFoco}"
+                : string.IsNullOrWhiteSpace(f.Unidad) ? "todas las unidades" : f.Unidad);
 
         await lectura.RegistrarAsync("cobertura", Parametros(f), ct);
         return new CoberturaDto(mirada.Titulo, subtitulo, meses, lectura.Kpis(meses, carteras, compras, ventasHasta), chips,
@@ -115,8 +118,14 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
             .Select(a => a.UnidadNegocio!).Distinct().OrderBy(u => u).ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default)
+    {
+        await lectura.AlcanceAsync(ct);
+        return await AdminService.FocosAsync(db, soloActivos: true, ct);
+    }
+
     private static string Parametros(FiltroCobertura f)
-        => $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};chip={f.Chip};desde={f.MesDesde};hasta={f.MesHasta}";
+        => $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};chip={f.Chip};desde={f.MesDesde};hasta={f.MesHasta}";
 }
 
 public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteService

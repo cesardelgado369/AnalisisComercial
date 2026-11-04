@@ -146,6 +146,10 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Division")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("UnidadNegocio")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -299,6 +303,51 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                     b.HasKey("IdCliente");
 
                     b.ToTable("Exclusion", (string)null);
+                });
+
+            modelBuilder.Entity("AnalisisComercial.Domain.Foco", b =>
+                {
+                    b.Property<int>("IdFoco")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdFoco"));
+
+                    b.Property<bool>("Activo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTimeOffset>("Actualizado")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("ActualizadoPor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Nombre")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.HasKey("IdFoco");
+
+                    b.HasIndex("Nombre")
+                        .IsUnique();
+
+                    b.ToTable("Foco", (string)null);
+                });
+
+            modelBuilder.Entity("AnalisisComercial.Domain.FocoArticulo", b =>
+                {
+                    b.Property<int>("IdFoco")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdArticulo")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdFoco", "IdArticulo");
+
+                    b.ToTable("FocoArticulo", (string)null);
                 });
 
             modelBuilder.Entity("AnalisisComercial.Domain.Ruta", b =>
@@ -527,6 +576,15 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AnalisisComercial.Domain.FocoArticulo", b =>
+                {
+                    b.HasOne("AnalisisComercial.Domain.Foco", null)
+                        .WithMany("Articulos")
+                        .HasForeignKey("IdFoco")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AnalisisComercial.Domain.RutaDia", b =>
                 {
                     b.HasOne("AnalisisComercial.Domain.Ruta", null)
@@ -539,6 +597,11 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
             modelBuilder.Entity("AnalisisComercial.Domain.AccesoUsuario", b =>
                 {
                     b.Navigation("Vendedores");
+                });
+
+            modelBuilder.Entity("AnalisisComercial.Domain.Foco", b =>
+                {
+                    b.Navigation("Articulos");
                 });
 
             modelBuilder.Entity("AnalisisComercial.Domain.Ruta", b =>

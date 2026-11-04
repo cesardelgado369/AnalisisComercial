@@ -23,7 +23,8 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
 
         var cartera = (await lectura.CarterasAsync(mirada, [c.Mes], f.Dia, ct))[c.Mes];
         var ids = cartera.Keys.ToList();
-        var (actual, enBase) = await lectura.BultosComparadosAsync(c, ids, f.Unidad, ct);
+        var articulos = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
+        var (actual, enBase) = await lectura.BultosComparadosAsync(c, ids, articulos, ct);
         // Gobernanza: la base de un cliente cuenta solo si en el mes base era de la cartera de quien mira.
         IReadOnlySet<int>? conBase = a.EsAdmin
             ? null
@@ -60,7 +61,7 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
             lista = lista.Where(x => x.IdCliente.ToString(CultureInfo.InvariantCulture) == b || Texto.Normalizar(x.RazonSocial).Contains(b));
 
         await lectura.RegistrarAsync("volumen",
-            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
+            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
         return new VolumenDto(mirada.Titulo, c, total, chips, Detalle.PorRazonSocial(lista, x => x.RazonSocial, x => x.IdCliente));
     }
 }
@@ -80,7 +81,8 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
         var mirada = await lectura.MiradaAsync(f.Vendedor, "devoluciones", ct);
         var carteras = await lectura.CarterasAsync(mirada, meses, f.Dia, ct);
         var ids = carteras.Values.SelectMany(x => x.Keys).Distinct().ToList();
-        var bultos = (await lectura.BultosAsync(meses[0], Calendario.FinDeMes(meses[^1]), ids, f.Unidad, ct))
+        var filtro = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
+        var bultos = (await lectura.BultosAsync(meses[0], Calendario.FinDeMes(meses[^1]), ids, filtro, ct))
             .Where(b => carteras[b.Mes].ContainsKey(b.IdCliente))
             .ToList();
         var ventasHasta = await lectura.VentasHastaAsync(ct);
@@ -113,7 +115,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
         }
 
         await lectura.RegistrarAsync("devoluciones",
-            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};desde={f.MesDesde};hasta={f.MesHasta}", ct);
+            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};desde={f.MesDesde};hasta={f.MesHasta}", ct);
         return new DevolucionesDto(mirada.Titulo, meses, kpis, mes, clientes, articulos);
     }
 }

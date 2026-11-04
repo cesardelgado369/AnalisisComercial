@@ -133,7 +133,7 @@ Administración. Con `veBultos: false` (hoy, el operario) no se muestran Volumen
 
 Si `ultimaOk` tiene más de 36 h, el front muestra el aviso de datos viejos.
 
-### `GET /api/cobertura?vendedor=&dia=&unidad=&busqueda=&chip=&mesDesde=&mesHasta=`
+### `GET /api/cobertura?vendedor=&dia=&unidad=&foco=&busqueda=&chip=&mesDesde=&mesHasta=`
 
 Todos los parámetros son opcionales.
 
@@ -141,6 +141,9 @@ Todos los parámetros son opcionales.
   operario siempre es él: otro → 403.
 - `dia`: código de Chess (ver Convenciones). Filtra por los días de visita de la ruta del cliente.
 - `unidad`: una de `/api/cobertura/unidades`. Filtra lo que cuenta como compra, no la cartera.
+- `foco`: un `idFoco` de `/api/cobertura/focos`. Como `unidad`: cuenta como compra solo la de los artículos del foco
+  («CCC Manteca» = clientes de la cartera que compraron alguna manteca). Se puede combinar con `unidad`. El
+  `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no existe (uno apagado sigue andando).
 - `busqueda`: código exacto o parte de la razón social, sin mayúsculas ni tildes. Solo filtra `clientes`.
 - `chip`: `todos` (por defecto) · `compraronMesActual` · `sinCompraMesActual` · `dejaronDeComprar`. Solo filtra
   `clientes`.
@@ -182,6 +185,12 @@ Todos los parámetros son opcionales.
 `["ATM", "COMIDAS CONGELADAS", "PAN RALLADO1", "PASTAS FRESCAS", "SIN UNIDAD DE NEGOCIO", "TAPAS"]`: las unidades de
 negocio de los artículos, ordenadas, tal como las nombra Chess (agrupación «UNIDAD DE NEGOCIO»; sin el «124 - » de la
 web vieja). Los artículos sin esa agrupación (dulce de leche, quesos, salsas) van a `SIN UNIDAD DE NEGOCIO`.
+
+### `GET /api/cobertura/focos`
+
+Los **focos del mes prendidos** (Checho, 03/11/2026), por nombre, para el filtro «Foco» de Cobertura, Volumen y
+Devoluciones. Todos los roles. `[{ idFoco, nombre, activo: true, articulos: [{ idArticulo, descripcion }],
+actualizadoPor, actualizado }]`. Vacío si el admin no prendió ninguno (el filtro no se muestra).
 
 ### `GET /api/clientes/{idCliente}?mesDesde=&mesHasta=`
 
@@ -267,10 +276,10 @@ orden de visita de la ruta en Chess.
 - ⚠️ Pendiente de confirmar con los datos: que `cantidadesTotal` venga en bultos y no en unidades, y si la FACTURA
   PRESUPUESTO suma volumen. Si cambia, cambian los números, no la forma.
 
-### `GET /api/volumen?vendedor=&dia=&unidad=&busqueda=&chip=&mes=` · todos los roles
+### `GET /api/volumen?vendedor=&dia=&unidad=&foco=&busqueda=&chip=&mes=` · todos los roles
 
 Cuántos bultos lleva cada cliente en el mes contra una base. `vendedor`, `dia`, `unidad` y `busqueda` como en
-`/api/cobertura` (la unidad filtra los artículos que suman). `mes`: por defecto el mes en curso; el primer mes con
+`/api/cobertura` (la unidad y el foco filtran los artículos que suman). `mes`: por defecto el mes en curso; el primer mes con
 datos (2026-07-01) no tiene base → 400 (`errors.mes`).
 
 ```jsonc
@@ -314,7 +323,7 @@ datos (2026-07-01) no tiene base → 400 (`errors.mes`).
   | `bajaron` | compró menos que su esperado (la base al mismo día hábil, o el ritmo del mes anterior para el operario) |
   | `subieron` | compró su esperado o más |
 
-### `GET /api/devoluciones?vendedor=&dia=&unidad=&mesDesde=&mesHasta=` · todos los roles
+### `GET /api/devoluciones?vendedor=&dia=&unidad=&foco=&mesDesde=&mesHasta=` · todos los roles
 
 Parámetros como en `/api/cobertura`.
 
@@ -470,6 +479,22 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
     Vital, devuelve la marca que tenía (un segundo click no cambia nada). 404 si el cliente no existe.
   - `DELETE /api/admin/clientes/{idCliente}/vital` → 204, aunque no fuera Vital.
 
+**Focos del mes** (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»). Un foco es un grupo
+de artículos con nombre: «Manteca» = MANTECA MADOMI X100G + X200G, «Dulce de leche» = 200G + 380G, «Tacos» = MASA
+PARA TACOS. El admin los arma y los prende o apaga cada mes; el filtro muestra solo los prendidos.
+
+- `GET /api/admin/focos` → todos, prendidos y apagados (mismo formato que `/api/cobertura/focos`).
+- `POST /api/admin/focos` `{ nombre, idsArticulo: [..], activo? }` → 201 con el foco. `activo` por defecto true.
+- `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza nombre, artículos y, si viene, `activo`). 404 si no
+  existe. Para prenderlo o apagarlo, el mismo PUT con `activo`.
+- `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe.
+- 400: `errors.nombre` (1–60, único: «Ya hay un foco con ese nombre.»), `errors.idsArticulo` (entre 1 y 50, todos
+  existentes).
+- `GET /api/admin/articulos` → para elegir: `[{ idArticulo, descripcion, unidadNegocio, division, anulado,
+  clientesMesAnterior }]`. Los no anulados primero, agrupados por `division` (la agrupación «DIVISION» de Chess: DULCE
+  DE LECHE, TACOS, RAVIOLES ATM…; null = sin división, como la manteca y el pionono) y por descripción.
+  `clientesMesAnterior` = clientes que lo compraron el mes pasado.
+
 **Sincronización con Chess:**
 
 ```jsonc
@@ -498,6 +523,8 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
   completan con `--recargar-ventas`. Sin publicar.
 - 30/10: operario con totales solo en porcentaje (`a35b943`) y **ventana de 4 meses** para operario y supervisor (ver
   Gobernanza). Salen en la 1.1.
+- 04/11: **focos del mes** (pedido de Checho): `foco` en Cobertura, Volumen y Devoluciones, `/api/cobertura/focos`,
+  `/api/admin/focos` y `/api/admin/articulos` (con la DIVISION de Chess). Migración `FocosDelMes`.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

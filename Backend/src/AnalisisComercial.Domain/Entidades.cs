@@ -63,6 +63,8 @@ public class Articulo
     public string Descripcion { get; set; } = "";
     /// <summary>Sale de una agrupación de eAgrupaciones (pendiente confirmar cuál). null = sin asociar.</summary>
     public string? UnidadNegocio { get; set; }
+    /// <summary>La agrupación «DIVISION» de eAgrupaciones (DULCE DE LECHE, TACOS…); null = no la tiene.</summary>
+    public string? Division { get; set; }
     /// <summary>eAgrupaciones tal cual vino de Chess, para elegir la agrupación sin volver a bajar los artículos.</summary>
     public string? AgrupacionesJson { get; set; }
     /// <summary>unidadesBulto de Chess: para confirmar si las cantidades de las ventas vienen en bultos o en unidades.</summary>
@@ -178,6 +180,26 @@ public class Exclusion
     public string Motivo { get; set; } = "";
     public string CreadoPor { get; set; } = "";
     public DateTimeOffset CreadoEn { get; set; }
+}
+
+/// <summary>
+/// Un foco del mes (Checho, 03/11/2026): un grupo de artículos con nombre («Manteca» = 100 g + 200 g) para filtrar
+/// Cobertura, Volumen y Devoluciones. El Admin los prende y apaga; el filtro muestra solo los prendidos.
+/// </summary>
+public class Foco
+{
+    public int IdFoco { get; set; }
+    public string Nombre { get; set; } = "";
+    public bool Activo { get; set; } = true;
+    public string ActualizadoPor { get; set; } = "";
+    public DateTimeOffset Actualizado { get; set; }
+    public List<FocoArticulo> Articulos { get; set; } = [];
+}
+
+public class FocoArticulo
+{
+    public int IdFoco { get; set; }
+    public int IdArticulo { get; set; }
 }
 
 /// <summary>Cliente que el dueño marcó como Vital (Cesar, 30/10/2026): por ahora solo una marca en la lista.</summary>

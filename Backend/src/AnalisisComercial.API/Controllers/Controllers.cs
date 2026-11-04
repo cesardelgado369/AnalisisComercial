@@ -26,14 +26,17 @@ public class CoberturaController(ICoberturaService cobertura) : ControllerBase
     [HttpGet]
     public Task<CoberturaDto> Obtener([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
         [FromQuery] string? busqueda, [FromQuery] ChipCobertura? chip, [FromQuery] DateOnly? mesDesde,
-        [FromQuery] DateOnly? mesHasta, CancellationToken ct)
-        => cobertura.ObtenerAsync(new FiltroCobertura(vendedor, dia, unidad, busqueda, chip ?? ChipCobertura.Todos, mesDesde, mesHasta), ct);
+        [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, CancellationToken ct)
+        => cobertura.ObtenerAsync(new FiltroCobertura(vendedor, dia, unidad, busqueda, chip ?? ChipCobertura.Todos, mesDesde, mesHasta, foco), ct);
 
     [HttpGet("vendedores")]
     public Task<IReadOnlyList<OpcionVendedorDto>> Vendedores(CancellationToken ct) => cobertura.VendedoresAsync(ct);
 
     [HttpGet("unidades")]
     public Task<IReadOnlyList<string>> Unidades(CancellationToken ct) => cobertura.UnidadesAsync(ct);
+
+    [HttpGet("focos")]
+    public Task<IReadOnlyList<FocoDto>> Focos(CancellationToken ct) => cobertura.FocosAsync(ct);
 }
 
 [ApiController]
@@ -68,13 +71,14 @@ public class BultosController(IVolumenService volumen, IDevolucionesService devo
 {
     [HttpGet("api/volumen")]
     public Task<VolumenDto> Volumen([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
-        [FromQuery] string? busqueda, [FromQuery] ChipVolumen? chip, [FromQuery] DateOnly? mes, CancellationToken ct)
-        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes), ct);
+        [FromQuery] string? busqueda, [FromQuery] ChipVolumen? chip, [FromQuery] DateOnly? mes, [FromQuery] int? foco,
+        CancellationToken ct)
+        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes, foco), ct);
 
     [HttpGet("api/devoluciones")]
     public Task<DevolucionesDto> Devoluciones([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
-        [FromQuery] DateOnly? mesDesde, [FromQuery] DateOnly? mesHasta, CancellationToken ct)
-        => devoluciones.ObtenerAsync(new FiltroDevoluciones(vendedor, dia, unidad, mesDesde, mesHasta), ct);
+        [FromQuery] DateOnly? mesDesde, [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, CancellationToken ct)
+        => devoluciones.ObtenerAsync(new FiltroDevoluciones(vendedor, dia, unidad, mesDesde, mesHasta, foco), ct);
 }
 
 /// <summary>
@@ -128,6 +132,26 @@ public class AdminController(IAdminService admin) : ControllerBase
     public Task<PaginaClientesDto> Clientes([FromQuery] string? vendedor, [FromQuery] string? texto, [FromQuery] string? excluidos,
         [FromQuery] string? sugerencia, [FromQuery] string? vitales, [FromQuery] int? pagina, [FromQuery] int? tamano, CancellationToken ct)
         => admin.ClientesAsync(new FiltroClientesAdmin(vendedor, texto, excluidos, pagina ?? 1, tamano ?? 50, sugerencia, vitales), ct);
+
+    [HttpGet("focos")]
+    public Task<IReadOnlyList<FocoDto>> Focos(CancellationToken ct) => admin.FocosAsync(ct);
+
+    [HttpPost("focos")]
+    public async Task<ActionResult<FocoDto>> CrearFoco(GuardarFocoDto dto, CancellationToken ct)
+        => StatusCode(StatusCodes.Status201Created, await admin.CrearFocoAsync(dto, ct));
+
+    [HttpPut("focos/{idFoco:int}")]
+    public Task<FocoDto> ActualizarFoco(int idFoco, GuardarFocoDto dto, CancellationToken ct) => admin.ActualizarFocoAsync(idFoco, dto, ct);
+
+    [HttpDelete("focos/{idFoco:int}")]
+    public async Task<IActionResult> BorrarFoco(int idFoco, CancellationToken ct)
+    {
+        await admin.BorrarFocoAsync(idFoco, ct);
+        return NoContent();
+    }
+
+    [HttpGet("articulos")]
+    public Task<IReadOnlyList<ArticuloAdminDto>> Articulos(CancellationToken ct) => admin.ArticulosAsync(ct);
 
     [HttpPut("clientes/{idCliente:int}/vital")]
     public Task<VitalDto> MarcarVital(int idCliente, CancellationToken ct) => admin.MarcarVitalAsync(idCliente, ct);

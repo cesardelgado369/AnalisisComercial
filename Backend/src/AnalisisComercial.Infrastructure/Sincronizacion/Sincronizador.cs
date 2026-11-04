@@ -1,4 +1,4 @@
-using AnalisisComercial.Application;
+﻿using AnalisisComercial.Application;
 using AnalisisComercial.Domain;
 using AnalisisComercial.Infrastructure.Chess;
 using AnalisisComercial.Infrastructure.Datos;
@@ -213,6 +213,7 @@ public class Sincronizador(ComercialDbContext db, IChess chess, IReloj reloj, IO
             e.Anulado = a.Anulado;
             e.AgrupacionesJson = a.AgrupacionesJson;
             e.UnidadNegocio = UnidadNegocio.Desde(a.AgrupacionesJson);
+            e.Division = UnidadNegocio.Division(a.AgrupacionesJson);
             e.UnidadesBulto = a.UnidadesBulto;
         }
         await db.SaveChangesAsync(ct);

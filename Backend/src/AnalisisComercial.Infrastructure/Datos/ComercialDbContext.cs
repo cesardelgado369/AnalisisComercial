@@ -23,6 +23,8 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
     public DbSet<AccesoVendedor> AccesoVendedores => Set<AccesoVendedor>();
     public DbSet<Exclusion> Exclusiones => Set<Exclusion>();
     public DbSet<ClienteVital> Vitales => Set<ClienteVital>();
+    public DbSet<Foco> Focos => Set<Foco>();
+    public DbSet<FocoArticulo> FocoArticulos => Set<FocoArticulo>();
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
     public DbSet<SyncSolicitud> SyncSolicitudes => Set<SyncSolicitud>();
     public DbSet<AccesoLog> AccesoLogs => Set<AccesoLog>();
@@ -74,6 +76,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.Property(x => x.IdArticulo).ValueGeneratedNever();
             e.Property(x => x.Descripcion).HasMaxLength(200);
             e.Property(x => x.UnidadNegocio).HasMaxLength(100);
+            e.Property(x => x.Division).HasMaxLength(100);
             e.Property(x => x.UnidadesBulto).HasPrecision(18, 3);
         });
 
@@ -136,6 +139,22 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.Property(x => x.IdCliente).ValueGeneratedNever();
             e.Property(x => x.Motivo).HasMaxLength(200);
             e.Property(x => x.CreadoPor).HasMaxLength(200);
+        });
+
+        b.Entity<Foco>(e =>
+        {
+            e.ToTable("Foco");
+            e.HasKey(x => x.IdFoco);
+            e.Property(x => x.Nombre).HasMaxLength(60);
+            e.HasIndex(x => x.Nombre).IsUnique();
+            e.Property(x => x.ActualizadoPor).HasMaxLength(200);
+            e.HasMany(x => x.Articulos).WithOne().HasForeignKey(x => x.IdFoco).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        b.Entity<FocoArticulo>(e =>
+        {
+            e.ToTable("FocoArticulo");
+            e.HasKey(x => new { x.IdFoco, x.IdArticulo });
         });
 
         b.Entity<ClienteVital>(e =>

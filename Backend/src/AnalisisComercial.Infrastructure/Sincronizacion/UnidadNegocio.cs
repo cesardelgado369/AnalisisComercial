@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Infrastructure.Sincronizacion;
@@ -13,26 +13,33 @@ public static class UnidadNegocio
 {
     public const string Forma = "UNIDAD DE NEGOCIO";
     public const string SinAsociar = "SIN UNIDAD DE NEGOCIO";
+    public const string FormaDivision = "DIVISION";
 
-    public static string Desde(string? agrupacionesJson)
+    public static string Desde(string? agrupacionesJson) => Agrupacion(agrupacionesJson, Forma) ?? SinAsociar;
+
+    /// <summary>La DIVISION del artículo (DULCE DE LECHE, TACOS…), para elegir los focos; null si no la tiene.</summary>
+    public static string? Division(string? agrupacionesJson) => Agrupacion(agrupacionesJson, FormaDivision);
+
+    /// <summary>La agrupación de esa forma en eAgrupaciones; null si no la tiene o el JSON no se puede leer.</summary>
+    public static string? Agrupacion(string? agrupacionesJson, string forma)
     {
         if (string.IsNullOrWhiteSpace(agrupacionesJson))
-            return SinAsociar;
+            return null;
         try
         {
             using var doc = JsonDocument.Parse(agrupacionesJson);
             var items = doc.RootElement.ValueKind == JsonValueKind.Array ? doc.RootElement.EnumerateArray().ToList() : [doc.RootElement];
             foreach (var g in items.Where(g => g.ValueKind == JsonValueKind.Object))
             {
-                var forma = Texto(g, "idFormaAgrupar") ?? Texto(g, "desFormaAgrupar");
-                if (ReglaCompra.NormalizarTipo(forma) == Forma && Texto(g, "desAgrupacion") is { } unidad)
-                    return unidad;
+                var deEsta = Texto(g, "idFormaAgrupar") ?? Texto(g, "desFormaAgrupar");
+                if (ReglaCompra.NormalizarTipo(deEsta) == forma && Texto(g, "desAgrupacion") is { } valor)
+                    return valor;
             }
         }
         catch (JsonException)
         {
         }
-        return SinAsociar;
+        return null;
     }
 
     private static string? Texto(JsonElement e, string propiedad)

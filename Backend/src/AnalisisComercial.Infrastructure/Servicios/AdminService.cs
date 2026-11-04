@@ -246,6 +246,99 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new NoEncontradoException("Ese cliente no estaba excluido.");
     }
 
+    // ---- focos del mes (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»)
+
+    public async Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default)
+    {
+        await AdminAsync("admin-focos", ct);
+        return await FocosAsync(db, soloActivos: false, ct);
+    }
+
+    /// <summary>Los focos con sus artículos, por nombre. También para el filtro de las pantallas (solo los prendidos).</summary>
+    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, bool soloActivos, CancellationToken ct)
+    {
+        var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Where(f => !soloActivos || f.Activo).ToListAsync(ct);
+        var ids = focos.SelectMany(f => f.Articulos.Select(a => a.IdArticulo)).Distinct().ToList();
+        var nombres = await db.Articulos.AsNoTracking().Where(a => ids.Contains(a.IdArticulo))
+            .ToDictionaryAsync(a => a.IdArticulo, a => a.Descripcion, ct);
+        return focos.Select(f => Dto(f, nombres))
+            .OrderBy(f => f.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
+            .ToList();
+    }
+
+    public async Task<FocoDto> CrearFocoAsync(GuardarFocoDto dto, CancellationToken ct = default)
+    {
+        var admin = await AdminAsync("admin-focos", ct);
+        var foco = new Foco();
+        await AplicarAsync(foco, dto, admin, ct);
+        db.Focos.Add(foco);
+        await db.GuardarAsync(ct);
+        await alcance.RegistrarAsync("admin-focos", $"alta={foco.Nombre}", denegado: false, ct);
+        return await UnFocoAsync(foco.IdFoco, ct);
+    }
+
+    public async Task<FocoDto> ActualizarFocoAsync(int idFoco, GuardarFocoDto dto, CancellationToken ct = default)
+    {
+        var admin = await AdminAsync("admin-focos", ct);
+        var foco = await db.Focos.Include(f => f.Articulos).FirstOrDefaultAsync(f => f.IdFoco == idFoco, ct)
+                   ?? throw new NoEncontradoException("No existe ese foco.");
+        await AplicarAsync(foco, dto, admin, ct);
+        await db.GuardarAsync(ct);
+        return await UnFocoAsync(idFoco, ct);
+    }
+
+    public async Task BorrarFocoAsync(int idFoco, CancellationToken ct = default)
+    {
+        await AdminAsync("admin-focos", ct);
+        if (await db.Focos.Where(f => f.IdFoco == idFoco).ExecuteDeleteAsync(ct) == 0)
+            throw new NoEncontradoException("No existe ese foco.");
+    }
+
+    public async Task<IReadOnlyList<ArticuloAdminDto>> ArticulosAsync(CancellationToken ct = default)
+    {
+        await AdminAsync("admin-focos", ct);
+        var mesPasado = lectura.MesEnCurso.AddMonths(-1);
+        var clientes = await db.ComprasMes.AsNoTracking().Where(c => c.Compro && c.Mes == mesPasado)
+            .GroupBy(c => c.IdArticulo).Select(g => new { g.Key, Clientes = g.Select(c => c.IdCliente).Distinct().Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Clientes, ct);
+        var articulos = await db.Articulos.AsNoTracking().ToListAsync(ct);
+        return articulos
+            .Select(a => new ArticuloAdminDto(a.IdArticulo, a.Descripcion, a.UnidadNegocio, a.Division, a.Anulado,
+                clientes.GetValueOrDefault(a.IdArticulo)))
+            .OrderBy(a => a.Anulado).ThenBy(a => a.Division ?? "\uffff").ThenBy(a => a.Descripcion, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private async Task AplicarAsync(Foco foco, GuardarFocoDto dto, Alcance admin, CancellationToken ct)
+    {
+        var nombre = dto.Nombre?.Trim() ?? "";
+        if (nombre.Length is < 1 or > 60)
+            throw new ValidacionException("nombre", "Ponele un nombre de hasta 60 caracteres.");
+        if (await db.Focos.AnyAsync(f => f.Nombre == nombre && f.IdFoco != foco.IdFoco, ct))
+            throw new ValidacionException("nombre", "Ya hay un foco con ese nombre.");
+        var ids = (dto.IdsArticulo ?? []).Distinct().ToList();
+        if (ids.Count is < 1 or > 50)
+            throw new ValidacionException("idsArticulo", "Elegí entre 1 y 50 artículos.");
+        if (await db.Articulos.CountAsync(a => ids.Contains(a.IdArticulo), ct) != ids.Count)
+            throw new ValidacionException("idsArticulo", "Hay un artículo que no existe.");
+        foco.Articulos.RemoveAll(a => !ids.Contains(a.IdArticulo));
+        foco.Articulos.AddRange(ids.Where(id => foco.Articulos.All(a => a.IdArticulo != id))
+            .Select(id => new FocoArticulo { IdFoco = foco.IdFoco, IdArticulo = id }));
+        foco.Nombre = nombre;
+        foco.Activo = dto.Activo ?? foco.Activo;
+        foco.ActualizadoPor = admin.Email;
+        foco.Actualizado = reloj.Ahora;
+    }
+
+    private async Task<FocoDto> UnFocoAsync(int idFoco, CancellationToken ct)
+        => (await FocosAsync(db, soloActivos: false, ct)).Single(f => f.IdFoco == idFoco);
+
+    private static FocoDto Dto(Foco f, Dictionary<int, string> nombres)
+        => new(f.IdFoco, f.Nombre, f.Activo,
+            f.Articulos.Select(a => new ArticuloFocoDto(a.IdArticulo, nombres.GetValueOrDefault(a.IdArticulo, $"Artículo {a.IdArticulo}")))
+                .OrderBy(a => a.Descripcion, StringComparer.Ordinal).ToList(),
+            f.ActualizadoPor, f.Actualizado);
+
     // ---- clientes Vitales (Cesar, 30/10/2026: un click en la lista)
 
     public async Task<VitalDto> MarcarVitalAsync(int idCliente, CancellationToken ct = default)
