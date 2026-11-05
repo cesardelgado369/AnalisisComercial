@@ -118,10 +118,10 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
             .Select(a => a.UnidadNegocio!).Distinct().OrderBy(u => u).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<FocoDto>> FocosAsync(DateOnly? mes, CancellationToken ct = default)
     {
-        await lectura.AlcanceAsync(ct);
-        return await AdminService.FocosAsync(db, soloActivos: true, ct);
+        await lectura.ExigirAdminFocosAsync(null, ct);
+        return await AdminService.FocosAsync(db, Calendario.Mes(mes ?? lectura.MesEnCurso), ct);
     }
 
     private static string Parametros(FiltroCobertura f)

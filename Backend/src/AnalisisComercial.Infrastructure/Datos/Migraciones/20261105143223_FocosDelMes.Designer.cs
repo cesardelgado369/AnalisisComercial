@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AnalisisComercial.Infrastructure.Datos.Migraciones
 {
     [DbContext(typeof(ComercialDbContext))]
-    [Migration("20261104201004_FocosDelMes")]
+    [Migration("20261105143223_FocosDelMes")]
     partial class FocosDelMes
     {
         /// <inheritdoc />
@@ -316,9 +316,6 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdFoco"));
 
-                    b.Property<bool>("Activo")
-                        .HasColumnType("bit");
-
                     b.Property<DateTimeOffset>("Actualizado")
                         .HasColumnType("datetimeoffset");
 
@@ -327,6 +324,9 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<DateOnly>("Mes")
+                        .HasColumnType("date");
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -334,7 +334,7 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
 
                     b.HasKey("IdFoco");
 
-                    b.HasIndex("Nombre")
+                    b.HasIndex("Mes", "Nombre")
                         .IsUnique();
 
                     b.ToTable("Foco", (string)null);

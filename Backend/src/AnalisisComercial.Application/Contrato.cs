@@ -66,19 +66,36 @@ public interface ICoberturaService
     Task<IReadOnlyList<OpcionVendedorDto>> VendedoresAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> UnidadesAsync(CancellationToken ct = default);
 
-    /// <summary>Los focos prendidos, para el filtro (cualquiera con acceso).</summary>
-    Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default);
+    /// <summary>Los focos de un mes (sin mes: el en curso), para el filtro. Solo el Admin; el resto, 403.</summary>
+    Task<IReadOnlyList<FocoDto>> FocosAsync(DateOnly? mes, CancellationToken ct = default);
 }
 
-// ---- Focos del mes (Checho, 03/11/2026) -------------------------------------------------------------------------
+// ---- Focos del mes (Checho, 03/11/2026; por mes desde el 05/11) -------------------------------------------------
 
 public record ArticuloFocoDto(int IdArticulo, string Descripcion);
 
-public record FocoDto(int IdFoco, string Nombre, bool Activo, IReadOnlyList<ArticuloFocoDto> Articulos,
+public record FocoDto(int IdFoco, DateOnly Mes, string Nombre, IReadOnlyList<ArticuloFocoDto> Articulos,
     string ActualizadoPor, DateTimeOffset Actualizado);
 
-/// <summary>Alta o edición de un foco (la edición reemplaza nombre, artículos y estado).</summary>
-public record GuardarFocoDto(string? Nombre, IReadOnlyList<int>? IdsArticulo, bool? Activo = null);
+/// <summary>Alta o edición de un foco (la edición reemplaza mes, nombre y artículos).</summary>
+public record GuardarFocoDto(DateOnly? Mes, string? Nombre, IReadOnlyList<int>? IdsArticulo);
+
+/// <summary>
+/// CCC de un foco: clientes de la cartera (la foto de ese mes, sin excluidos) que compraron algún artículo del foco.
+/// </summary>
+/// <param name="PorcentajeAnterior">El mismo foco en el mes anterior; null sin mes anterior con datos o sin cartera.</param>
+public record CccFocoDto(int ClientesConCompra, int ClientesCartera, decimal Porcentaje, decimal? PorcentajeAnterior);
+
+public record CccVendedorFocoDto(int IdPersonal, string Nombre, int ClientesConCompra, int ClientesCartera, decimal Porcentaje,
+    decimal? PorcentajeAnterior);
+
+/// <param name="Total">«Todos los vendedores», sin la casa.</param>
+public record AnalisisFocoDto(int IdFoco, string Nombre, CccFocoDto Total, IReadOnlyList<CccVendedorFocoDto> Vendedores);
+
+/// <param name="CorteAl">Mes en curso: hasta qué día hay ventas. Mes cerrado: null.</param>
+/// <param name="AnteriorAl">Mes en curso: el mismo día del mes anterior, para comparar parejo. Mes cerrado: null (completo).</param>
+public record AnalisisFocosDto(DateOnly Mes, bool MesEnCurso, DateOnly? CorteAl, DateOnly MesAnterior, DateOnly? AnteriorAl,
+    IReadOnlyList<AnalisisFocoDto> Focos);
 
 /// <param name="ClientesMesAnterior">Clientes que lo compraron el mes pasado (para ver qué se mueve).</param>
 public record ArticuloAdminDto(int IdArticulo, string Descripcion, string? UnidadNegocio, string? Division, bool Anulado,
@@ -269,11 +286,14 @@ public interface IAdminService
     /// <summary>Le saca la marca Vital (si no la tenía, no hace nada).</summary>
     Task QuitarVitalAsync(int idCliente, CancellationToken ct = default);
 
-    /// <summary>Todos los focos, prendidos y apagados.</summary>
+    /// <summary>Los focos de todos los meses, por mes descendente y nombre.</summary>
     Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default);
     Task<FocoDto> CrearFocoAsync(GuardarFocoDto dto, CancellationToken ct = default);
     Task<FocoDto> ActualizarFocoAsync(int idFoco, GuardarFocoDto dto, CancellationToken ct = default);
     Task BorrarFocoAsync(int idFoco, CancellationToken ct = default);
+
+    /// <summary>Cómo vienen los focos de un mes, por vendedor (sin mes: el en curso).</summary>
+    Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, CancellationToken ct = default);
 
     /// <summary>Los artículos para armar los focos.</summary>
     Task<IReadOnlyList<ArticuloAdminDto>> ArticulosAsync(CancellationToken ct = default);

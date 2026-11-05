@@ -184,13 +184,15 @@ public class Exclusion
 
 /// <summary>
 /// Un foco del mes (Checho, 03/11/2026): un grupo de artículos con nombre («Manteca» = 100 g + 200 g) para filtrar
-/// Cobertura, Volumen y Devoluciones. El Admin los prende y apaga; el filtro muestra solo los prendidos.
+/// Cobertura, Volumen y Devoluciones. Cada foco es de un mes (Cesar, 05/11/2026: «cada mes serán focos distintos»):
+/// el filtro muestra los del mes en el que está parada la app.
 /// </summary>
 public class Foco
 {
     public int IdFoco { get; set; }
+    /// <summary>Primer día del mes.</summary>
+    public DateOnly Mes { get; set; }
     public string Nombre { get; set; } = "";
-    public bool Activo { get; set; } = true;
     public string ActualizadoPor { get; set; } = "";
     public DateTimeOffset Actualizado { get; set; }
     public List<FocoArticulo> Articulos { get; set; } = [];

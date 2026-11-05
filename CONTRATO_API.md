@@ -141,9 +141,11 @@ Todos los parámetros son opcionales.
   operario siempre es él: otro → 403.
 - `dia`: código de Chess (ver Convenciones). Filtra por los días de visita de la ruta del cliente.
 - `unidad`: una de `/api/cobertura/unidades`. Filtra lo que cuenta como compra, no la cartera.
-- `foco`: un `idFoco` de `/api/cobertura/focos`. Como `unidad`: cuenta como compra solo la de los artículos del foco
-  («CCC Manteca» = clientes de la cartera que compraron alguna manteca). Se puede combinar con `unidad`. El
-  `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no existe (uno apagado sigue andando).
+- `foco` (**solo Admin**): un `idFoco` de `/api/cobertura/focos`. Como `unidad`: cuenta como compra solo la de los
+  artículos del foco («CCC Manteca» = clientes de la cartera que compraron alguna manteca), en todos los meses de la
+  ventana. Se puede combinar con `unidad`. El `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no
+  existe. Operario y supervisor → 403 «Los focos del mes son solo para administradores.» (queda registrado): un enlace
+  con foco falla en vez de mostrar números sin el filtro. Igual en `/api/volumen` y `/api/devoluciones`.
 - `busqueda`: código exacto o parte de la razón social, sin mayúsculas ni tildes. Solo filtra `clientes`.
 - `chip`: `todos` (por defecto) · `compraronMesActual` · `sinCompraMesActual` · `dejaronDeComprar`. Solo filtra
   `clientes`.
@@ -186,11 +188,12 @@ Todos los parámetros son opcionales.
 negocio de los artículos, ordenadas, tal como las nombra Chess (agrupación «UNIDAD DE NEGOCIO»; sin el «124 - » de la
 web vieja). Los artículos sin esa agrupación (dulce de leche, quesos, salsas) van a `SIN UNIDAD DE NEGOCIO`.
 
-### `GET /api/cobertura/focos`
+### `GET /api/cobertura/focos?mes=` · solo Admin
 
-Los **focos del mes prendidos** (Checho, 03/11/2026), por nombre, para el filtro «Foco» de Cobertura, Volumen y
-Devoluciones. Todos los roles. `[{ idFoco, nombre, activo: true, articulos: [{ idArticulo, descripcion }],
-actualizadoPor, actualizado }]`. Vacío si el admin no prendió ninguno (el filtro no se muestra).
+Los **focos de un mes** (Checho, 03/11/2026; por mes y solo Admin desde el 05/11), por nombre, para el filtro «Foco»
+de Cobertura, Volumen y Devoluciones. `mes`: el mes en el que está parada la app; sin él, el en curso.
+`[{ idFoco, mes: "2026-11-01", nombre, articulos: [{ idArticulo, descripcion }], actualizadoPor, actualizado }]`.
+Vacío si ese mes no tiene focos (el filtro no se muestra). Operario y supervisor → 403.
 
 ### `GET /api/clientes/{idCliente}?mesDesde=&mesHasta=`
 
@@ -479,17 +482,41 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
     Vital, devuelve la marca que tenía (un segundo click no cambia nada). 404 si el cliente no existe.
   - `DELETE /api/admin/clientes/{idCliente}/vital` → 204, aunque no fuera Vital.
 
-**Focos del mes** (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»). Un foco es un grupo
-de artículos con nombre: «Manteca» = MANTECA MADOMI X100G + X200G, «Dulce de leche» = 200G + 380G, «Tacos» = MASA
-PARA TACOS. El admin los arma y los prende o apaga cada mes; el filtro muestra solo los prendidos.
+**Focos del mes** (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»; Cesar, 05/11: «cada
+mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de artículos con nombre que pertenece a un mes:
+«Manteca» = MANTECA MADOMI X100G + X200G, «Dulce de leche» = 200G + 380G, «Tacos» = MASA PARA TACOS. El mismo
+«Manteca» en octubre y en noviembre son dos focos.
 
-- `GET /api/admin/focos` → todos, prendidos y apagados (mismo formato que `/api/cobertura/focos`).
-- `POST /api/admin/focos` `{ nombre, idsArticulo: [..], activo? }` → 201 con el foco. `activo` por defecto true.
-- `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza nombre, artículos y, si viene, `activo`). 404 si no
-  existe. Para prenderlo o apagarlo, el mismo PUT con `activo`.
+- `GET /api/admin/focos` → los de todos los meses, por mes descendente y nombre (mismo formato que
+  `/api/cobertura/focos`). El front los agrupa por mes.
+- `POST /api/admin/focos` `{ mes: "2026-11-01", nombre, idsArticulo: [..] }` → 201 con el foco. «Copiar los del mes
+  anterior» = un POST por foco.
+- `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza mes, nombre y artículos). 404 si no existe.
 - `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe.
-- 400: `errors.nombre` (1–60, único: «Ya hay un foco con ese nombre.»), `errors.idsArticulo` (entre 1 y 50, todos
-  existentes).
+- 400: `errors.mes` (obligatorio, día 1, desde el primer mes con datos hasta el mes que viene, para dejarlo armado),
+  `errors.nombre` (1–60, único en el mes: «Ya hay un foco con ese nombre en ese mes.»), `errors.idsArticulo` (entre 1
+  y 50, todos existentes).
+- `GET /api/admin/focos/analisis?mes=` (sin mes: el en curso) → cómo vienen vendiendo los focos de ese mes, por
+  vendedor: el número de Checho («CCC Manteca»).
+
+```jsonc
+{ "mes": "2026-11-01", "mesEnCurso": true,
+  "corteAl": "2026-11-04" | null,        // mes en curso: ventas hasta (como los KPI de cobertura); cerrado: null
+  "mesAnterior": "2026-10-01",
+  "anteriorAl": "2026-10-04" | null,     // mes en curso: el mismo día del anterior (recortado a fin de mes); cerrado: null
+  "focos": [{ "idFoco": 2, "nombre": "Ravioles",
+    "total": { "clientesConCompra": 120, "clientesCartera": 246, "porcentaje": 48.8, "porcentajeAnterior": 51.2 | null },
+    "vendedores": [{ "idPersonal": 2, "nombre": "FRANCO BAIGORRIA", "clientesConCompra": 30, "clientesCartera": 60,
+                     "porcentaje": 50.0, "porcentajeAnterior": 47.1 | null }] }] }   // focos y vendedores por nombre
+```
+
+  - `porcentaje` = clientes de la cartera del vendedor en ese mes (la foto del mes, sin excluidos) que compraron algún
+    artículo del foco ÷ esa cartera, con la misma regla de «compró» que `/api/cobertura?foco=`. `total` = «Todos los
+    vendedores», sin la casa. `vendedores` = las personas con cartera ese mes.
+  - `porcentajeAnterior` = los mismos artículos en el mes anterior, con su cartera: en el mes en curso, con compras
+    hasta `anteriorAl` (facturas menos notas de crédito por cliente × artículo hasta ese día); en uno cerrado, el mes
+    completo. null si no hay mes anterior con datos o el vendedor no tenía cartera.
+  - Un mes futuro o anterior al primero con datos → 400 en `errors.mes`.
 - `GET /api/admin/articulos` → para elegir: `[{ idArticulo, descripcion, unidadNegocio, division, anulado,
   clientesMesAnterior }]`. Los no anulados primero, agrupados por `division` (la agrupación «DIVISION» de Chess: DULCE
   DE LECHE, TACOS, RAVIOLES ATM…; null = sin división, como la manteca y el pionono) y por descripción.
@@ -525,6 +552,9 @@ PARA TACOS. El admin los arma y los prende o apaga cada mes; el filtro muestra s
   Gobernanza). Salen en la 1.1.
 - 04/11: **focos del mes** (pedido de Checho): `foco` en Cobertura, Volumen y Devoluciones, `/api/cobertura/focos`,
   `/api/admin/focos` y `/api/admin/articulos` (con la DIVISION de Chess). Migración `FocosDelMes`.
+- 05/11: focos **por mes** (se va `activo`), **solo para el Admin** (403 al resto, también con `foco=`) y el
+  **análisis del mes por vendedor** (`/api/admin/focos/analisis`). Como no estaba publicada, se rehízo la migración
+  `FocosDelMes` en vez de sumar otra. Sale en la 1.3.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

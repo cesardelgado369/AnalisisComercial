@@ -7,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace AnalisisComercial.Security.Tests;
 
 /// <summary>
-/// Focos del mes (Checho, 03/11/2026): grupos de artículos con nombre que filtran Cobertura, Volumen y Devoluciones.
-/// En el Entorno todas las compras son del 900 (TALLARIN); acá se agrega el 950 (MANTECA), que no compró nadie.
+/// Focos del mes (Checho, 03/11/2026; Cesar, 05/11: uno por mes y solo para el Admin): grupos de artículos con nombre que
+/// filtran Cobertura, Volumen y Devoluciones. En el Entorno todas las compras son del 900 (TALLARIN); acá se agrega el
+/// 950 (MANTECA), que no compró nadie. Hoy es 26/10/2026, con ventas hasta el 25/10.
 /// </summary>
 [Collection(ColeccionEntorno.Nombre)]
 public class FocosTests(Entorno e)
@@ -26,13 +27,19 @@ public class FocosTests(Entorno e)
         });
         try
         {
-            var tallarin = await CrearAsync(admin, new { nombre = "Tallarín", idsArticulo = new[] { 900 } });
-            var manteca = await CrearAsync(admin, new { nombre = "Manteca", idsArticulo = new[] { 950 } });
+            var tallarin = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Tallarín", idsArticulo = new[] { 900 } });
+            var manteca = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Manteca", idsArticulo = new[] { 950 } });
+            await CrearAsync(admin, new { mes = "2026-11-01", nombre = "Manteca", idsArticulo = new[] { 950 } });   // otro mes, otro foco
             Assert.Equal("MANTECA MADOMI X200G", (string?)manteca["articulos"]![0]!["descripcion"]);
+            Assert.Equal("2026-10-01", (string?)manteca["mes"]);
 
-            // El filtro lo ve cualquiera con acceso, también el vendedor.
-            var lista = await e.Operario().JsonAsync("/api/cobertura/focos");
-            Assert.Equal(["Manteca", "Tallarín"], lista.AsArray().Select(f => (string?)f!["nombre"]));
+            // El filtro: los del mes pedido (sin mes, el en curso), por nombre.
+            Assert.Equal(["Manteca", "Tallarín"], Nombres(await admin.JsonAsync("/api/cobertura/focos")));
+            Assert.Equal(["Manteca"], Nombres(await admin.JsonAsync("/api/cobertura/focos?mes=2026-11-01")));
+            Assert.Empty(Nombres(await admin.JsonAsync("/api/cobertura/focos?mes=2026-09-01")));
+            // La administración: todos, por mes descendente.
+            Assert.Equal(["2026-11-01", "2026-10-01", "2026-10-01"],
+                (await admin.JsonAsync("/api/admin/focos")).AsArray().Select(f => (string?)f!["mes"]));
 
             var todo = await admin.JsonAsync("/api/cobertura");
             var conTallarin = await admin.JsonAsync($"/api/cobertura?foco={tallarin["idFoco"]}");
@@ -49,13 +56,6 @@ public class FocosTests(Entorno e)
             Assert.Equal((decimal?)(await admin.JsonAsync("/api/volumen?mes=2026-09-01"))["total"]!["bultosActual"],
                 (decimal?)(await admin.JsonAsync($"/api/volumen?mes=2026-09-01&foco={tallarin["idFoco"]}"))["total"]!["bultosActual"]);
             await admin.JsonAsync($"/api/devoluciones?foco={manteca["idFoco"]}");
-
-            // Apagado: sale del filtro, pero un enlace guardado con ese foco sigue andando.
-            var r = await admin.PutAsJsonAsync($"/api/admin/focos/{manteca["idFoco"]}", new { nombre = "Manteca", idsArticulo = new[] { 950 }, activo = false });
-            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-            Assert.Equal(["Tallarín"], (await e.Operario().JsonAsync("/api/cobertura/focos")).AsArray().Select(f => (string?)f!["nombre"]));
-            Assert.Equal(2, (await admin.JsonAsync("/api/admin/focos")).AsArray().Count);
-            await admin.JsonAsync($"/api/cobertura?foco={manteca["idFoco"]}");
 
             // Borrado: 204 y después 404; el filtro con ese foco da 400.
             Assert.Equal(HttpStatusCode.NoContent, (await admin.DeleteAsync($"/api/admin/focos/{manteca["idFoco"]}")).StatusCode);
@@ -74,22 +74,94 @@ public class FocosTests(Entorno e)
     }
 
     [Fact]
+    public async Task Los_focos_no_los_ven_vendedores_ni_supervisores()
+    {
+        var admin = e.Admin();
+        try
+        {
+            var foco = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Pastas", idsArticulo = new[] { 900 } });
+            foreach (var quien in new[] { e.Operario(), e.Supervisor() })
+            {
+                await quien.EstadoAsync("/api/cobertura/focos", HttpStatusCode.Forbidden);
+                // Un enlace con foco falla: ignorarlo mostraría números que no son los del filtro.
+                await quien.EstadoAsync($"/api/cobertura?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
+                await quien.EstadoAsync("/api/admin/focos", HttpStatusCode.Forbidden);
+                await quien.EstadoAsync("/api/admin/focos/analisis", HttpStatusCode.Forbidden);
+            }
+            await e.Supervisor().EstadoAsync($"/api/volumen?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
+            await e.Supervisor().EstadoAsync($"/api/devoluciones?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
+            await e.Supervisor().JsonAsync("/api/cobertura");   // sin foco, igual que siempre
+            Assert.True(await e.ConBaseAsync(db => db.AccesoLogs.AnyAsync(l =>
+                l.Email == "operario@madomi" && l.Denegado && l.Pantalla == "focos" && l.Parametros == $"foco={foco["idFoco"]}")));
+        }
+        finally
+        {
+            await e.ConBaseAsync(db => db.Focos.ExecuteDeleteAsync());
+        }
+    }
+
+    [Fact]
+    public async Task El_analisis_del_mes_por_vendedor()
+    {
+        var admin = e.Admin();
+        try
+        {
+            await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Tallarín", idsArticulo = new[] { 900 } });
+            await CrearAsync(admin, new { mes = "2026-09-01", nombre = "Tallarín", idsArticulo = new[] { 900 } });
+
+            // Octubre, en curso: ventas al 25/10, contra septiembre al 25/09. Cartera de octubre (sin la casa ni las
+            // rutas sin vendedor): 101 y 102 de UNO, 201 de DOS, 501 de UNO BIS; compró 101.
+            var oct = await admin.JsonAsync("/api/admin/focos/analisis");
+            Assert.Equal("2026-10-01", (string?)oct["mes"]);
+            Assert.True((bool)oct["mesEnCurso"]!);
+            Assert.Equal("2026-10-25", (string?)oct["corteAl"]);
+            Assert.Equal("2026-09-01", (string?)oct["mesAnterior"]);
+            Assert.Equal("2026-09-25", (string?)oct["anteriorAl"]);
+            var f = oct["focos"]!.AsArray().Single()!;
+            Assert.Equal("Tallarín", (string?)f["nombre"]);
+            AssertCcc(f["total"]!, 1, 4, 25.0m, 50.0m);   // septiembre al 25: 101 (2 − 1 de la nota de crédito) y 102, de 4
+            var vend = f["vendedores"]!.AsArray();
+            Assert.Equal(["VENDEDOR DOS", "VENDEDOR UNO", "VENDEDOR UNO BIS"], vend.Select(x => (string?)x!["nombre"]));
+            AssertCcc(vend[1]!, 1, 2, 50.0m, 50.0m);   // UNO en septiembre: 101 sí, 103 no
+            AssertCcc(vend[0]!, 0, 1, 0m, 50.0m);      // DOS en septiembre: 102 sí, 201 no
+            AssertCcc(vend[2]!, 0, 1, 0m, null);       // UNO BIS no tenía cartera en septiembre
+
+            // Septiembre, cerrado: contra agosto completo, en el que compraron los 4.
+            var sep = await admin.JsonAsync("/api/admin/focos/analisis?mes=2026-09-01");
+            Assert.False((bool)sep["mesEnCurso"]!);
+            Assert.Null(sep["corteAl"]);
+            Assert.Null(sep["anteriorAl"]);
+            AssertCcc(sep["focos"]![0]!["total"]!, 2, 4, 50.0m, 100.0m);
+
+            Assert.NotNull((await admin.JsonAsync("/api/admin/focos/analisis?mes=2026-11-01", HttpStatusCode.BadRequest))["errors"]!["mes"]);
+        }
+        finally
+        {
+            await e.ConBaseAsync(db => db.Focos.ExecuteDeleteAsync());
+        }
+    }
+
+    [Fact]
     public async Task Validaciones_y_permisos()
     {
         var admin = e.Admin();
         try
         {
-            await CrearAsync(admin, new { nombre = "Pastas", idsArticulo = new[] { 900 } });
-            await Error(admin, new { nombre = "Pastas", idsArticulo = new[] { 900 } }, "nombre");
-            await Error(admin, new { nombre = " ", idsArticulo = new[] { 900 } }, "nombre");
-            await Error(admin, new { nombre = "Otro", idsArticulo = Array.Empty<int>() }, "idsArticulo");
-            await Error(admin, new { nombre = "Otro", idsArticulo = new[] { 123456 } }, "idsArticulo");
+            await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Pastas", idsArticulo = new[] { 900 } });
+            await CrearAsync(admin, new { mes = "2026-11-01", nombre = "Pastas", idsArticulo = new[] { 900 } });   // el que viene, para dejarlo armado
+            await Error(admin, new { mes = "2026-10-01", nombre = "Pastas", idsArticulo = new[] { 900 } }, "nombre");
+            await Error(admin, new { mes = "2026-10-01", nombre = " ", idsArticulo = new[] { 900 } }, "nombre");
+            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = Array.Empty<int>() }, "idsArticulo");
+            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 123456 } }, "idsArticulo");
+            await Error(admin, new { nombre = "Otro", idsArticulo = new[] { 900 } }, "mes");
+            await Error(admin, new { mes = "2026-10-15", nombre = "Otro", idsArticulo = new[] { 900 } }, "mes");
+            await Error(admin, new { mes = "2026-12-01", nombre = "Otro", idsArticulo = new[] { 900 } }, "mes");
+            await Error(admin, new { mes = "2026-06-01", nombre = "Otro", idsArticulo = new[] { 900 } }, "mes");
             Assert.Equal(HttpStatusCode.NotFound,
-                (await admin.PutAsJsonAsync("/api/admin/focos/99999", new { nombre = "X", idsArticulo = new[] { 900 } })).StatusCode);
+                (await admin.PutAsJsonAsync("/api/admin/focos/99999", new { mes = "2026-10-01", nombre = "X", idsArticulo = new[] { 900 } })).StatusCode);
 
-            await e.Operario().EstadoAsync("/api/admin/focos", HttpStatusCode.Forbidden);
             await e.Supervisor().EstadoAsync("/api/admin/articulos", HttpStatusCode.Forbidden);
-            var r = await e.Supervisor().PostAsJsonAsync("/api/admin/focos", new { nombre = "Y", idsArticulo = new[] { 900 } });
+            var r = await e.Supervisor().PostAsJsonAsync("/api/admin/focos", new { mes = "2026-10-01", nombre = "Y", idsArticulo = new[] { 900 } });
             Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
 
             // Los artículos para elegir, con su unidad, su DIVISION y los clientes del mes pasado (septiembre).
@@ -100,6 +172,16 @@ public class FocosTests(Entorno e)
         {
             await e.ConBaseAsync(db => db.Focos.ExecuteDeleteAsync());
         }
+    }
+
+    private static IEnumerable<string?> Nombres(JsonNode lista) => lista.AsArray().Select(f => (string?)f!["nombre"]);
+
+    private static void AssertCcc(JsonNode n, int conCompra, int cartera, decimal porcentaje, decimal? anterior)
+    {
+        Assert.Equal(conCompra, (int)n["clientesConCompra"]!);
+        Assert.Equal(cartera, (int)n["clientesCartera"]!);
+        Assert.Equal(porcentaje, (decimal)n["porcentaje"]!);
+        Assert.Equal(anterior, (decimal?)n["porcentajeAnterior"]);
     }
 
     private static async Task<JsonNode> CrearAsync(HttpClient admin, object body)

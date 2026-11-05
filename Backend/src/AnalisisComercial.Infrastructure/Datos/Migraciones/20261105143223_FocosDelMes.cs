@@ -33,8 +33,8 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                 {
                     IdFoco = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Mes = table.Column<DateOnly>(type: "date", nullable: false),
                     Nombre = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false),
-                    Activo = table.Column<bool>(type: "bit", nullable: false),
                     ActualizadoPor = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Actualizado = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },
@@ -62,9 +62,9 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Foco_Nombre",
+                name: "IX_Foco_Mes_Nombre",
                 table: "Foco",
-                column: "Nombre",
+                columns: new[] { "Mes", "Nombre" },
                 unique: true);
         }
 

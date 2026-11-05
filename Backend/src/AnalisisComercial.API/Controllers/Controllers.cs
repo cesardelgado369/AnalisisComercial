@@ -36,7 +36,7 @@ public class CoberturaController(ICoberturaService cobertura) : ControllerBase
     public Task<IReadOnlyList<string>> Unidades(CancellationToken ct) => cobertura.UnidadesAsync(ct);
 
     [HttpGet("focos")]
-    public Task<IReadOnlyList<FocoDto>> Focos(CancellationToken ct) => cobertura.FocosAsync(ct);
+    public Task<IReadOnlyList<FocoDto>> Focos([FromQuery] DateOnly? mes, CancellationToken ct) => cobertura.FocosAsync(mes, ct);
 }
 
 [ApiController]
@@ -149,6 +149,9 @@ public class AdminController(IAdminService admin) : ControllerBase
         await admin.BorrarFocoAsync(idFoco, ct);
         return NoContent();
     }
+
+    [HttpGet("focos/analisis")]
+    public Task<AnalisisFocosDto> AnalisisFocos([FromQuery] DateOnly? mes, CancellationToken ct) => admin.AnalisisFocosAsync(mes, ct);
 
     [HttpGet("articulos")]
     public Task<IReadOnlyList<ArticuloAdminDto>> Articulos(CancellationToken ct) => admin.ArticulosAsync(ct);

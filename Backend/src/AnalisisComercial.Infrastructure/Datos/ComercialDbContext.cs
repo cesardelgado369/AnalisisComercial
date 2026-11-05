@@ -146,7 +146,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.ToTable("Foco");
             e.HasKey(x => x.IdFoco);
             e.Property(x => x.Nombre).HasMaxLength(60);
-            e.HasIndex(x => x.Nombre).IsUnique();
+            e.HasIndex(x => new { x.Mes, x.Nombre }).IsUnique();
             e.Property(x => x.ActualizadoPor).HasMaxLength(200);
             e.HasMany(x => x.Articulos).WithOne().HasForeignKey(x => x.IdFoco).OnDelete(DeleteBehavior.Cascade);
         });

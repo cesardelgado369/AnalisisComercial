@@ -246,23 +246,27 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new NoEncontradoException("Ese cliente no estaba excluido.");
     }
 
-    // ---- focos del mes (Checho, 03/11/2026: «bloquear y desbloquear qué productos se pueden filtrar»)
+    // ---- focos del mes (Checho, 03/11/2026; Cesar, 05/11: uno por mes y solo para el Admin)
 
     public async Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default)
     {
         await AdminAsync("admin-focos", ct);
-        return await FocosAsync(db, soloActivos: false, ct);
+        return await FocosAsync(db, mes: null, ct);
     }
 
-    /// <summary>Los focos con sus artículos, por nombre. También para el filtro de las pantallas (solo los prendidos).</summary>
-    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, bool soloActivos, CancellationToken ct)
+    /// <summary>
+    /// Los focos con sus artículos, por mes descendente y nombre (<paramref name="mes"/>: solo los de ese mes). También
+    /// para el filtro de las pantallas.
+    /// </summary>
+    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, DateOnly? mes, CancellationToken ct)
     {
-        var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Where(f => !soloActivos || f.Activo).ToListAsync(ct);
+        var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Where(f => mes == null || f.Mes == mes).ToListAsync(ct);
         var ids = focos.SelectMany(f => f.Articulos.Select(a => a.IdArticulo)).Distinct().ToList();
         var nombres = await db.Articulos.AsNoTracking().Where(a => ids.Contains(a.IdArticulo))
             .ToDictionaryAsync(a => a.IdArticulo, a => a.Descripcion, ct);
         return focos.Select(f => Dto(f, nombres))
-            .OrderBy(f => f.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
+            .OrderByDescending(f => f.Mes)
+            .ThenBy(f => f.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
             .ToList();
     }
 
@@ -309,13 +313,101 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .ToList();
     }
 
+    /// <summary>
+    /// Cómo vienen los focos del mes, por vendedor (Cesar, 05/11/2026: el número de Checho, «CCC Manteca»): la misma
+    /// regla de compró, cartera y exclusiones que <c>/api/cobertura?foco=</c>. Contra el mes anterior: en el mes en
+    /// curso, hasta el mismo día; en uno cerrado, completo.
+    /// </summary>
+    public async Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, CancellationToken ct = default)
+    {
+        await AdminAsync("admin-focos-analisis", ct);
+        var m = Calendario.Mes(mes ?? lectura.MesEnCurso);
+        if (m > lectura.MesEnCurso)
+            throw new ValidacionException("mes", "No puede ser posterior al mes en curso.");
+        if (m < lectura.Op.PrimerMes)
+            throw new ValidacionException("mes", $"No hay datos antes de {lectura.Op.PrimerMes:MM/yyyy}.");
+        var anterior = m.AddMonths(-1);
+        var hayAnterior = anterior >= lectura.Op.PrimerMes;
+        var enCurso = m == lectura.MesEnCurso;
+
+        DateOnly? corteAl = null, anteriorAl = null;
+        if (enCurso && await lectura.VentasHastaAsync(ct) is { } hasta && hasta >= m)
+        {
+            corteAl = hasta;
+            var fin = Calendario.FinDeMes(anterior);
+            anteriorAl = anterior.AddDays(hasta.Day - 1) is var d && d <= fin ? d : fin;
+        }
+
+        var focos = await FocosAsync(db, m, ct);
+        var vendedores = await lectura.VendedoresAsync(ct);
+        var mirada = await lectura.MiradaAsync(null, "admin-focos-analisis", ct);   // las personas: sin la casa
+        var carteras = await lectura.CarterasAsync(mirada, [m, anterior], null, ct);
+
+        var resultado = new List<AnalisisFocoDto>();
+        foreach (var foco in focos)
+        {
+            var filtro = new FiltroArticulos(null, foco.IdFoco, foco.Nombre);
+            var compras = await lectura.ComprasAsync([m], filtro, ct);   // trae también el mes anterior completo
+            HashSet<int> compraronAntes = !hayAnterior ? []
+                : enCurso ? anteriorAl is { } al ? await CompraronHastaAsync(foco.Articulos.Select(a => a.IdArticulo).ToList(), anterior, al, ct) : []
+                : compras.Where(c => c.Mes == anterior).Select(c => c.IdCliente).ToHashSet();
+            bool ComproAntes(int idCliente) => compraronAntes.Contains(idCliente);
+
+            CccFocoDto Ccc(Func<CarteraMes, bool> deQuien)
+            {
+                var ahora = carteras[m].Values.Where(deQuien).ToList();
+                var antes = carteras[anterior].Values.Where(deQuien).ToList();
+                var conCompra = ahora.Count(c => compras.Contains((c.IdCliente, m)));
+                decimal? porcentajeAnterior = hayAnterior && (!enCurso || anteriorAl is not null) && antes.Count > 0
+                    ? Cobertura.Porcentaje(antes.Count(c => ComproAntes(c.IdCliente)), antes.Count)
+                    : null;
+                return new CccFocoDto(conCompra, ahora.Count, Cobertura.Porcentaje(conCompra, ahora.Count), porcentajeAnterior);
+            }
+
+            var porVendedor = carteras[m].Values.Where(c => c.IdPersonal is not null).Select(c => c.IdPersonal!.Value).Distinct()
+                .Select(id =>
+                {
+                    var ccc = Ccc(c => c.IdPersonal == id);
+                    return new CccVendedorFocoDto(id, vendedores.GetValueOrDefault(id)?.Nombre ?? $"Vendedor {id}",
+                        ccc.ClientesConCompra, ccc.ClientesCartera, ccc.Porcentaje, ccc.PorcentajeAnterior);
+                })
+                .OrderBy(v => v.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
+                .ToList();
+            resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, Ccc(_ => true), porVendedor));
+        }
+        await alcance.RegistrarAsync("admin-focos-analisis", $"mes={m:yyyy-MM-dd}", denegado: false, ct);
+        return new AnalisisFocosDto(m, enCurso, corteAl, anterior, anteriorAl, resultado);
+    }
+
+    /// <summary>
+    /// Los clientes que compraron alguno de los artículos entre el 1 del mes y <paramref name="hasta"/>, con
+    /// <see cref="ReglaCompra"/> por cliente × artículo (como CompraMes, pero cortado en un día).
+    /// </summary>
+    private async Task<HashSet<int>> CompraronHastaAsync(List<int> articulos, DateOnly mes, DateOnly hasta, CancellationToken ct)
+    {
+        var regla = lectura.Op.Regla();
+        var tipos = regla.TiposFactura.Concat(regla.TiposCredito).ToList();
+        var lineas = await db.VentaLineas.AsNoTracking()
+            .Where(l => l.Fecha >= mes && l.Fecha <= hasta && articulos.Contains(l.IdArticulo) && tipos.Contains(l.TipoDocumento))
+            .ToListAsync(ct);
+        return lineas.GroupBy(l => (l.IdCliente, l.IdArticulo))
+            .Where(g => regla.Evaluar(g).Compro)
+            .Select(g => g.Key.IdCliente)
+            .ToHashSet();
+    }
+
     private async Task AplicarAsync(Foco foco, GuardarFocoDto dto, Alcance admin, CancellationToken ct)
     {
+        // Desde el primer mes con datos hasta el que viene (para dejarlo armado).
+        if (dto.Mes is not { } mes || mes.Day != 1)
+            throw new ValidacionException("mes", "Elegí el mes (el primer día).");
+        if (mes < lectura.Op.PrimerMes || mes > lectura.MesEnCurso.AddMonths(1))
+            throw new ValidacionException("mes", $"Tiene que ser entre {lectura.Op.PrimerMes:MM/yyyy} y {lectura.MesEnCurso.AddMonths(1):MM/yyyy}.");
         var nombre = dto.Nombre?.Trim() ?? "";
         if (nombre.Length is < 1 or > 60)
             throw new ValidacionException("nombre", "Ponele un nombre de hasta 60 caracteres.");
-        if (await db.Focos.AnyAsync(f => f.Nombre == nombre && f.IdFoco != foco.IdFoco, ct))
-            throw new ValidacionException("nombre", "Ya hay un foco con ese nombre.");
+        if (await db.Focos.AnyAsync(f => f.Mes == mes && f.Nombre == nombre && f.IdFoco != foco.IdFoco, ct))
+            throw new ValidacionException("nombre", "Ya hay un foco con ese nombre en ese mes.");
         var ids = (dto.IdsArticulo ?? []).Distinct().ToList();
         if (ids.Count is < 1 or > 50)
             throw new ValidacionException("idsArticulo", "Elegí entre 1 y 50 artículos.");
@@ -324,17 +416,17 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         foco.Articulos.RemoveAll(a => !ids.Contains(a.IdArticulo));
         foco.Articulos.AddRange(ids.Where(id => foco.Articulos.All(a => a.IdArticulo != id))
             .Select(id => new FocoArticulo { IdFoco = foco.IdFoco, IdArticulo = id }));
+        foco.Mes = mes;
         foco.Nombre = nombre;
-        foco.Activo = dto.Activo ?? foco.Activo;
         foco.ActualizadoPor = admin.Email;
         foco.Actualizado = reloj.Ahora;
     }
 
     private async Task<FocoDto> UnFocoAsync(int idFoco, CancellationToken ct)
-        => (await FocosAsync(db, soloActivos: false, ct)).Single(f => f.IdFoco == idFoco);
+        => (await FocosAsync(db, mes: null, ct)).Single(f => f.IdFoco == idFoco);
 
     private static FocoDto Dto(Foco f, Dictionary<int, string> nombres)
-        => new(f.IdFoco, f.Nombre, f.Activo,
+        => new(f.IdFoco, f.Mes, f.Nombre,
             f.Articulos.Select(a => new ArticuloFocoDto(a.IdArticulo, nombres.GetValueOrDefault(a.IdArticulo, $"Artículo {a.IdArticulo}")))
                 .OrderBy(a => a.Descripcion, StringComparer.Ordinal).ToList(),
             f.ActualizadoPor, f.Actualizado);
