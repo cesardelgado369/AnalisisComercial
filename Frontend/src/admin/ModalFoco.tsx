@@ -1,13 +1,14 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { avisarCambio } from '../api/cambios'
 import { ApiError, api } from '../api/client'
-import type { ArticuloChess, Foco, FocoEnvio } from '../api/types'
+import type { ArticuloChess, Foco, FocoEnvio, MedidaFoco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { Modal } from '../components/Modal'
 import { nombrePropio } from '../cobertura/estados'
 import { cantidad, nombreMes } from '../utils/formato'
+import { MEDIDAS } from './medidas'
 
 /** Los límites del backend (CONTRATO_API.md, «Focos del mes»). */
 const MAXIMO_NOMBRE = 60
@@ -16,15 +17,20 @@ const MAXIMO_ARTICULOS = 50
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /**
- * Crear o editar un foco de un mes: el nombre que se ve en el filtro y sus artículos de Chess, agrupados por la DIVISION
- * de Chess y con cuántos clientes los compraron el mes pasado (para elegir las presentaciones que se venden). Los
- * anulados se ofrecen solo si se piden o si el foco ya los tiene. Editando, también se borra (con confirmación).
+ * Crear o editar un foco de un mes: el nombre que se ve en el filtro, qué se mide (CCC o VOL, como los objetivos de
+ * Checho) con una meta opcional, y sus artículos de Chess, agrupados por la DIVISION de Chess y con cuántos clientes los
+ * compraron el mes pasado (para elegir las presentaciones que se venden). Los anulados se ofrecen solo si se piden o si
+ * el foco ya los tiene. Editando, también se borra (con confirmación).
  */
 export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () => void; onGuardado: (texto: string) => void }) {
   const { foco, mes, onCerrar, onGuardado } = props
   const articulos = useConsulta<ArticuloChess[]>('/admin/articulos', 'No pudimos leer los artículos de Chess.')
   const [nombre, setNombre] = useState(foco?.nombre ?? '')
   const [ids, setIds] = useState<number[]>(() => foco?.articulos.map((a) => a.idArticulo) ?? [])
+  const [medida, setMedida] = useState<MedidaFoco>(foco?.medida ?? 'ccc')
+  // La meta es opcional (Cesar, 05/11): vacía = sin meta
+  const [meta, setMeta] = useState(foco?.meta === null || foco?.meta === undefined ? '' : String(foco.meta))
+  const medidaElegida = MEDIDAS.find((m) => m.valor === medida)!
   const [texto, setTexto] = useState('')
   const [conAnulados, setConAnulados] = useState(false)
   const [errores, setErrores] = useState<Record<string, string>>({})
@@ -59,6 +65,9 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     if (guardando) return
     const faltan: Record<string, string> = {}
     if (!nombre.trim()) faltan.nombre = 'Poné el nombre del foco, como se va a ver en el filtro.'
+    const metaNumero = meta.trim() === '' ? null : Number(meta.replace(',', '.'))
+    if (metaNumero !== null && (!Number.isFinite(metaNumero) || metaNumero < 1 || metaNumero > medidaElegida.metaMaxima))
+      faltan.meta = `La meta va de 1 a ${medidaElegida.metaMaxima} %, o dejala vacía.`
     if (!ids.length) faltan.idsArticulo = 'Elegí al menos un artículo.'
     else if (ids.length > MAXIMO_ARTICULOS) faltan.idsArticulo = `Hasta ${MAXIMO_ARTICULOS} artículos por foco.`
     setErrores(faltan)
@@ -66,7 +75,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     if (Object.keys(faltan).length) return
     setGuardando(true)
     try {
-      const cuerpo: FocoEnvio = { mes, nombre: nombre.trim(), idsArticulo: ids }
+      const cuerpo: FocoEnvio = { mes, nombre: nombre.trim(), idsArticulo: ids, medida, meta: metaNumero }
       const r = foco ? await api.put<Foco>(`/admin/focos/${foco.idFoco}`, cuerpo) : await api.post<Foco>('/admin/focos', cuerpo)
       avisarCambio()
       onGuardado(`${r.nombre}: ${foco ? 'guardado' : `creado en ${nombreMes(r.mes)}`}.`)
@@ -77,7 +86,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
       }
       const porCampo = Object.fromEntries(Object.entries(err.errores).map(([k, v]) => [k.toLowerCase() === 'idsarticulo' ? 'idsArticulo' : k.toLowerCase(), v.join(' ')]))
       setErrores(porCampo)
-      const sueltos = Object.entries(porCampo).filter(([k]) => k !== 'nombre' && k !== 'idsArticulo').map(([, v]) => v)
+      const sueltos = Object.entries(porCampo).filter(([k]) => !['nombre', 'idsArticulo', 'meta'].includes(k)).map(([, v]) => v)
       if (sueltos.length || !Object.keys(porCampo).length) setGeneral([...sueltos, ...(Object.keys(porCampo).length ? [] : [err.message])].join(' '))
       // Otro lo borró en el medio: la lista se vuelve a leer
       if (err.status === 404) avisarCambio()
@@ -165,6 +174,40 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
           </span>
           {errores.nombre && <span className="campo-error">{errores.nombre}</span>}
         </label>
+
+        <fieldset className="foco-medicion">
+          <legend>Qué se mide</legend>
+          <div className="foco-medidas" role="radiogroup" aria-label="Qué se mide">
+            {MEDIDAS.map((m) => (
+              <label key={m.valor} className={m.valor === medida ? 'foco-opcion-medida elegida' : 'foco-opcion-medida'}>
+                <input type="radio" name="medida" checked={m.valor === medida} onChange={() => setMedida(m.valor)} />
+                <span className="foco-opcion-textos">
+                  <span className="foco-opcion-titulo">{m.texto}</span>
+                  <span className="campo-ayuda">{m.ayuda}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <label className="foco-meta-campo">
+            Meta (opcional)
+            <span className="foco-meta-entrada">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={meta}
+                placeholder="Sin meta"
+                onChange={(e) => {
+                  setMeta(e.target.value)
+                  setErrores((v) => (v.meta ? { ...v, meta: '' } : v))
+                }}
+                aria-invalid={!!errores.meta}
+              />
+              <span aria-hidden>%</span>
+            </span>
+            <span className="campo-ayuda">{medidaElegida.metaEjemplo} Se marca en cada barra del análisis.</span>
+            {errores.meta && <span className="campo-error">{errores.meta}</span>}
+          </label>
+        </fieldset>
 
         <fieldset className="foco-articulos" aria-invalid={!!errores.idsArticulo}>
           <legend>Artículos</legend>

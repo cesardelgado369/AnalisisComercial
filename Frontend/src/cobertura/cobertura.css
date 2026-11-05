@@ -20,6 +20,13 @@
 .cob-referencia { display: inline-flex; align-items: center; gap: 6px; }
 .cob-tarjeta-focos { flex-wrap: wrap; gap: 8px 14px; }
 .cob-tarjeta-foco { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cob-kpi-foco .foco-medida, .cob-col-foco .foco-medida { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: 800; color: var(--acento); background: var(--superficie-media); border-radius: 4px; vertical-align: 1px; }
+/* Una celda VOL: los bultos del mes y la flecha contra el mes anterior al mismo día hábil */
+.cob-vol { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 28px; height: 28px; font-size: 14px; font-weight: 700; color: var(--texto); font-variant-numeric: tabular-nums; }
+.cob-vol .icono { font-size: 15px; }
+.cob-vol.sube .icono { color: var(--compro); }
+.cob-vol.baja .icono { color: var(--rojo); }
+.cob-vol.cero { color: var(--texto-3); font-weight: 600; }
 .cob-filtro { gap: 6px; }
 .cob-filtro select {
   height: 44px; padding: 0 40px 0 14px; font-size: 14px; font-weight: 600; color: var(--texto); cursor: pointer;

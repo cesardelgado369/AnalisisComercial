@@ -541,16 +541,30 @@ export interface Foco {
   /** «2026-11-01». */
   mes: string
   nombre: string
+  medida: MedidaFoco
+  /**
+   * Opcional (Cesar, 05/11: «sin meta pero dejemos la opción»), siempre en porcentaje: con `ccc`, qué parte de la
+   * cartera tiene que comprarlo (1–100); con `vol`, contra el mes anterior al mismo día hábil (100 = igualarlo).
+   */
+  meta: number | null
   articulos: ArticuloFoco[]
   actualizadoPor: string
   actualizado: string
 }
 
-/** Body de `POST /api/admin/focos` y `PUT /{idFoco}` (reemplaza mes, nombre y artículos). */
+/**
+ * Qué se mide de un foco, como en los objetivos de Checho (05/11): `ccc` = clientes de la cartera que compraron alguno
+ * de sus artículos («CCC Manteca»); `vol` = los bultos contra el mes anterior al mismo día hábil («VOL Tapas»).
+ */
+export type MedidaFoco = 'ccc' | 'vol'
+
+/** Body de `POST /api/admin/focos` y `PUT /{idFoco}` (reemplaza todo). */
 export interface FocoEnvio {
   mes: string
   nombre: string
   idsArticulo: number[]
+  medida: MedidaFoco
+  meta: number | null
 }
 
 /** Cómo viene un foco en un grupo de clientes: el «CCC Manteca» de Checho. */
@@ -564,6 +578,22 @@ export interface CoberturaFoco {
   porcentajeAnterior: number | null
 }
 
+/** Cómo viene un foco `vol`: los bultos contra el mes anterior al mismo día hábil, como Volumen. */
+export interface VolumenFoco {
+  bultosActual: number
+  bultosBase: number | null
+  /** `bultosActual / bultosBase` × 100, un decimal; null si la base es 0. */
+  porcentaje: number | null
+}
+
+type VendedorFoco = { idPersonal: number; nombre: string }
+
+/** Un foco en el análisis: según su `medida`, con los números de Cobertura o los de Volumen. */
+export type FocoAnalizado = { idFoco: number; nombre: string; meta: number | null } & (
+  | { medida: 'ccc'; total: CoberturaFoco; vendedores: (CoberturaFoco & VendedorFoco)[] }
+  | { medida: 'vol'; total: VolumenFoco; vendedores: (VolumenFoco & VendedorFoco)[] }
+)
+
 /** `GET /api/admin/focos/analisis?mes=` (solo admin): cómo vienen vendiendo los focos del mes, por vendedor. */
 export interface AnalisisFocos {
   mes: string
@@ -573,14 +603,13 @@ export interface AnalisisFocos {
   mesAnterior: string
   /** El mismo día del mes anterior (solo en el mes en curso); null = el mes anterior completo. */
   anteriorAl: string | null
-  focos: {
-    idFoco: number
-    nombre: string
-    /** «Todos los vendedores», sin la casa. */
-    total: CoberturaFoco
-    /** Los que tuvieron cartera ese mes (sin la casa), por nombre. */
-    vendedores: (CoberturaFoco & { idPersonal: number; nombre: string })[]
-  }[]
+  /** Contra qué se miden los focos `vol` (la `comparacion` de Volumen para el admin); null en el primer mes con datos. */
+  volumen: Pick<ComparacionVolumen, 'corteAl' | 'baseHasta' | 'diaHabil' | 'diasHabilesMes'> | null
+  /**
+   * Cada foco: «Todos los vendedores» (sin la casa) y los que tuvieron cartera ese mes, por nombre. La API manda
+   * todos los campos en las dos medidas (los de la otra, en null o de referencia); el front usa los de su `medida`.
+   */
+  focos: FocoAnalizado[]
 }
 
 /** `GET /api/admin/articulos`: para armar los focos. No anulados primero, por `division` y descripción. */

@@ -1,8 +1,8 @@
 /**
  * TODO testing — Focos del mes para `npm run dev:mock` (CONTRATO_API.md, «Focos del mes», pedido de Checho del 03/11;
- * por mes desde el 05/11): cada mes tiene sus focos (grupos de artículos con nombre), el filtro `?foco=`, los artículos
- * para elegirlos y el análisis del mes por vendedor. Todo en memoria: reiniciar el servidor de prueba vuelve al estado
- * inicial.
+ * por mes desde el 05/11): cada mes tiene sus focos (grupos de artículos con nombre, medidos con CCC o VOL y con una
+ * meta opcional), el filtro `?foco=`, los artículos para elegirlos y el análisis del mes por vendedor. Todo en
+ * memoria: reiniciar el servidor de prueba vuelve al estado inicial.
  */
 import { ARTICULOS, articuloDe, articulosDelMes, idArticulo, lineas } from './datosArticulos.ts'
 import {
@@ -23,11 +23,16 @@ import {
   type ClienteFake,
   type FocoConsulta,
 } from './datosCobertura.ts'
+import { comparacion, volumen } from './datosVolumen.ts'
+
+type Medida = 'ccc' | 'vol'
 
 interface FocoMock {
   idFoco: number
   mes: string
   nombre: string
+  medida: Medida
+  meta: number | null
   idsArticulo: number[]
   actualizadoPor: string
   actualizado: string
@@ -63,22 +68,27 @@ const RAVIOLES = [id('ATM RAVIOLES DE VERDURA 1KG'), id('RAVIOLES DE RICOTA 500G
 const TAPAS = [id('TAPAS DE EMPANADA COPETIN X24'), id('TAPAS DE EMPANADA FREIR X12'), id('TAPAS DE EMPANADA HORNO X12')]
 const PAN = [id('PAN RALLADO 1KG'), id('PAN RALLADO 500G')]
 
-/** El mes en curso con tres focos, el anterior con dos (Ravioles se repite) y uno más atrás; el que viene, vacío. */
+/**
+ * El mes en curso como los objetivos de Checho de noviembre (CCC Dulce de leche con meta, CCC Ravioles, VOL Tapas con
+ * meta), el anterior con dos (Ravioles se repite) y uno más atrás; el que viene, vacío.
+ */
 let siguiente = 1
-const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number): FocoMock => ({
+const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number, medida: Medida = 'ccc', meta: number | null = null): FocoMock => ({
   idFoco: siguiente++,
   mes,
   nombre,
+  medida,
+  meta,
   idsArticulo,
   actualizadoPor: 'checho@madomi',
   actualizado: hace(dias),
 })
 const focos: FocoMock[] = [
-  nuevo(MES, 'Dulce de leche', DULCE, 2),
+  nuevo(MES, 'Dulce de leche', DULCE, 2, 'ccc', 25),
   nuevo(MES, 'Ravioles', RAVIOLES, 2),
-  nuevo(MES, 'Tapas de empanada', TAPAS, 4),
+  nuevo(MES, 'Tapas', TAPAS, 4, 'vol', 110),
   nuevo(ANTERIOR, 'Ravioles', RAVIOLES, 33),
-  nuevo(ANTERIOR, 'Pan rallado', PAN, 33),
+  nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol'),
   nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
 ]
 
@@ -87,6 +97,8 @@ const respuesta = (f: FocoMock) => ({
   idFoco: f.idFoco,
   mes: f.mes,
   nombre: f.nombre,
+  medida: f.medida,
+  meta: f.meta,
   articulos: f.idsArticulo.map((a) => ({ idArticulo: a, descripcion: descripcionDe(a) })),
   actualizadoPor: f.actualizadoPor,
   actualizado: f.actualizado,
@@ -145,14 +157,19 @@ function validar(cuerpo: Record<string, unknown>, idFoco: number | null) {
   const ids = Array.isArray(cuerpo.idsArticulo) ? [...new Set(cuerpo.idsArticulo.filter((x): x is number => typeof x === 'number'))] : []
   if (ids.length < 1 || ids.length > 50) errores.idsArticulo = ['Elegí entre 1 y 50 artículos.']
   else if (ids.some((a) => !articulos().some((x) => x.idArticulo === a))) errores.idsArticulo = ['Hay un artículo que no existe.']
+  const medida = cuerpo.medida ?? 'ccc'
+  if (medida !== 'ccc' && medida !== 'vol') errores.medida = ['Elegí qué se mide: CCC o VOL.']
+  const meta = cuerpo.meta ?? null
+  const maximo = medida === 'vol' ? 999 : 100
+  if (meta !== null && (typeof meta !== 'number' || meta < 1 || meta > maximo)) errores.meta = [`La meta va de 1 a ${maximo} %.`]
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el foco.', errores)
-  return { mes, nombre, ids }
+  return { mes, nombre, ids, medida: medida as Medida, meta: meta as number | null }
 }
 
 /** `POST /api/admin/focos` → 201. */
 export function crear(cuerpo: Record<string, unknown>, email: string) {
-  const { mes, nombre, ids } = validar(cuerpo, null)
-  const foco: FocoMock = { idFoco: siguiente++, mes, nombre, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
+  const { mes, nombre, ids, medida, meta } = validar(cuerpo, null)
+  const foco: FocoMock = { idFoco: siguiente++, mes, nombre, medida, meta, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
   focos.push(foco)
   return respuesta(foco)
 }
@@ -161,8 +178,8 @@ export function crear(cuerpo: Record<string, unknown>, email: string) {
 export function editar(idFoco: number, cuerpo: Record<string, unknown>, email: string) {
   const foco = focos.find((f) => f.idFoco === idFoco)
   if (!foco) throw new ErrorMock(404, 'Ese foco no existe.')
-  const { mes, nombre, ids } = validar(cuerpo, idFoco)
-  Object.assign(foco, { mes, nombre, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() })
+  const { mes, nombre, ids, medida, meta } = validar(cuerpo, idFoco)
+  Object.assign(foco, { mes, nombre, medida, meta, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() })
   return respuesta(foco)
 }
 
@@ -180,7 +197,10 @@ export function borrar(idFoco: number) {
 const diaDeCompra = (c: ClienteFake, m: number) => 1 + Math.floor(azar(c.idCliente * 31 + m * 7919)() * 28)
 const redondeo = (n: number) => Math.round(n * 10) / 10
 
-/** `GET /api/admin/focos/analisis?mes=`: el CCC de cada foco del mes por vendedor (sin la casa) y en total. */
+/**
+ * `GET /api/admin/focos/analisis?mes=`: cada foco del mes por vendedor (sin la casa) y en total. Los `ccc`, con la
+ * cobertura del foco contra el mes anterior al mismo día; los `vol`, con los bultos de Volumen mirado por el admin.
+ */
 export function analisis(p: URLSearchParams) {
   const mes = p.get('mes') ? mesValido(p.get('mes')) : MES
   if (mes > MES) throw new ErrorMock(400, 'Ese mes todavía no empezó.', { mes: ['Ese mes todavía no empezó.'] })
@@ -193,6 +213,22 @@ export function analisis(p: URLSearchParams) {
   const anteriorAl = enCurso ? `${mesAnterior.slice(0, 8)}${String(Math.min(diaCorte, finAnterior)).padStart(2, '0')}` : null
   const clientes = datos().filter((c) => !excluidos.has(c.idCliente))
   const vendedores = VENDEDORES.filter((v) => !v.esCasa)
+  // El primer mes con datos no tiene con qué compararse en Volumen: sus focos `vol` van sin base
+  let comp: { corteAl: string | null; baseHasta: string | null; diaHabil: number; diasHabilesMes: number } | null = null
+  try {
+    comp = comparacion('admin', mes).publica
+  } catch {
+    comp = null
+  }
+
+  /** Un foco `vol`: lo mismo que `/api/volumen?foco=` del admin, en total o de un vendedor. */
+  const bultos = (f: FocoMock, vendedor: number | null) => {
+    if (!comp) return { bultosActual: 0, bultosBase: null, porcentaje: null }
+    const p = new URLSearchParams({ mes })
+    if (vendedor !== null) p.set('vendedor', String(vendedor))
+    const { total } = volumen(p, 'admin', [], comoConsulta(f))
+    return { bultosActual: total.bultosActual ?? 0, bultosBase: total.bultosBase, porcentaje: total.porcentaje }
+  }
 
   const medir = (ids: number[], filtro: ReturnType<typeof filtroCompra>) => {
     const cartera = clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m))
@@ -213,18 +249,25 @@ export function analisis(p: URLSearchParams) {
     corteAl,
     mesAnterior,
     anteriorAl,
+    volumen: comp && { corteAl: comp.corteAl, baseHasta: comp.baseHasta, diaHabil: comp.diaHabil, diasHabilesMes: comp.diasHabilesMes },
     focos: focos
       .filter((f) => f.mes === mes)
       .sort(porNombre)
       .map((f) => {
+        const cabecera = { idFoco: f.idFoco, nombre: f.nombre, medida: f.medida, meta: f.meta }
+        // Con cartera ese mes: los mismos vendedores para las dos medidas
+        const conCartera = vendedores.filter((v) => clientes.some((c) => c.ruta.idPersonal === v.id && enCartera(c, m)))
+        if (f.medida === 'vol')
+          return {
+            ...cabecera,
+            total: bultos(f, null),
+            vendedores: conCartera.map((v) => ({ idPersonal: v.id, nombre: v.nombre, ...bultos(f, v.id) })),
+          }
         const filtro = filtroCompra(null, comoConsulta(f))
         return {
-          idFoco: f.idFoco,
-          nombre: f.nombre,
+          ...cabecera,
           total: medir(vendedores.map((v) => v.id), filtro),
-          vendedores: vendedores
-            .map((v) => ({ idPersonal: v.id, nombre: v.nombre, ...medir([v.id], filtro) }))
-            .filter((v) => v.clientesCartera > 0),
+          vendedores: conCartera.map((v) => ({ idPersonal: v.id, nombre: v.nombre, ...medir([v.id], filtro) })),
         }
       }),
   }

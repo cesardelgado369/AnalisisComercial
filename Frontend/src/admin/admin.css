@@ -180,7 +180,8 @@
 .adm-credenciales dd { margin: 0; font-weight: 700; word-break: break-all; }
 .adm-password { font-family: ui-monospace, 'Cascadia Mono', monospace; letter-spacing: .06em; }
 
-/* Focos del mes (FocosPage): los meses arriba, los focos de cada uno como tarjetas y abajo el análisis por vendedor */
+/* Focos del mes (FocosPage): los meses arriba y un contenedor por objetivo con todo junto: qué se mide, la meta, los
+   artículos y cómo viene cada vendedor (la rayita oscura es el mes anterior; la punteada, la meta) */
 .foco-meses { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
 .foco-mes {
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex-shrink: 0; min-width: 128px; min-height: 52px;
@@ -198,52 +199,60 @@
 .foco-del-mes-cabecera h2 { margin: 0; font-size: 18px; }
 .foco-del-mes-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
 .foco-vacio { background: var(--superficie); border: 1px dashed var(--borde-fuerte); border-radius: var(--radio-grande); }
-.foco-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
-.foco-tarjeta {
-  display: flex; flex-direction: column; gap: 10px; padding: 16px; cursor: pointer; font: inherit; text-align: left;
-  color: var(--texto); transition: border-color .15s, box-shadow .15s;
+.foco-analisis-espera { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--texto-2); }
+
+/* «CCC» / «VOL» al lado del nombre (la vista por focos de Cobertura también lo usa) */
+.foco-medida {
+  display: inline-block; padding: 1px 6px; margin-right: 2px; font-size: 10px; font-weight: 800; letter-spacing: .04em;
+  vertical-align: 2px; color: var(--acento); background: var(--superficie-media); border-radius: 4px;
 }
-.foco-tarjeta:hover { border-color: var(--acento-claro); box-shadow: 0 2px 10px rgba(124, 58, 237, .08); }
-.foco-tarjeta:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
-.foco-tarjeta-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-.foco-tarjeta-nombre { font-size: 16px; font-weight: 700; }
-.foco-tarjeta-editar { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--acento); }
+.foco-contenedores { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; align-items: start; }
+.foco-contenedor { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; }
+.foco-contenedor-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* Qué tipo de métrica es el objetivo (Cesar, 05/11): lo primero que se lee */
+.foco-tipo {
+  display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; font-size: 12px; font-weight: 800;
+  letter-spacing: .02em; border-radius: 999px;
+}
+.foco-tipo.ccc { color: #fff; background: var(--acento); }
+.foco-tipo.vol { color: var(--acento); background: var(--superficie); border: 1.5px solid var(--acento); }
+.foco-editar { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 13px; font-weight: 700; color: var(--acento); }
+.foco-contenedor-nombre { margin: 0; font-size: 20px; line-height: 1.2; }
+.foco-contenedor-mide { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: 13px; color: var(--texto-2); }
+.foco-meta {
+  display: inline-flex; align-items: center; padding: 1px 8px; font-size: 12px; font-weight: 700; color: var(--texto);
+  border: 1.5px dashed var(--texto-2); border-radius: 999px;
+}
 .foco-tarjeta-articulos { display: flex; flex-wrap: wrap; gap: 6px; }
 .foco-tarjeta-articulo {
   padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--texto);
   background: var(--superficie-baja); border: 1px solid var(--superficie-media); border-radius: 999px;
 }
-.foco-tarjeta-pie { margin-top: auto; font-size: 12px; color: var(--texto-2); }
-.foco-analisis-espera { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--texto-2); }
+.foco-tarjeta-pie { margin: 2px 0 0; font-size: 12px; color: var(--texto-3); }
 
-/* El análisis: una tarjeta por foco con el total y una barra por vendedor (la rayita oscura es el mes anterior) */
-.foco-analisis { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
-.foco-analisis-cabecera { display: flex; flex-direction: column; gap: 6px; }
-.foco-analisis-cabecera h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; }
-.foco-analisis-cabecera h2 .icono { color: var(--acento); }
-.foco-analisis-cabecera p { margin: 0; font-size: 13px; color: var(--texto-2); max-width: 760px; }
-.foco-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-weight: 600; }
+/* Cómo viene: el total con su barra y una barra por vendedor */
+.foco-medicion-resultado { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--superficie-media); }
+.foco-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; font-size: 13px; font-weight: 600; color: var(--texto-2); }
 .foco-leyenda > span { display: inline-flex; align-items: center; gap: 6px; }
 .foco-leyenda-barra { width: 18px; height: 8px; border-radius: 4px; background: var(--acento); }
 .foco-leyenda-antes { width: 2px; height: 14px; border-radius: 1px; background: var(--texto); }
-.foco-analisis-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
-.foco-analisis-foco { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--borde); border-radius: var(--radio-grande); background: var(--fondo); }
+.foco-leyenda-meta { width: 0; height: 14px; border-left: 2px dashed var(--texto-2); }
 .foco-analisis-total { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
-.foco-analisis-total h3 { margin: 0 auto 0 0; font-size: 16px; }
-.foco-analisis-numero { font-size: 24px; font-weight: 800; color: var(--texto); }
+.foco-analisis-numero { font-size: 26px; font-weight: 800; color: var(--texto); }
 .foco-analisis-detalle { font-size: 12px; color: var(--texto-2); }
 .foco-barra { position: relative; display: block; height: 8px; border-radius: 4px; background: var(--superficie-media); }
 .foco-barra-relleno { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--acento); }
-.foco-barra-antes { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--texto); box-shadow: 0 0 0 1px var(--fondo); }
+.foco-barra-antes { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--texto); box-shadow: 0 0 0 1px var(--superficie); }
+.foco-barra-meta { position: absolute; top: -4px; height: 16px; margin-left: -1px; border-left: 2px dashed var(--texto-2); }
 .foco-analisis-vendedores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .foco-vendedor {
-  display: grid; grid-template-columns: minmax(110px, 160px) minmax(60px, 1fr) 84px 64px; align-items: center; gap: 12px;
+  display: grid; grid-template-columns: minmax(110px, 150px) minmax(60px, 1fr) 124px 64px; align-items: center; gap: 12px;
   min-height: 44px; padding: 4px 8px; margin: 0 -8px; border-radius: var(--radio); color: var(--texto); text-decoration: none;
 }
 .foco-vendedor:hover { background: var(--superficie-baja); }
 .foco-vendedor:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
 .foco-vendedor-nombre { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.foco-vendedor-numeros { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.foco-vendedor-numeros { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; text-align: right; }
 .foco-vendedor-numeros strong { font-size: 14px; }
 .foco-dif { display: inline-flex; align-items: center; justify-content: flex-end; gap: 1px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .foco-dif .icono { font-size: 14px; }
@@ -252,6 +261,19 @@
 .foco-dif.igual, .foco-dif.sin { color: var(--texto-2); }
 
 /* El modal para elegir los artículos */
+.foco-medicion { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: none; min-width: 0; }
+.foco-medicion legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.foco-medidas { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.foco-opcion-medida {
+  flex-direction: row; align-items: flex-start; gap: 10px; padding: 12px; cursor: pointer;
+  border: 1px solid var(--borde-fuerte); border-radius: var(--radio-grande); background: var(--superficie);
+}
+.foco-opcion-medida input { margin-top: 2px; accent-color: var(--acento); }
+.foco-opcion-medida.elegida { border-color: var(--acento); background: var(--superficie-baja); }
+.foco-opcion-textos { display: flex; flex-direction: column; gap: 2px; }
+.foco-opcion-titulo { font-size: 14px; font-weight: 700; color: var(--texto); }
+.foco-meta-entrada { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--texto); }
+.adm-form .foco-meta-entrada input { width: 120px; }
 .foco-articulos { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: none; min-width: 0; }
 .foco-articulos legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
 .foco-elegidos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -303,8 +325,7 @@
   .adm-grupo-cuenta { margin-left: 34px; width: 100%; flex-wrap: wrap; gap: 4px 14px; }
   .foco-del-mes-acciones, .foco-del-mes-acciones .btn { width: 100%; justify-content: center; }
   .foco-mes { min-width: 112px; }
-  .foco-analisis { padding: 16px; }
-  .foco-analisis-foco { padding: 12px; }
+  .foco-contenedor { padding: 16px; }
   /* Cada vendedor en dos renglones: nombre y números arriba, la barra abajo */
   .foco-vendedor { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px; }
   .foco-vendedor .foco-barra { grid-column: 1 / -1; grid-row: 2; }

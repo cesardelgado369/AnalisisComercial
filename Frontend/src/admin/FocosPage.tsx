@@ -9,17 +9,19 @@ import { useMesReferencia } from '../comercial/mesReferencia'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { mesesDisponibles, nombrePropio, sumarMes } from '../cobertura/estados'
-import { cantidad, fechaUtc, haceCuanto, nombreMes, nombreMesTitulo } from '../utils/formato'
-import { AnalisisFocos } from './AnalisisFocos'
+import { cantidad, fechaUtc, formatoPorcentaje, haceCuanto, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
+import { MEDIDAS } from './medidas'
 import { ModalFoco } from './ModalFoco'
 import './admin.css'
 
 /**
- * Focos del mes (`/admin/focos?mes=`, solo el dueño; pedido de Checho del 03/11, por mes desde el 05/11): los productos
- * que el dueño quiere seguir cada mes (CCC Manteca, CCC Dulce de leche…). Arriba los meses (desde el primero con datos
- * hasta el que viene, para dejarlo armado); en cada uno, sus focos como tarjetas, y abajo cómo vienen vendiendo por
- * vendedor (AnalisisFocos). Los focos del mes en el que está parada la app son los del filtro «Foco del mes» de
- * Cobertura, Volumen y Devoluciones. Los empleados no ven nada de esto. CONTRATO_API.md, «Focos del mes».
+ * Focos del mes (`/admin/focos?mes=`, solo el dueño; pedido de Checho del 03/11, por mes desde el 05/11): los objetivos
+ * que el dueño quiere seguir cada mes, como los escribe Checho (CCC Manteca, VOL Tapas…). Arriba los meses (desde el
+ * primero con datos hasta el que viene, para dejarlo armado); en cada uno, un contenedor por objetivo con todo junto
+ * (Cesar, 05/11): qué se mide, la meta si tiene, sus artículos y cómo viene cada vendedor (AnalisisFocos). Los focos del
+ * mes en el que está parada la app son los del filtro «Foco del mes» de Cobertura, Volumen y Devoluciones. Los
+ * empleados no ven nada de esto. CONTRATO_API.md, «Focos del mes».
  */
 export function FocosPage() {
   const { mesEnCurso } = useSesionApp()
@@ -39,6 +41,9 @@ export function FocosPage() {
   const anterior = sumarMes(mes, -1)
   // Los del mes anterior que este todavía no tiene (por nombre): «Copiar los de octubre»
   const paraCopiar = delMes(anterior).filter((f) => !estos.some((e) => e.nombre.toLowerCase() === f.nombre.toLowerCase()))
+  // Cómo vienen: desde que el mes empieza (el que viene, todavía no) y si tiene focos
+  const analisis = useAnalisisFocos(mes !== proximo && estos.length > 0 ? mes : null)
+  const ctx = analisis.contexto
 
   function elegirMes(m: string) {
     setAviso(null)
@@ -53,7 +58,7 @@ export function FocosPage() {
     const fallas: string[] = []
     for (const f of paraCopiar) {
       try {
-        const cuerpo: FocoEnvio = { mes, nombre: f.nombre, idsArticulo: f.articulos.map((a) => a.idArticulo) }
+        const cuerpo: FocoEnvio = { mes, nombre: f.nombre, idsArticulo: f.articulos.map((a) => a.idArticulo), medida: f.medida, meta: f.meta }
         await api.post<Foco>('/admin/focos', cuerpo)
       } catch (e) {
         fallas.push(`${f.nombre} (${e instanceof ApiError ? e.mensajes.join(' ') : 'probá de nuevo'})`)
@@ -131,6 +136,17 @@ export function FocosPage() {
           </div>
         </div>
 
+        {estos.length > 0 &&
+          (mes === proximo ? (
+            <p className="foco-analisis-espera">
+              <span className="icono icono-chico" aria-hidden>calendar_month</span>
+              Cómo viene cada vendedor se ve desde el 1 de {nombreMes(mes)}, cuando haya ventas.
+            </p>
+          ) : ctx ? (
+            <LeyendaFocos ctx={ctx} conMeta={estos.some((f) => f.meta !== null)} />
+          ) : null)}
+        {analisis.errores.length > 0 && <ErrorCarga errores={analisis.errores} onReintentar={analisis.recargar} className="adm-error-carga" />}
+
         {!focos.datos ? (
           focos.errores.length ? null : <LoadingDefault texto="Cargando los focos…" />
         ) : estos.length === 0 ? (
@@ -141,38 +157,48 @@ export function FocosPage() {
               : 'Armá el primero con «Nuevo foco»: por ejemplo, Manteca con sus dos presentaciones.'}
           </p>
         ) : (
-          <div className="foco-tarjetas">
-            {estos.map((f) => (
-              <button key={f.idFoco} type="button" className="tarjeta foco-tarjeta" onClick={() => setModal({ foco: f })}>
-                <span className="foco-tarjeta-cabecera">
-                  <span className="foco-tarjeta-nombre">{f.nombre}</span>
-                  <span className="foco-tarjeta-editar">
-                    <span className="icono icono-chico" aria-hidden>edit</span>
-                    Editar
-                  </span>
-                </span>
-                <span className="foco-tarjeta-articulos">
-                  {f.articulos.map((a) => (
-                    <span key={a.idArticulo} className="foco-tarjeta-articulo">{nombrePropio(a.descripcion)}</span>
-                  ))}
-                </span>
-                <span className="foco-tarjeta-pie">
-                  {cantidad(f.articulos.length, 'artículo')} · {f.actualizadoPor} · {haceCuanto(fechaUtc(f.actualizado))}
-                </span>
-              </button>
-            ))}
+          <div className="foco-contenedores">
+            {estos.map((f) => {
+              const medida = MEDIDAS.find((m) => m.valor === f.medida)!
+              const analizado = analisis.a?.focos.find((x) => x.idFoco === f.idFoco)
+              return (
+                <article key={f.idFoco} className="tarjeta foco-contenedor" aria-labelledby={`foco-${f.idFoco}`}>
+                  <header className="foco-contenedor-cabecera">
+                    <span className={`foco-tipo ${f.medida}`}>{medida.texto}</span>
+                    <button type="button" className="btn-texto foco-editar" onClick={() => setModal({ foco: f })}>
+                      <span className="icono icono-chico" aria-hidden>edit</span>
+                      Editar<span className="sr-solo"> {f.nombre}</span>
+                    </button>
+                  </header>
+                  <h3 id={`foco-${f.idFoco}`} className="foco-contenedor-nombre">{f.nombre}</h3>
+                  <p className="foco-contenedor-mide">
+                    {f.medida === 'vol' && ctx ? `Los bultos del foco contra ${ctx.vol}.` : medida.ayuda}
+                    {f.meta !== null && (
+                      <strong className="foco-meta">
+                        Meta {formatoPorcentaje(f.meta)}
+                        {f.medida === 'vol' ? ` de ${nombreMes(anterior)}` : ' de los clientes'}
+                      </strong>
+                    )}
+                  </p>
+                  <div className="foco-tarjeta-articulos" aria-label="Artículos">
+                    {f.articulos.map((a) => (
+                      <span key={a.idArticulo} className="foco-tarjeta-articulo">{nombrePropio(a.descripcion)}</span>
+                    ))}
+                  </div>
+                  {analizado && ctx ? (
+                    <MedicionFoco f={analizado} ctx={ctx} />
+                  ) : mes !== proximo && !analisis.errores.length ? (
+                    <LoadingDefault texto="Armando cómo viene…" />
+                  ) : null}
+                  <p className="foco-tarjeta-pie">
+                    {cantidad(f.articulos.length, 'artículo')} · {f.actualizadoPor} · {haceCuanto(fechaUtc(f.actualizado))}
+                  </p>
+                </article>
+              )
+            })}
           </div>
         )}
       </section>
-
-      {mes === proximo ? (
-        <p className="foco-analisis-espera">
-          <span className="icono icono-chico" aria-hidden>calendar_month</span>
-          Cómo vienen se ve desde el 1 de {nombreMes(mes)}, cuando haya ventas.
-        </p>
-      ) : (
-        estos.length > 0 && <AnalisisFocos mes={mes} />
-      )}
 
       {modal && (
         <ModalFoco
