@@ -4,11 +4,22 @@
 /* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* Con focos del mes prendidos, uno más */
+/* El dueño, con focos en el mes: uno más */
 .cob-filtros.con-foco { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .cob-filtros.sin-vendedor.con-foco { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-/* El mes del dueño: en la PC está en la cabecera; en la barra, solo en el celular */
-.cob-filtro-mes { display: none; }
+/* El mes del dueño (con «Focos» al lado): en la PC está en la cabecera; en la barra, solo en el celular */
+.cob-filtro-mes { display: none; align-items: flex-end; gap: 8px; min-width: 0; }
+.cob-filtro-mes .cob-filtro { flex: 1; min-width: 0; }
+.cob-filtro-mes-focos { flex-shrink: 0; min-height: 44px; border-radius: var(--radio-grande); }
+.cob-filtro-mes-focos[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+
+/* Vista por focos (VistaFocos): los focos como columnas, su nombre en el indicador y qué dice cada círculo */
+.cob-kpi-foco .cob-kpi-mes { max-width: 140px; line-height: 1.2; }
+.cob-col-foco { width: 110px; line-height: 1.25; }
+.cob-referencias { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; margin: 0 0 0 auto; font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.cob-referencia { display: inline-flex; align-items: center; gap: 6px; }
+.cob-tarjeta-focos { flex-wrap: wrap; gap: 8px 14px; }
+.cob-tarjeta-foco { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cob-filtro { gap: 6px; }
 .cob-filtro select {
   height: 44px; padding: 0 40px 0 14px; font-size: 14px; font-weight: 600; color: var(--texto); cursor: pointer;

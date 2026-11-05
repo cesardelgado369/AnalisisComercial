@@ -1,15 +1,33 @@
 /**
- * TODO testing — Focos del mes para `npm run dev:mock` (CONTRATO_API.md, «Focos del mes», pedido de Checho del 03/11):
- * grupos de artículos con nombre que el admin prende o apaga, el filtro `?foco=` y los artículos para elegirlos. Todo
- * en memoria: reiniciar el servidor de prueba vuelve al estado inicial.
+ * TODO testing — Focos del mes para `npm run dev:mock` (CONTRATO_API.md, «Focos del mes», pedido de Checho del 03/11;
+ * por mes desde el 05/11): cada mes tiene sus focos (grupos de artículos con nombre), el filtro `?foco=`, los artículos
+ * para elegirlos y el análisis del mes por vendedor. Todo en memoria: reiniciar el servidor de prueba vuelve al estado
+ * inicial.
  */
 import { ARTICULOS, articuloDe, articulosDelMes, idArticulo, lineas } from './datosArticulos.ts'
-import { ErrorMock, datos, hoyArgentina, indiceMes, mesDe, type ClienteFake, type FocoConsulta } from './datosCobertura.ts'
+import {
+  ErrorMock,
+  PRIMER_MES,
+  VENDEDORES,
+  ayerArgentina,
+  azar,
+  compro,
+  datos,
+  enCartera,
+  excluidos,
+  filtroCompra,
+  hoyArgentina,
+  indiceMes,
+  mesDe,
+  sumarMeses,
+  type ClienteFake,
+  type FocoConsulta,
+} from './datosCobertura.ts'
 
 interface FocoMock {
   idFoco: number
+  mes: string
   nombre: string
-  activo: boolean
   idsArticulo: number[]
   actualizadoPor: string
   actualizado: string
@@ -37,44 +55,63 @@ function division(descripcion: string) {
 }
 
 const hace = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOString()
-let siguiente = 5
+const MES = mesDe(hoyArgentina())
+const ANTERIOR = sumarMeses(MES, -1)
+const DOS_ANTES = sumarMeses(MES, -2)
+const DULCE = [id('DULCE DE LECHE 400G')]
+const RAVIOLES = [id('ATM RAVIOLES DE VERDURA 1KG'), id('RAVIOLES DE RICOTA 500G')]
+const TAPAS = [id('TAPAS DE EMPANADA COPETIN X24'), id('TAPAS DE EMPANADA FREIR X12'), id('TAPAS DE EMPANADA HORNO X12')]
+const PAN = [id('PAN RALLADO 1KG'), id('PAN RALLADO 500G')]
+
+/** El mes en curso con tres focos, el anterior con dos (Ravioles se repite) y uno más atrás; el que viene, vacío. */
+let siguiente = 1
+const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number): FocoMock => ({
+  idFoco: siguiente++,
+  mes,
+  nombre,
+  idsArticulo,
+  actualizadoPor: 'checho@madomi',
+  actualizado: hace(dias),
+})
 const focos: FocoMock[] = [
-  { idFoco: 1, nombre: 'Dulce de leche', activo: true, idsArticulo: [id('DULCE DE LECHE 400G')], actualizadoPor: 'checho@madomi', actualizado: hace(2) },
-  { idFoco: 2, nombre: 'Ravioles', activo: true, idsArticulo: [id('ATM RAVIOLES DE VERDURA 1KG'), id('RAVIOLES DE RICOTA 500G')], actualizadoPor: 'checho@madomi', actualizado: hace(2) },
-  {
-    idFoco: 3,
-    nombre: 'Tapas de empanada',
-    activo: true,
-    idsArticulo: [id('TAPAS DE EMPANADA COPETIN X24'), id('TAPAS DE EMPANADA FREIR X12'), id('TAPAS DE EMPANADA HORNO X12')],
-    actualizadoPor: 'checho@madomi',
-    actualizado: hace(5),
-  },
-  { idFoco: 4, nombre: 'Pan rallado', activo: false, idsArticulo: [id('PAN RALLADO 1KG'), id('PAN RALLADO 500G')], actualizadoPor: 'checho@madomi', actualizado: hace(30) },
+  nuevo(MES, 'Dulce de leche', DULCE, 2),
+  nuevo(MES, 'Ravioles', RAVIOLES, 2),
+  nuevo(MES, 'Tapas de empanada', TAPAS, 4),
+  nuevo(ANTERIOR, 'Ravioles', RAVIOLES, 33),
+  nuevo(ANTERIOR, 'Pan rallado', PAN, 33),
+  nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
 ]
 
 const descripcionDe = (idArt: number) => (idArt === ANULADO.idArticulo ? ANULADO.descripcion : articuloDe(idArt).descripcion)
 const respuesta = (f: FocoMock) => ({
   idFoco: f.idFoco,
+  mes: f.mes,
   nombre: f.nombre,
-  activo: f.activo,
   articulos: f.idsArticulo.map((a) => ({ idArticulo: a, descripcion: descripcionDe(a) })),
   actualizadoPor: f.actualizadoPor,
   actualizado: f.actualizado,
 })
+const porNombre = (a: FocoMock, b: FocoMock) => a.nombre.localeCompare(b.nombre, 'es')
 
-/** `GET /api/cobertura/focos` (solo los prendidos) y `GET /api/admin/focos` (todos), por nombre. */
-export const listar = (soloPrendidos: boolean) =>
-  focos
-    .filter((f) => !soloPrendidos || f.activo)
-    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
-    .map(respuesta)
+/** Un `mes` del contrato: día 1, desde el primer mes con datos hasta el que viene. */
+function mesValido(texto: unknown, campo = 'mes') {
+  const mes = typeof texto === 'string' && /^\d{4}-\d{2}-01$/.test(texto) ? texto : null
+  if (!mes || mes < PRIMER_MES || mes > sumarMeses(MES, 1))
+    throw new ErrorMock(400, 'Revisá el mes.', { [campo]: ['Elegí un mes entre el primero con datos y el que viene.'] })
+  return mes
+}
 
-/** `?foco=` de Cobertura, Volumen y Devoluciones: 400 si no existe (uno apagado sigue andando, como la API). */
-export function deConsulta(p: URLSearchParams): FocoConsulta | null {
-  const texto = p.get('foco')
-  if (!texto) return null
-  const foco = focos.find((f) => String(f.idFoco) === texto)
-  if (!foco) throw new ErrorMock(400, 'Ese foco no existe.', { foco: ['Ese foco no existe.'] })
+/** `GET /api/cobertura/focos?mes=` (solo admin): los de ese mes, por nombre. Sin mes, el en curso. */
+export function delMes(p: URLSearchParams) {
+  const mes = p.get('mes') ? mesValido(p.get('mes')) : MES
+  return focos.filter((f) => f.mes === mes).sort(porNombre).map(respuesta)
+}
+
+/** `GET /api/admin/focos`: los de todos los meses, el más nuevo primero y por nombre. */
+export const listar = () => [...focos].sort((a, b) => b.mes.localeCompare(a.mes) || porNombre(a, b)).map(respuesta)
+
+/** Los artículos de un foco como filtro de compra (como `?foco=` en Cobertura). */
+function comoConsulta(foco: FocoMock): FocoConsulta {
   const articulos = new Set(foco.idsArticulo)
   return {
     nombre: foco.nombre,
@@ -83,34 +120,49 @@ export function deConsulta(p: URLSearchParams): FocoConsulta | null {
   }
 }
 
-/** Las validaciones del contrato: nombre 1–60 y único; entre 1 y 50 artículos, todos existentes. */
+/** `?foco=` de Cobertura, Volumen y Devoluciones: 400 si no existe. */
+export function deConsulta(p: URLSearchParams): FocoConsulta | null {
+  const texto = p.get('foco')
+  if (!texto) return null
+  const foco = focos.find((f) => String(f.idFoco) === texto)
+  if (!foco) throw new ErrorMock(400, 'Ese foco no existe.', { foco: ['Ese foco no existe.'] })
+  return comoConsulta(foco)
+}
+
+/** Las validaciones del contrato: mes; nombre 1–60 y único en el mes; entre 1 y 50 artículos, todos existentes. */
 function validar(cuerpo: Record<string, unknown>, idFoco: number | null) {
   const errores: Record<string, string[]> = {}
+  let mes = ''
+  try {
+    mes = mesValido(cuerpo.mes)
+  } catch (e) {
+    Object.assign(errores, (e as ErrorMock).errors)
+  }
   const nombre = typeof cuerpo.nombre === 'string' ? cuerpo.nombre.trim() : ''
   if (!nombre || nombre.length > 60) errores.nombre = ['El nombre va de 1 a 60 letras.']
-  else if (focos.some((f) => f.idFoco !== idFoco && f.nombre.toLowerCase() === nombre.toLowerCase())) errores.nombre = ['Ya hay un foco con ese nombre.']
+  else if (focos.some((f) => f.idFoco !== idFoco && f.mes === mes && f.nombre.toLowerCase() === nombre.toLowerCase()))
+    errores.nombre = ['Ya hay un foco con ese nombre en ese mes.']
   const ids = Array.isArray(cuerpo.idsArticulo) ? [...new Set(cuerpo.idsArticulo.filter((x): x is number => typeof x === 'number'))] : []
   if (ids.length < 1 || ids.length > 50) errores.idsArticulo = ['Elegí entre 1 y 50 artículos.']
   else if (ids.some((a) => !articulos().some((x) => x.idArticulo === a))) errores.idsArticulo = ['Hay un artículo que no existe.']
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el foco.', errores)
-  return { nombre, ids }
+  return { mes, nombre, ids }
 }
 
 /** `POST /api/admin/focos` → 201. */
 export function crear(cuerpo: Record<string, unknown>, email: string) {
-  const { nombre, ids } = validar(cuerpo, null)
-  const foco: FocoMock = { idFoco: siguiente++, nombre, activo: cuerpo.activo !== false, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
+  const { mes, nombre, ids } = validar(cuerpo, null)
+  const foco: FocoMock = { idFoco: siguiente++, mes, nombre, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
   focos.push(foco)
   return respuesta(foco)
 }
 
-/** `PUT /api/admin/focos/{id}`: reemplaza nombre y artículos; `activo`, si viene. */
+/** `PUT /api/admin/focos/{id}`: reemplaza mes, nombre y artículos. */
 export function editar(idFoco: number, cuerpo: Record<string, unknown>, email: string) {
   const foco = focos.find((f) => f.idFoco === idFoco)
   if (!foco) throw new ErrorMock(404, 'Ese foco no existe.')
-  const { nombre, ids } = validar(cuerpo, idFoco)
-  Object.assign(foco, { nombre, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() })
-  if (typeof cuerpo.activo === 'boolean') foco.activo = cuerpo.activo
+  const { mes, nombre, ids } = validar(cuerpo, idFoco)
+  Object.assign(foco, { mes, nombre, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() })
   return respuesta(foco)
 }
 
@@ -119,6 +171,63 @@ export function borrar(idFoco: number) {
   const i = focos.findIndex((f) => f.idFoco === idFoco)
   if (i < 0) throw new ErrorMock(404, 'Ese foco no existe.')
   focos.splice(i, 1)
+}
+
+/**
+ * El día del mes en que el cliente compró por primera vez (inventado y fijo por cliente y mes): para el anterior «al
+ * mismo día». La API lo saca de la fecha de los comprobantes.
+ */
+const diaDeCompra = (c: ClienteFake, m: number) => 1 + Math.floor(azar(c.idCliente * 31 + m * 7919)() * 28)
+const redondeo = (n: number) => Math.round(n * 10) / 10
+
+/** `GET /api/admin/focos/analisis?mes=`: el CCC de cada foco del mes por vendedor (sin la casa) y en total. */
+export function analisis(p: URLSearchParams) {
+  const mes = p.get('mes') ? mesValido(p.get('mes')) : MES
+  if (mes > MES) throw new ErrorMock(400, 'Ese mes todavía no empezó.', { mes: ['Ese mes todavía no empezó.'] })
+  const m = indiceMes(mes)
+  const enCurso = mes === MES
+  const mesAnterior = sumarMeses(mes, -1)
+  const corteAl = enCurso ? ayerArgentina() : null
+  const diaCorte = corteAl && corteAl >= mes ? Number(corteAl.slice(8, 10)) : 31
+  const finAnterior = new Date(Date.UTC(Number(mesAnterior.slice(0, 4)), Number(mesAnterior.slice(5, 7)), 0)).getUTCDate()
+  const anteriorAl = enCurso ? `${mesAnterior.slice(0, 8)}${String(Math.min(diaCorte, finAnterior)).padStart(2, '0')}` : null
+  const clientes = datos().filter((c) => !excluidos.has(c.idCliente))
+  const vendedores = VENDEDORES.filter((v) => !v.esCasa)
+
+  const medir = (ids: number[], filtro: ReturnType<typeof filtroCompra>) => {
+    const cartera = clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m))
+    const conCompra = cartera.filter((c) => compro(c, m, filtro)).length
+    const antes = m > 0 ? clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m - 1)) : []
+    const conCompraAntes = antes.filter((c) => compro(c, m - 1, filtro) && (!enCurso || diaDeCompra(c, m - 1) <= diaCorte)).length
+    return {
+      clientesConCompra: conCompra,
+      clientesCartera: cartera.length,
+      porcentaje: cartera.length ? redondeo((conCompra / cartera.length) * 100) : 0,
+      porcentajeAnterior: antes.length ? redondeo((conCompraAntes / antes.length) * 100) : null,
+    }
+  }
+
+  return {
+    mes,
+    mesEnCurso: enCurso,
+    corteAl,
+    mesAnterior,
+    anteriorAl,
+    focos: focos
+      .filter((f) => f.mes === mes)
+      .sort(porNombre)
+      .map((f) => {
+        const filtro = filtroCompra(null, comoConsulta(f))
+        return {
+          idFoco: f.idFoco,
+          nombre: f.nombre,
+          total: medir(vendedores.map((v) => v.id), filtro),
+          vendedores: vendedores
+            .map((v) => ({ idPersonal: v.id, nombre: v.nombre, ...medir([v.id], filtro) }))
+            .filter((v) => v.clientesCartera > 0),
+        }
+      }),
+  }
 }
 
 let cacheArticulos: { dia: string; lista: ReturnType<typeof armarArticulos> } | null = null

@@ -7,7 +7,7 @@ import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { Modal } from '../components/Modal'
 import { nombrePropio } from '../cobertura/estados'
-import { cantidad } from '../utils/formato'
+import { cantidad, nombreMes } from '../utils/formato'
 
 /** Los límites del backend (CONTRATO_API.md, «Focos del mes»). */
 const MAXIMO_NOMBRE = 60
@@ -16,15 +16,15 @@ const MAXIMO_ARTICULOS = 50
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /**
- * Crear o editar un foco del mes: el nombre que se ve en el filtro y sus artículos de Chess, agrupados por la DIVISION
+ * Crear o editar un foco de un mes: el nombre que se ve en el filtro y sus artículos de Chess, agrupados por la DIVISION
  * de Chess y con cuántos clientes los compraron el mes pasado (para elegir las presentaciones que se venden). Los
  * anulados se ofrecen solo si se piden o si el foco ya los tiene. Editando, también se borra (con confirmación).
  */
-export function ModalFoco({ foco, onCerrar, onGuardado }: { foco: Foco | null; onCerrar: () => void; onGuardado: (texto: string) => void }) {
+export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () => void; onGuardado: (texto: string) => void }) {
+  const { foco, mes, onCerrar, onGuardado } = props
   const articulos = useConsulta<ArticuloChess[]>('/admin/articulos', 'No pudimos leer los artículos de Chess.')
   const [nombre, setNombre] = useState(foco?.nombre ?? '')
   const [ids, setIds] = useState<number[]>(() => foco?.articulos.map((a) => a.idArticulo) ?? [])
-  const [activo, setActivo] = useState(foco?.activo ?? true)
   const [texto, setTexto] = useState('')
   const [conAnulados, setConAnulados] = useState(false)
   const [errores, setErrores] = useState<Record<string, string>>({})
@@ -66,10 +66,10 @@ export function ModalFoco({ foco, onCerrar, onGuardado }: { foco: Foco | null; o
     if (Object.keys(faltan).length) return
     setGuardando(true)
     try {
-      const cuerpo: FocoEnvio = { nombre: nombre.trim(), idsArticulo: ids, activo }
+      const cuerpo: FocoEnvio = { mes, nombre: nombre.trim(), idsArticulo: ids }
       const r = foco ? await api.put<Foco>(`/admin/focos/${foco.idFoco}`, cuerpo) : await api.post<Foco>('/admin/focos', cuerpo)
       avisarCambio()
-      onGuardado(`${r.nombre}: ${foco ? 'guardado' : 'creado'}${r.activo ? ', y ya está en el filtro.' : ' (apagado: no aparece en el filtro).'}`)
+      onGuardado(`${r.nombre}: ${foco ? 'guardado' : `creado en ${nombreMes(r.mes)}`}.`)
     } catch (err) {
       if (!(err instanceof ApiError)) {
         setGeneral('No se pudo guardar. Probá de nuevo.')
@@ -112,8 +112,8 @@ export function ModalFoco({ foco, onCerrar, onGuardado }: { foco: Foco | null; o
     <Modal
       abierto
       onCerrar={onCerrar}
-      titulo={foco ? 'Editar foco' : 'Nuevo foco'}
-      subtitulo={foco?.nombre}
+      titulo={foco ? 'Editar foco' : `Nuevo foco de ${nombreMes(mes)}`}
+      subtitulo={foco ? `${foco.nombre} · ${nombreMes(mes)}` : undefined}
       tamano="grande"
       cerrable={!guardando}
       pie={
@@ -159,13 +159,11 @@ export function ModalFoco({ foco, onCerrar, onGuardado }: { foco: Foco | null; o
             aria-invalid={!!errores.nombre}
             data-autofocus
           />
-          <span className="campo-ayuda">Así se ve en el filtro «Foco del mes» de Cobertura, Volumen y Devoluciones.</span>
+          <span className="campo-ayuda">
+            Así lo ves en Cobertura, Volumen y Devoluciones cuando estás parado en {nombreMes(mes)}. Los vendedores no ven
+            los focos.
+          </span>
           {errores.nombre && <span className="campo-error">{errores.nombre}</span>}
-        </label>
-
-        <label className="check-linea">
-          <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />
-          Prendido: aparece en el filtro este mes
         </label>
 
         <fieldset className="foco-articulos" aria-invalid={!!errores.idsArticulo}>

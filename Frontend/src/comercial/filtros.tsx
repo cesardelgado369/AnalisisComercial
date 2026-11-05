@@ -1,12 +1,12 @@
 import { useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Foco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
-import { cantidad, nombreMesTitulo } from '../utils/formato'
+import { cantidad, nombreMes, nombreMesTitulo } from '../utils/formato'
 import type { ContextoAyuda } from './ayuda'
-import { useMesReferencia, type MesReferencia } from './mesReferencia'
+import { useMesReferencia, useVistaFocos, type MesReferencia } from './mesReferencia'
 
 /** Un valor de la URL, si es uno de los válidos; si no (o si no está), el de siempre. */
 export function deLista<T extends string>(valor: string | null, validos: readonly T[], defecto: T): T {
@@ -22,8 +22,13 @@ export function useFiltrosComerciales() {
   const sesion = useSesionApp()
   const referencia = useMesReferencia()
   const [params, setParams] = useSearchParams()
-  // Los focos prendidos por el dueño (Checho, 03/11); sin ninguno, el filtro no se muestra
-  const focos = useConsulta<Foco[]>('/cobertura/focos', 'No se pudieron leer los focos del mes.')
+  const esAdmin = sesion.rol === 'admin'
+  // Los focos del mes en el que está parada la app (Checho, 03/11; de cada mes desde el 05/11), solo para el dueño:
+  // los empleados no los ven (Cesar, 05/11; la API les da 403). Sin ninguno, el filtro no se muestra
+  const focos = useConsulta<Foco[]>(
+    !esAdmin ? null : referencia.enCurso ? '/cobertura/focos' : `/cobertura/focos?mes=${referencia.mes}`,
+    'No se pudieron leer los focos del mes.',
+  )
   const esOperario = sesion.rol === 'operario'
   // El operario elige solo si tiene más de un vendedor de Chess (p. ej. el mismo vendedor renombrado en Chess con otro id)
   const eligeVendedor = !esOperario || sesion.vendedores.length > 1
@@ -33,9 +38,9 @@ export function useFiltrosComerciales() {
   const diaUrl = Number(params.get('dia'))
   const dia = DIAS_VISITA.some((d) => d.codigo === diaUrl) ? diaUrl : null
   const unidad = params.get('unidad') || null
-  // Un foco que el dueño apagó (o borró) deja de filtrar; mientras llega la lista, vale el de la URL
+  // Un foco de otro mes (o borrado) deja de filtrar; mientras llega la lista, vale el de la URL
   const focoUrl = Number(params.get('foco'))
-  const foco = focoUrl > 0 && (focos.datos === null || focos.datos.some((f) => f.idFoco === focoUrl)) ? focoUrl : null
+  const foco = esAdmin && focoUrl > 0 && (focos.datos === null || focos.datos.some((f) => f.idFoco === focoUrl)) ? focoUrl : null
   const focoElegido = focos.datos?.find((f) => f.idFoco === foco) ?? null
   const busqueda = params.get('busqueda')?.trim() ?? ''
   /** Con «Todos los vendedores», debajo de la ruta de cada cliente va también su vendedor. */
@@ -92,17 +97,16 @@ export function useFiltrosComerciales() {
         : 'Todos los vendedores'
 
   /** Como la web actual: «246 clientes, lunes, todas las unidades» (y, con un foco, «…, foco Manteca»). */
-  const subtitulo = (clientes: number) =>
+  const subtitulo = (clientes: number, conFoco = true) =>
     [
       cantidad(clientes, 'cliente'),
       dia !== null ? DIAS_VISITA.find((d) => d.codigo === dia)!.nombre.toLowerCase() : 'todos los días',
       unidad ? unidadEnFrase(unidad) : 'todas las unidades',
-      ...(focoElegido ? [`foco ${focoElegido.nombre}`] : []),
+      ...(focoElegido && conFoco ? [`foco ${focoElegido.nombre}`] : []),
     ].join(', ')
 
   /** El dueño ve cómo se calculó cada número (comercial/ayuda.tsx); los demás roles, no. */
-  const ayuda: ContextoAyuda | null =
-    sesion.rol === 'admin' ? { vendedor: vendedor === null ? null : titulo, dia, unidad, foco: focoElegido } : null
+  const ayuda: ContextoAyuda | null = esAdmin ? { vendedor: vendedor === null ? null : titulo, dia, unidad, foco: focoElegido } : null
 
   return {
     sesion,
@@ -132,18 +136,19 @@ export function useFiltrosComerciales() {
   }
 }
 
-type Filtros = ReturnType<typeof useFiltrosComerciales>
+export type Filtros = ReturnType<typeof useFiltrosComerciales>
 
 /**
  * Los desplegables. En el celular el dueño suma el mes en el que se para la app (en la PC lo tiene en la cabecera,
  * layout/MesCabecera; Volumen tiene el suyo y lo saca con `conMes={false}`). En el celular van compactos: el vendedor arriba y día y unidad lado a lado, sin el nombre
  * del filtro a la vista (el valor elegido ya lo dice: «Todos los días», «Lunes»); el lector de pantalla lo lee igual.
  */
-export function BarraFiltros({ filtros, conMes = true }: { filtros: Filtros; conMes?: boolean }) {
+export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filtros: Filtros; conMes?: boolean; sinFoco?: boolean }) {
   const { sesion, cambiar, esOperario, eligeVendedor, vendedor, dia, unidad, focos, foco } = filtros
   const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer las unidades de negocio.')
-  // El foco, solo si el dueño prendió alguno (si la lista no llegó, no se muestra: es un filtro de más)
-  const conFoco = !!focos.datos?.length
+  // El foco, solo si el mes tiene alguno (si la lista no llegó, no se muestra: es un filtro de más). En la vista por
+  // focos de Cobertura (`sinFoco`) tampoco: ahí están todos, uno por columna
+  const conFoco = !sinFoco && !!focos.datos?.length
   return (
     <div className={['cob-filtros', !eligeVendedor && 'sin-vendedor', conFoco && 'con-foco'].filter(Boolean).join(' ')}>
       {eligeVendedor && (
@@ -208,19 +213,33 @@ export function BarraFiltros({ filtros, conMes = true }: { filtros: Filtros; con
  */
 function SelectorMes({ referencia }: { referencia: MesReferencia }) {
   const { mes, enCurso, opciones, elegir } = referencia
+  const focos = useVistaFocos()
+  const navegar = useNavigate()
   const ultimo = opciones[opciones.length - 1]
   return (
-    <label className={enCurso ? 'cob-filtro cob-filtro-mes' : 'cob-filtro cob-filtro-mes cob-filtro-pasado'}>
-      <span className="cob-filtro-nombre">Mes</span>
-      <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
-        {[...opciones].reverse().map((m) => (
-          <option key={m} value={m === ultimo ? '' : m}>
-            {nombreMesTitulo(m)}
-            {m === ultimo ? ' (en curso)' : ''}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="cob-filtro-mes">
+      <label className={enCurso ? 'cob-filtro' : 'cob-filtro cob-filtro-pasado'}>
+        <span className="cob-filtro-nombre">Mes</span>
+        <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
+          {[...opciones].reverse().map((m) => (
+            <option key={m} value={m === ultimo ? '' : m}>
+              {nombreMesTitulo(m)}
+              {m === ultimo ? ' (en curso)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        className="btn cob-filtro-mes-focos"
+        aria-pressed={focos.activa}
+        onClick={() => navegar(focos.destino)}
+        title={focos.activa ? 'Volver a los clientes por mes' : `Los clientes con una columna por foco de ${nombreMes(mes)}`}
+      >
+        <span className="icono icono-chico" aria-hidden>filter_alt</span>
+        Focos
+      </button>
+    </div>
   )
 }
 

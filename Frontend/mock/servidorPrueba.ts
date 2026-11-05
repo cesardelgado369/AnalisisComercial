@@ -108,11 +108,14 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
   const rol = rolDe(email)
   if (!rol) return responder(res, 403, { status: 403, title: 'Todavía no tenés acceso a Análisis Comercial. Pedíselo al administrador.' })
   try {
+    // Los focos son solo del dueño (Cesar, 05/11): la lista y el filtro `foco=` dan 403 a los empleados
+    if (rol !== 'admin' && (ruta === '/api/cobertura/focos' || p.has('foco')))
+      return responder(res, 403, { status: 403, title: 'Los focos del mes son solo para administradores.' })
     if (ruta === '/api/sesion') return responder(res, 200, sesionApp(email, rol))
     if (ruta === '/api/sincronizacion/estado') return responder(res, 200, sinc.estado(ayerArgentina()))
     if (ruta === '/api/cobertura/vendedores') return responder(res, 200, vendedoresVisibles(rol, vendedoresDelOperario(email)))
     if (ruta === '/api/cobertura/unidades') return responder(res, 200, UNIDADES)
-    if (ruta === '/api/cobertura/focos') return responder(res, 200, focos.listar(true))
+    if (ruta === '/api/cobertura/focos') return responder(res, 200, focos.delMes(p))
     if (ruta === '/api/cobertura') {
       await demora(350)
       return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
@@ -170,7 +173,8 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   }
   if (metodo === 'GET' && ruta === '/api/admin/sincronizaciones') return responder(res, 200, sinc.listar(Number(p.get('cantidad')) || 30))
   if (metodo === 'POST' && ruta === '/api/admin/sincronizaciones') return responder(res, 202, sinc.pedir(email))
-  if (metodo === 'GET' && ruta === '/api/admin/focos') return responder(res, 200, focos.listar(false))
+  if (metodo === 'GET' && ruta === '/api/admin/focos') return responder(res, 200, focos.listar())
+  if (metodo === 'GET' && ruta === '/api/admin/focos/analisis') return responder(res, 200, focos.analisis(p))
   if (metodo === 'GET' && ruta === '/api/admin/articulos') return responder(res, 200, focos.articulos())
   if (metodo === 'POST' && ruta === '/api/admin/focos') return responder(res, 201, focos.crear(await leerCuerpo(req), email))
   if (metodo === 'PUT' && foco) return responder(res, 200, focos.editar(Number(foco[1]), await leerCuerpo(req), email))

@@ -532,23 +532,55 @@ export interface ArticuloFoco {
 
 /**
  * Un foco: un grupo de artículos con nombre («Manteca» = MANTECA MADOMI X100G + X200G: las dos presentaciones cuentan
- * como una). `GET /api/cobertura/focos` trae solo los prendidos, por nombre (el filtro «Foco» de Cobertura, Volumen y
- * Devoluciones); `GET /api/admin/focos`, todos.
+ * como una). Cada foco es de un mes (Cesar, 05/11: «cada mes serán focos distintos»; el nombre es único en el mes).
+ * `GET /api/cobertura/focos?mes=` trae los de ese mes, por nombre (el filtro «Foco» de Cobertura, Volumen y
+ * Devoluciones; operario y supervisor, siempre el mes en curso); `GET /api/admin/focos`, los de todos los meses.
  */
 export interface Foco {
   idFoco: number
+  /** «2026-11-01». */
+  mes: string
   nombre: string
-  activo: boolean
   articulos: ArticuloFoco[]
   actualizadoPor: string
   actualizado: string
 }
 
-/** Body de `POST /api/admin/focos` y `PUT /{idFoco}` (reemplaza nombre y artículos; `activo`, si viene). */
+/** Body de `POST /api/admin/focos` y `PUT /{idFoco}` (reemplaza mes, nombre y artículos). */
 export interface FocoEnvio {
+  mes: string
   nombre: string
   idsArticulo: number[]
-  activo?: boolean
+}
+
+/** Cómo viene un foco en un grupo de clientes: el «CCC Manteca» de Checho. */
+export interface CoberturaFoco {
+  /** Clientes de la cartera de ese mes que compraron algún artículo del foco. */
+  clientesConCompra: number
+  clientesCartera: number
+  /** 0–100, un decimal. */
+  porcentaje: number
+  /** El mismo foco el mes anterior: en el mes en curso, hasta `anteriorAl`; null sin mes anterior o sin cartera. */
+  porcentajeAnterior: number | null
+}
+
+/** `GET /api/admin/focos/analisis?mes=` (solo admin): cómo vienen vendiendo los focos del mes, por vendedor. */
+export interface AnalisisFocos {
+  mes: string
+  mesEnCurso: boolean
+  /** Hasta qué día hay ventas (solo el mes en curso). */
+  corteAl: string | null
+  mesAnterior: string
+  /** El mismo día del mes anterior (solo en el mes en curso); null = el mes anterior completo. */
+  anteriorAl: string | null
+  focos: {
+    idFoco: number
+    nombre: string
+    /** «Todos los vendedores», sin la casa. */
+    total: CoberturaFoco
+    /** Los que tuvieron cartera ese mes (sin la casa), por nombre. */
+    vendedores: (CoberturaFoco & { idPersonal: number; nombre: string })[]
+  }[]
 }
 
 /** `GET /api/admin/articulos`: para armar los focos. No anulados primero, por `division` y descripción. */

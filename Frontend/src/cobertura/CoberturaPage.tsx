@@ -1,8 +1,10 @@
 import { Suspense, lazy, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { ChipCobertura, Cobertura } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { Chips, SinClientes } from '../comercial/lista'
+import { useVistaFocos } from '../comercial/mesReferencia'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { Segmentado } from '../components/Segmentado'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
@@ -12,6 +14,7 @@ import { BuscadorCobertura } from './BuscadorCobertura'
 import { CHIPS, textoChip } from './estados'
 import { ResumenCobertura } from './ResumenCobertura'
 import { TablaCobertura, type Orden } from './TablaCobertura'
+import { VistaFocos } from './VistaFocos'
 import './cobertura.css'
 
 /** El mapa (Leaflet) se baja recién cuando alguien lo abre: no pesa en la tabla. */
@@ -30,13 +33,19 @@ const ORDENES: Orden[] = ['codigo', 'codigo-desc', 'nombre', 'nombre-desc']
  *   muestran. El orden de la tabla es lo único que se resuelve en el navegador.
  * - El operario de un solo vendedor no ve el filtro de vendedor (la API lo deja fijo en él); la lista sale de
  *   `/api/sesion`. Los filtros son los de `useFiltrosComerciales`, los mismos de Volumen y Devoluciones.
+ * - El dueño tiene una tercera vista, **Focos** (`?vista=focos`, Cesar 05/11; también con «Focos» junto al mes de la
+ *   cabecera): una columna por foco del mes en lugar de los meses (VistaFocos).
  */
 export function CoberturaPage() {
   const filtros = useFiltrosComerciales()
   const { sesion, params, cambiar, buscar, elegirChip, verTodos, busqueda, conVendedor, titulo, mesRef, ventana } = filtros
   const chip = deLista<ChipCobertura>(params.get('chip'), CHIPS, 'todos')
   const orden = deLista<Orden>(params.get('orden'), ORDENES, 'codigo')
-  const vista: 'tabla' | 'mapa' = params.get('vista') === 'mapa' ? 'mapa' : 'tabla'
+  const esAdmin = sesion.rol === 'admin'
+  const vistaUrl = params.get('vista')
+  const vista: 'tabla' | 'mapa' | 'focos' = vistaUrl === 'mapa' ? 'mapa' : vistaUrl === 'focos' && esAdmin ? 'focos' : 'tabla'
+  const vistaFocos = useVistaFocos()
+  const navegar = useNavigate()
   // Los cuatro meses en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el
   // dueño). Mes de corte (`mesHasta`): el último, o otro de esos que se elija en el mapa; la cartera, los colores del
   // mapa y el compró o no compró son todos de ese mes (lo resuelve la API).
@@ -49,8 +58,9 @@ export function CoberturaPage() {
   consulta.set('mesHasta', mes ?? mesRef)
   const qs = consulta.toString()
 
+  // En la vista por focos esta consulta no hace falta: VistaFocos hace las suyas
   const { datos, errores, cargando, recargar } = useConsulta<Cobertura>(
-    `/cobertura${qs ? `?${qs}` : ''}`,
+    vista === 'focos' ? null : `/cobertura${qs ? `?${qs}` : ''}`,
     'No pudimos cargar los datos. Probá de nuevo.',
   )
   // Con un error no se muestran los números de la consulta anterior (serían de otros filtros)
@@ -60,6 +70,28 @@ export function CoberturaPage() {
 
   const mesFinal = vigentes?.meses.length ? nombreMes(vigentes.meses[vigentes.meses.length - 1]) : null
   const filtrado = !!busqueda || chip !== 'todos'
+
+  const selectorVista = (
+    <Segmentado
+      etiqueta="Cómo ver los clientes"
+      valor={vista}
+      opciones={[
+        { valor: 'tabla', texto: 'Tabla' },
+        { valor: 'mapa', texto: 'Mapa' },
+        ...(esAdmin ? [{ valor: 'focos' as const, texto: 'Focos' }] : []),
+      ]}
+      onCambio={(v) => (v === 'focos' ? navegar(vistaFocos.destino) : cambiar('vista', v === 'mapa' ? 'mapa' : null))}
+    />
+  )
+
+  if (vista === 'focos')
+    return (
+      <section className="pagina cob">
+        <BarraFiltros filtros={filtros} sinFoco />
+        {/* Los focos son los del mes en el que está parada la app: el mes de corte del mapa no cuenta acá */}
+        <VistaFocos filtros={filtros} mes={mesRef} orden={orden} onOrden={cambiarOrden} selectorVista={selectorVista} />
+      </section>
+    )
 
   return (
     <section className="pagina cob">
@@ -87,15 +119,7 @@ export function CoberturaPage() {
             onElegir={elegirChip}
           />
           <BuscadorCobertura busqueda={busqueda} onBuscar={buscar} />
-          <Segmentado
-            etiqueta="Cómo ver los clientes"
-            valor={vista}
-            opciones={[
-              { valor: 'tabla', texto: 'Tabla' },
-              { valor: 'mapa', texto: 'Mapa' },
-            ]}
-            onCambio={(v) => cambiar('vista', v === 'mapa' ? 'mapa' : null)}
-          />
+          {selectorVista}
         </div>
 
         <div className="cob-cuerpo">

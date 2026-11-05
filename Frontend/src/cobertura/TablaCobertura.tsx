@@ -16,7 +16,8 @@ interface Props {
   conVendedor: boolean
 }
 
-function ordenar(clientes: ClienteCobertura[], orden: Orden) {
+/** Por código o por razón social (lo único que se ordena en el navegador). También la usa la vista por focos. */
+export function ordenar<C extends Pick<ClienteCobertura, 'idCliente' | 'razonSocial'>>(clientes: C[], orden: Orden) {
   const lista = [...clientes]
   if (orden.startsWith('codigo')) lista.sort((a, b) => a.idCliente - b.idCliente)
   else lista.sort((a, b) => porNombre.compare(a.razonSocial, b.razonSocial))

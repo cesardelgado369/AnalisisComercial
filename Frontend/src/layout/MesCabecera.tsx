@@ -1,4 +1,5 @@
-import { useMesReferencia } from '../comercial/mesReferencia'
+import { useNavigate } from 'react-router-dom'
+import { useMesReferencia, useVistaFocos } from '../comercial/mesReferencia'
 import { nombreMes, nombreMesTitulo } from '../utils/formato'
 
 /** «Septiembre 2026». */
@@ -6,26 +7,40 @@ const mesConAnio = (mes: string) => `${nombreMesTitulo(mes)} ${mes.slice(0, 4)}`
 
 /**
  * El mes en el que se para toda la app (solo el dueño), en la cabecera: se ve en todas las pantallas, también en la
- * ficha (Cesar, 30/10: con el filtro de la barra no lo encontraba). En un mes pasado se pone ámbar. En el celular no
- * entra en la cabecera: va en la barra de filtros.
+ * ficha (Cesar, 30/10: con el filtro de la barra no lo encontraba). En un mes pasado se pone ámbar. Al lado, «Focos»
+ * prende la vista por focos de Cobertura. En el celular no entra en la cabecera: va en la barra de filtros.
  */
 export function MesCabecera() {
   const { mes, enCurso, opciones, puedeElegir, elegir } = useMesReferencia()
+  const focos = useVistaFocos()
+  const navegar = useNavigate()
   if (!puedeElegir) return null
   const ultimo = opciones[opciones.length - 1]
   return (
-    <label className={enCurso ? 'header-mes' : 'header-mes pasado'} title="El mes que muestra toda la app (con los tres anteriores)">
-      <span className="icono icono-chico" aria-hidden>calendar_month</span>
-      <span className="sr-solo">Mes que estás viendo</span>
-      <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
-        {[...opciones].reverse().map((m) => (
-          <option key={m} value={m === ultimo ? '' : m}>
-            {mesConAnio(m)}
-            {m === ultimo ? ' (en curso)' : ''}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className={enCurso ? 'header-mes' : 'header-mes pasado'}>
+      <label className="header-mes-elegir" title="El mes que muestra toda la app (con los tres anteriores)">
+        <span className="icono icono-chico" aria-hidden>calendar_month</span>
+        <span className="sr-solo">Mes que estás viendo</span>
+        <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
+          {[...opciones].reverse().map((m) => (
+            <option key={m} value={m === ultimo ? '' : m}>
+              {mesConAnio(m)}
+              {m === ultimo ? ' (en curso)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        type="button"
+        className="header-mes-focos"
+        aria-pressed={focos.activa}
+        onClick={() => navegar(focos.destino)}
+        title={focos.activa ? 'Volver a los clientes por mes' : `Los clientes con una columna por foco de ${nombreMes(mes)}`}
+      >
+        <span className="icono icono-chico" aria-hidden>filter_alt</span>
+        Focos
+      </button>
+    </div>
   )
 }
 

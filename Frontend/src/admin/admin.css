@@ -180,29 +180,78 @@
 .adm-credenciales dd { margin: 0; font-weight: 700; word-break: break-all; }
 .adm-password { font-family: ui-monospace, 'Cascadia Mono', monospace; letter-spacing: .06em; }
 
-/* Focos del mes: la lista con su interruptor y el modal para elegir los artículos */
-.foco-resumen { padding: 12px 20px 4px; font-size: 13px; color: var(--texto-2); }
-.foco-tabla tr.foco-apagado .celda-principal, .foco-tabla tr.foco-apagado .adm-lista-vendedores { color: var(--texto-2); }
-.foco-interruptor {
-  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; cursor: pointer;
-  font: inherit; font-size: 13px; font-weight: 700; color: var(--texto-2); background: none; border: none; border-radius: var(--radio);
+/* Focos del mes (FocosPage): los meses arriba, los focos de cada uno como tarjetas y abajo el análisis por vendedor */
+.foco-meses { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 6px; scrollbar-width: thin; }
+.foco-mes {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; flex-shrink: 0; min-width: 128px; min-height: 52px;
+  padding: 8px 14px; cursor: pointer; font: inherit; text-align: left; color: var(--texto);
+  background: var(--superficie); border: 1px solid var(--borde-fuerte); border-radius: var(--radio-grande);
 }
-.foco-interruptor:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
-.foco-interruptor:disabled { cursor: progress; opacity: .7; }
-.foco-interruptor-riel {
-  position: relative; flex-shrink: 0; width: 40px; height: 24px; border-radius: 999px;
-  background: var(--borde-fuerte); transition: background .15s;
+.foco-mes:hover { border-color: var(--acento-claro); }
+.foco-mes:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.foco-mes-nombre { font-size: 14px; font-weight: 700; }
+.foco-mes-detalle { font-size: 12px; color: var(--texto-2); }
+.foco-mes[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+.foco-mes[aria-pressed="true"] .foco-mes-detalle { color: rgba(255, 255, 255, .85); }
+.foco-del-mes { display: flex; flex-direction: column; gap: 12px; }
+.foco-del-mes-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.foco-del-mes-cabecera h2 { margin: 0; font-size: 18px; }
+.foco-del-mes-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.foco-vacio { background: var(--superficie); border: 1px dashed var(--borde-fuerte); border-radius: var(--radio-grande); }
+.foco-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.foco-tarjeta {
+  display: flex; flex-direction: column; gap: 10px; padding: 16px; cursor: pointer; font: inherit; text-align: left;
+  color: var(--texto); transition: border-color .15s, box-shadow .15s;
 }
-.foco-interruptor-perilla {
-  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); transition: transform .15s;
+.foco-tarjeta:hover { border-color: var(--acento-claro); box-shadow: 0 2px 10px rgba(124, 58, 237, .08); }
+.foco-tarjeta:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.foco-tarjeta-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.foco-tarjeta-nombre { font-size: 16px; font-weight: 700; }
+.foco-tarjeta-editar { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--acento); }
+.foco-tarjeta-articulos { display: flex; flex-wrap: wrap; gap: 6px; }
+.foco-tarjeta-articulo {
+  padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--texto);
+  background: var(--superficie-baja); border: 1px solid var(--superficie-media); border-radius: 999px;
 }
-.foco-interruptor.prendido { color: var(--acento); }
-.foco-interruptor.prendido .foco-interruptor-riel { background: var(--acento); }
-.foco-interruptor.prendido .foco-interruptor-perilla { transform: translateX(16px); }
-@media (prefers-reduced-motion: reduce) {
-  .foco-interruptor-riel, .foco-interruptor-perilla { transition: none; }
+.foco-tarjeta-pie { margin-top: auto; font-size: 12px; color: var(--texto-2); }
+.foco-analisis-espera { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--texto-2); }
+
+/* El análisis: una tarjeta por foco con el total y una barra por vendedor (la rayita oscura es el mes anterior) */
+.foco-analisis { display: flex; flex-direction: column; gap: 16px; padding: 20px; }
+.foco-analisis-cabecera { display: flex; flex-direction: column; gap: 6px; }
+.foco-analisis-cabecera h2 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; }
+.foco-analisis-cabecera h2 .icono { color: var(--acento); }
+.foco-analisis-cabecera p { margin: 0; font-size: 13px; color: var(--texto-2); max-width: 760px; }
+.foco-leyenda { display: flex; flex-wrap: wrap; gap: 6px 18px; font-weight: 600; }
+.foco-leyenda > span { display: inline-flex; align-items: center; gap: 6px; }
+.foco-leyenda-barra { width: 18px; height: 8px; border-radius: 4px; background: var(--acento); }
+.foco-leyenda-antes { width: 2px; height: 14px; border-radius: 1px; background: var(--texto); }
+.foco-analisis-grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 16px; }
+.foco-analisis-foco { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid var(--borde); border-radius: var(--radio-grande); background: var(--fondo); }
+.foco-analisis-total { display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
+.foco-analisis-total h3 { margin: 0 auto 0 0; font-size: 16px; }
+.foco-analisis-numero { font-size: 24px; font-weight: 800; color: var(--texto); }
+.foco-analisis-detalle { font-size: 12px; color: var(--texto-2); }
+.foco-barra { position: relative; display: block; height: 8px; border-radius: 4px; background: var(--superficie-media); }
+.foco-barra-relleno { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--acento); }
+.foco-barra-antes { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--texto); box-shadow: 0 0 0 1px var(--fondo); }
+.foco-analisis-vendedores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.foco-vendedor {
+  display: grid; grid-template-columns: minmax(110px, 160px) minmax(60px, 1fr) 84px 64px; align-items: center; gap: 12px;
+  min-height: 44px; padding: 4px 8px; margin: 0 -8px; border-radius: var(--radio); color: var(--texto); text-decoration: none;
 }
+.foco-vendedor:hover { background: var(--superficie-baja); }
+.foco-vendedor:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+.foco-vendedor-nombre { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.foco-vendedor-numeros { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; }
+.foco-vendedor-numeros strong { font-size: 14px; }
+.foco-dif { display: inline-flex; align-items: center; justify-content: flex-end; gap: 1px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.foco-dif .icono { font-size: 14px; }
+.foco-dif.sube { color: var(--compro); }
+.foco-dif.baja { color: var(--rojo); }
+.foco-dif.igual, .foco-dif.sin { color: var(--texto-2); }
+
+/* El modal para elegir los artículos */
 .foco-articulos { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: none; min-width: 0; }
 .foco-articulos legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
 .foco-elegidos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -252,4 +301,11 @@
   .adm-password-campo input { flex-basis: 100%; }
   .adm-grupo-cabecera { flex-wrap: wrap; }
   .adm-grupo-cuenta { margin-left: 34px; width: 100%; flex-wrap: wrap; gap: 4px 14px; }
+  .foco-del-mes-acciones, .foco-del-mes-acciones .btn { width: 100%; justify-content: center; }
+  .foco-mes { min-width: 112px; }
+  .foco-analisis { padding: 16px; }
+  .foco-analisis-foco { padding: 12px; }
+  /* Cada vendedor en dos renglones: nombre y números arriba, la barra abajo */
+  .foco-vendedor { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px; }
+  .foco-vendedor .foco-barra { grid-column: 1 / -1; grid-row: 2; }
 }

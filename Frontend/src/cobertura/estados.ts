@@ -35,6 +35,12 @@ export function mesesDisponibles(hasta: string) {
   return meses
 }
 
+/** `2026-11-01` y 1 → `2026-12-01` (n puede ser negativo). */
+export function sumarMes(mes: string, n: number) {
+  const total = Number(mes.slice(0, 4)) * 12 + Number(mes.slice(5, 7)) - 1 + n
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`
+}
+
 /** Cuántos meses se ven (Cesar, 30/10): el mes y los tres anteriores. Es también el rango por defecto de la API. */
 const MESES_VISIBLES = 4
 
