@@ -342,24 +342,43 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         var vendedores = await lectura.VendedoresAsync(ct);
         var mirada = await lectura.MiradaAsync(null, "admin-focos-analisis", ct);   // las personas: sin la casa
         var carteras = await lectura.CarterasAsync(mirada, [m, anterior], null, ct);
+        // Los vol, con la comparación de /api/volumen del admin (el primer mes con datos no tiene base).
+        var comparacion = m > lectura.Op.PrimerMes ? await lectura.ComparacionAsync(m, ct) : null;
 
         var resultado = new List<AnalisisFocoDto>();
         foreach (var foco in focos)
         {
             var filtro = new FiltroArticulos(null, foco.IdFoco, foco.Nombre);
             var compras = await lectura.ComprasAsync([m], filtro, ct);   // trae también el mes anterior completo
-            HashSet<int> compraronAntes = !hayAnterior ? []
+            var esVol = foco.Medida == MedidaFoco.Vol;
+            HashSet<int> compraronAntes = !hayAnterior || esVol ? []
                 : enCurso ? anteriorAl is { } al ? await CompraronHastaAsync(foco.Articulos.Select(a => a.IdArticulo).ToList(), anterior, al, ct) : []
                 : compras.Where(c => c.Mes == anterior).Select(c => c.IdCliente).ToHashSet();
-            bool ComproAntes(int idCliente) => compraronAntes.Contains(idCliente);
+            Dictionary<int, decimal> actual = [], enBase = [];
+            if (esVol && comparacion is not null)
+            {
+                var (act, bas) = await lectura.BultosComparadosAsync(comparacion, carteras[m].Keys.ToList(), filtro, ct);
+                actual = act.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
+                enBase = bas.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
+            }
 
-            CccFocoDto Ccc(Func<CarteraMes, bool> deQuien)
+            CccFocoDto Medir(Func<CarteraMes, bool> deQuien)
             {
                 var ahora = carteras[m].Values.Where(deQuien).ToList();
-                var antes = carteras[anterior].Values.Where(deQuien).ToList();
                 var conCompra = ahora.Count(c => compras.Contains((c.IdCliente, m)));
+                if (esVol)
+                {
+                    if (comparacion is null)
+                        return new CccFocoDto(conCompra, ahora.Count, null, null);
+                    // Como /api/volumen: cada cliente redondeado y después la suma.
+                    var bultosActual = Volumen.Redondear(ahora.Sum(c => Volumen.Redondear(actual.GetValueOrDefault(c.IdCliente))));
+                    var bultosBase = Volumen.Redondear(ahora.Sum(c => Volumen.Redondear(enBase.GetValueOrDefault(c.IdCliente))));
+                    return new CccFocoDto(conCompra, ahora.Count, Volumen.Porcentaje(bultosActual, bultosBase), null,
+                        bultosActual, bultosBase);
+                }
+                var antes = carteras[anterior].Values.Where(deQuien).ToList();
                 decimal? porcentajeAnterior = hayAnterior && (!enCurso || anteriorAl is not null) && antes.Count > 0
-                    ? Cobertura.Porcentaje(antes.Count(c => ComproAntes(c.IdCliente)), antes.Count)
+                    ? Cobertura.Porcentaje(antes.Count(c => compraronAntes.Contains(c.IdCliente)), antes.Count)
                     : null;
                 return new CccFocoDto(conCompra, ahora.Count, Cobertura.Porcentaje(conCompra, ahora.Count), porcentajeAnterior);
             }
@@ -367,16 +386,17 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             var porVendedor = carteras[m].Values.Where(c => c.IdPersonal is not null).Select(c => c.IdPersonal!.Value).Distinct()
                 .Select(id =>
                 {
-                    var ccc = Ccc(c => c.IdPersonal == id);
+                    var x = Medir(c => c.IdPersonal == id);
                     return new CccVendedorFocoDto(id, vendedores.GetValueOrDefault(id)?.Nombre ?? $"Vendedor {id}",
-                        ccc.ClientesConCompra, ccc.ClientesCartera, ccc.Porcentaje, ccc.PorcentajeAnterior);
+                        x.ClientesConCompra, x.ClientesCartera, x.Porcentaje, x.PorcentajeAnterior, x.BultosActual, x.BultosBase);
                 })
                 .OrderBy(v => v.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
                 .ToList();
-            resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, Ccc(_ => true), porVendedor));
+            resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, foco.Medida, foco.Meta, Medir(_ => true), porVendedor));
         }
         await alcance.RegistrarAsync("admin-focos-analisis", $"mes={m:yyyy-MM-dd}", denegado: false, ct);
-        return new AnalisisFocosDto(m, enCurso, corteAl, anterior, anteriorAl, resultado);
+        var volumen = comparacion is { } k ? new VolumenFocosDto(k.CorteAl, k.BaseHasta, k.DiaHabil, k.DiasHabilesMes) : null;
+        return new AnalisisFocosDto(m, enCurso, corteAl, anterior, anteriorAl, volumen, resultado);
     }
 
     /// <summary>
@@ -408,6 +428,17 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new ValidacionException("nombre", "Ponele un nombre de hasta 60 caracteres.");
         if (await db.Focos.AnyAsync(f => f.Mes == mes && f.Nombre == nombre && f.IdFoco != foco.IdFoco, ct))
             throw new ValidacionException("nombre", "Ya hay un foco con ese nombre en ese mes.");
+        var medida = dto.Medida?.Trim().ToLowerInvariant() switch
+        {
+            null or "" or "ccc" => MedidaFoco.Ccc,
+            "vol" => MedidaFoco.Vol,
+            _ => throw new ValidacionException("medida", "Elegí qué se mide: ccc (clientes) o vol (bultos)."),
+        };
+        var tope = medida == MedidaFoco.Ccc ? 100 : 999;
+        if (dto.Meta is { } meta && (meta < 1 || meta > tope || decimal.Round(meta, 1) != meta))
+            throw new ValidacionException("meta", medida == MedidaFoco.Ccc
+                ? "La meta es qué parte de la cartera: de 1 a 100 %."
+                : "La meta es contra el mes anterior: de 1 a 999 % (100 = igualarlo).");
         var ids = (dto.IdsArticulo ?? []).Distinct().ToList();
         if (ids.Count is < 1 or > 50)
             throw new ValidacionException("idsArticulo", "Elegí entre 1 y 50 artículos.");
@@ -418,6 +449,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .Select(id => new FocoArticulo { IdFoco = foco.IdFoco, IdArticulo = id }));
         foco.Mes = mes;
         foco.Nombre = nombre;
+        foco.Medida = medida;
+        foco.Meta = dto.Meta;
         foco.ActualizadoPor = admin.Email;
         foco.Actualizado = reloj.Ahora;
     }
@@ -426,7 +459,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         => (await FocosAsync(db, mes: null, ct)).Single(f => f.IdFoco == idFoco);
 
     private static FocoDto Dto(Foco f, Dictionary<int, string> nombres)
-        => new(f.IdFoco, f.Mes, f.Nombre,
+        => new(f.IdFoco, f.Mes, f.Nombre, f.Medida, f.Meta,
             f.Articulos.Select(a => new ArticuloFocoDto(a.IdArticulo, nombres.GetValueOrDefault(a.IdArticulo, $"Artículo {a.IdArticulo}")))
                 .OrderBy(a => a.Descripcion, StringComparer.Ordinal).ToList(),
             f.ActualizadoPor, f.Actualizado);

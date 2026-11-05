@@ -321,8 +321,17 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<string>("Medida")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.Property<DateOnly>("Mes")
                         .HasColumnType("date");
+
+                    b.Property<decimal?>("Meta")
+                        .HasPrecision(5, 1)
+                        .HasColumnType("decimal(5,1)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

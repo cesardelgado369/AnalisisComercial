@@ -35,6 +35,8 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Mes = table.Column<DateOnly>(type: "date", nullable: false),
                     Nombre = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false),
+                    Medida = table.Column<string>(type: "nvarchar(10)", maxLength: 10, nullable: false),
+                    Meta = table.Column<decimal>(type: "decimal(5,1)", precision: 5, scale: 1, nullable: true),
                     ActualizadoPor = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
                     Actualizado = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
                 },

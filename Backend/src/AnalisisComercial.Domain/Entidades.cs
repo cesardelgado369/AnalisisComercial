@@ -193,9 +193,21 @@ public class Foco
     /// <summary>Primer día del mes.</summary>
     public DateOnly Mes { get; set; }
     public string Nombre { get; set; } = "";
+    public MedidaFoco Medida { get; set; }
+    /// <summary>Porcentaje: de la cartera (ccc, 1–100) o contra el mes anterior al mismo día hábil (vol, 1–999). null = sin meta.</summary>
+    public decimal? Meta { get; set; }
     public string ActualizadoPor { get; set; } = "";
     public DateTimeOffset Actualizado { get; set; }
     public List<FocoArticulo> Articulos { get; set; } = [];
+}
+
+/// <summary>Qué se mide de un foco (los objetivos de Checho: «CCC MANTECA», «VOL TAPAS»).</summary>
+public enum MedidaFoco
+{
+    /// <summary>Qué parte de la cartera lo compró.</summary>
+    Ccc,
+    /// <summary>Los bultos contra el mes anterior al mismo día hábil.</summary>
+    Vol,
 }
 
 public class FocoArticulo

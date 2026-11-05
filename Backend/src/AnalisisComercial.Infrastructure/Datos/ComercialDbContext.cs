@@ -147,6 +147,8 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
             e.HasKey(x => x.IdFoco);
             e.Property(x => x.Nombre).HasMaxLength(60);
             e.HasIndex(x => new { x.Mes, x.Nombre }).IsUnique();
+            e.Property(x => x.Medida).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.Meta).HasPrecision(5, 1);
             e.Property(x => x.ActualizadoPor).HasMaxLength(200);
             e.HasMany(x => x.Articulos).WithOne().HasForeignKey(x => x.IdFoco).OnDelete(DeleteBehavior.Cascade);
         });

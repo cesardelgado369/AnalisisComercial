@@ -192,7 +192,8 @@ web vieja). Los artículos sin esa agrupación (dulce de leche, quesos, salsas) 
 
 Los **focos de un mes** (Checho, 03/11/2026; por mes y solo Admin desde el 05/11), por nombre, para el filtro «Foco»
 de Cobertura, Volumen y Devoluciones. `mes`: el mes en el que está parada la app; sin él, el en curso.
-`[{ idFoco, mes: "2026-11-01", nombre, articulos: [{ idArticulo, descripcion }], actualizadoPor, actualizado }]`.
+`[{ idFoco, mes: "2026-11-01", nombre, medida: "ccc" | "vol", meta: 80 | null, articulos: [{ idArticulo, descripcion }],
+actualizadoPor, actualizado }]`.
 Vacío si ese mes no tiene focos (el filtro no se muestra). Operario y supervisor → 403.
 
 ### `GET /api/clientes/{idCliente}?mesDesde=&mesHasta=`
@@ -489,13 +490,17 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 
 - `GET /api/admin/focos` → los de todos los meses, por mes descendente y nombre (mismo formato que
   `/api/cobertura/focos`). El front los agrupa por mes.
-- `POST /api/admin/focos` `{ mes: "2026-11-01", nombre, idsArticulo: [..] }` → 201 con el foco. «Copiar los del mes
-  anterior» = un POST por foco.
-- `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza mes, nombre y artículos). 404 si no existe.
+- `POST /api/admin/focos` `{ mes: "2026-11-01", nombre, idsArticulo: [..], medida?, meta? }` → 201 con el foco.
+  «Copiar los del mes anterior» = un POST por foco (con su medida y su meta).
+  - `medida` (los objetivos de Checho: «CCC MANTECA», «VOL TAPAS»): `"ccc"` (por defecto) = qué parte de la cartera lo
+    compró; `"vol"` = los bultos contra el mes anterior al mismo día hábil.
+  - `meta`: opcional (null = sin meta), siempre un porcentaje con hasta un decimal. ccc: de la cartera, 1–100. vol:
+    contra el mes anterior, 1–999 (100 = igualarlo, 110 = crecer 10 %).
+- `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza todo). 404 si no existe.
 - `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe.
 - 400: `errors.mes` (obligatorio, día 1, desde el primer mes con datos hasta el mes que viene, para dejarlo armado),
   `errors.nombre` (1–60, único en el mes: «Ya hay un foco con ese nombre en ese mes.»), `errors.idsArticulo` (entre 1
-  y 50, todos existentes).
+  y 50, todos existentes), `errors.medida` (otra cosa que ccc o vol), `errors.meta` (fuera de rango).
 - `GET /api/admin/focos/analisis?mes=` (sin mes: el en curso) → cómo vienen vendiendo los focos de ese mes, por
   vendedor: el número de Checho («CCC Manteca»).
 
@@ -504,11 +509,21 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   "corteAl": "2026-11-04" | null,        // mes en curso: ventas hasta (como los KPI de cobertura); cerrado: null
   "mesAnterior": "2026-10-01",
   "anteriorAl": "2026-10-04" | null,     // mes en curso: el mismo día del anterior (recortado a fin de mes); cerrado: null
-  "focos": [{ "idFoco": 2, "nombre": "Ravioles",
-    "total": { "clientesConCompra": 120, "clientesCartera": 246, "porcentaje": 48.8, "porcentajeAnterior": 51.2 | null },
+  "volumen": { "corteAl", "baseHasta", "diaHabil", "diasHabilesMes" } | null,   // la comparación de los vol (abajo)
+  "focos": [{ "idFoco": 2, "nombre": "Ravioles", "medida": "ccc", "meta": 80 | null,
+    "total": { "clientesConCompra": 120, "clientesCartera": 246, "porcentaje": 48.8, "porcentajeAnterior": 51.2 | null,
+               "bultosActual": null, "bultosBase": null },
     "vendedores": [{ "idPersonal": 2, "nombre": "FRANCO BAIGORRIA", "clientesConCompra": 30, "clientesCartera": 60,
-                     "porcentaje": 50.0, "porcentajeAnterior": 47.1 | null }] }] }   // focos y vendedores por nombre
+                     "porcentaje": 50.0, "porcentajeAnterior": 47.1 | null, "bultosActual": null, "bultosBase": null }] }] }
+// focos y vendedores por nombre
 ```
+
+  - **vol**: `bultosActual` y `bultosBase` = los bultos netos de la cartera (la del total o la del vendedor) con la
+    regla de `/api/volumen?foco=` mirada por el admin; `porcentaje` = actual ÷ base × 100 con un decimal, null si la
+    base es 0; `porcentajeAnterior` null; `clientesConCompra` y `clientesCartera` vienen igual. `volumen` es la
+    `comparacion` de `/api/volumen` del admin: mismo día hábil en el mes en curso, mes anterior completo en uno
+    cerrado; null en el primer mes con datos (y ahí los vol traen porcentaje y bultos en null).
+  - **ccc**: lo que sigue; `bultosActual` y `bultosBase` en null.
 
   - `porcentaje` = clientes de la cartera del vendedor en ese mes (la foto del mes, sin excluidos) que compraron algún
     artículo del foco ÷ esa cartera, con la misma regla de «compró» que `/api/cobertura?foco=`. `total` = «Todos los
@@ -555,6 +570,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 05/11: focos **por mes** (se va `activo`), **solo para el Admin** (403 al resto, también con `foco=`) y el
   **análisis del mes por vendedor** (`/api/admin/focos/analisis`). Como no estaba publicada, se rehízo la migración
   `FocosDelMes` en vez de sumar otra. Sale en la 1.3.
+- 05/11: cada foco dice qué mide (`medida`: ccc o vol) y su `meta` opcional; el análisis trae los vol con bultos y el
+  bloque `volumen`. Otra vez dentro de la migración `FocosDelMes` (sin publicar).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

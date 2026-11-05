@@ -74,28 +74,40 @@ public interface ICoberturaService
 
 public record ArticuloFocoDto(int IdArticulo, string Descripcion);
 
-public record FocoDto(int IdFoco, DateOnly Mes, string Nombre, IReadOnlyList<ArticuloFocoDto> Articulos,
-    string ActualizadoPor, DateTimeOffset Actualizado);
+public record FocoDto(int IdFoco, DateOnly Mes, string Nombre, MedidaFoco Medida, decimal? Meta,
+    IReadOnlyList<ArticuloFocoDto> Articulos, string ActualizadoPor, DateTimeOffset Actualizado);
 
-/// <summary>Alta o edición de un foco (la edición reemplaza mes, nombre y artículos).</summary>
-public record GuardarFocoDto(DateOnly? Mes, string? Nombre, IReadOnlyList<int>? IdsArticulo);
+/// <summary>Alta o edición de un foco (la edición reemplaza todo).</summary>
+/// <param name="Medida">"ccc" (por defecto) o "vol"; texto para que un valor inválido dé 400 en <c>errors.medida</c>.</param>
+public record GuardarFocoDto(DateOnly? Mes, string? Nombre, IReadOnlyList<int>? IdsArticulo, string? Medida = null,
+    decimal? Meta = null);
 
 /// <summary>
-/// CCC de un foco: clientes de la cartera (la foto de ese mes, sin excluidos) que compraron algún artículo del foco.
+/// Cómo viene un foco. CCC: clientes de la cartera (la foto de ese mes, sin excluidos) que compraron algún artículo del
+/// foco; <c>porcentaje</c> = de la cartera. VOL: además los bultos netos de esa cartera contra el mes anterior al mismo
+/// día hábil (como <c>/api/volumen?foco=</c>); <c>porcentaje</c> = actual ÷ base (null si la base es 0).
 /// </summary>
-/// <param name="PorcentajeAnterior">El mismo foco en el mes anterior; null sin mes anterior con datos o sin cartera.</param>
-public record CccFocoDto(int ClientesConCompra, int ClientesCartera, decimal Porcentaje, decimal? PorcentajeAnterior);
+/// <param name="PorcentajeAnterior">CCC del mismo foco en el mes anterior; null sin mes anterior con datos o sin cartera.
+/// Solo en ccc.</param>
+/// <param name="BultosActual">Solo en vol.</param>
+public record CccFocoDto(int ClientesConCompra, int ClientesCartera, decimal? Porcentaje, decimal? PorcentajeAnterior,
+    decimal? BultosActual = null, decimal? BultosBase = null);
 
-public record CccVendedorFocoDto(int IdPersonal, string Nombre, int ClientesConCompra, int ClientesCartera, decimal Porcentaje,
-    decimal? PorcentajeAnterior);
+public record CccVendedorFocoDto(int IdPersonal, string Nombre, int ClientesConCompra, int ClientesCartera, decimal? Porcentaje,
+    decimal? PorcentajeAnterior, decimal? BultosActual = null, decimal? BultosBase = null);
 
 /// <param name="Total">«Todos los vendedores», sin la casa.</param>
-public record AnalisisFocoDto(int IdFoco, string Nombre, CccFocoDto Total, IReadOnlyList<CccVendedorFocoDto> Vendedores);
+public record AnalisisFocoDto(int IdFoco, string Nombre, MedidaFoco Medida, decimal? Meta, CccFocoDto Total,
+    IReadOnlyList<CccVendedorFocoDto> Vendedores);
+
+/// <summary>La comparación de los focos vol: la de <c>/api/volumen</c> del admin.</summary>
+public record VolumenFocosDto(DateOnly? CorteAl, DateOnly? BaseHasta, int DiaHabil, int DiasHabilesMes);
 
 /// <param name="CorteAl">Mes en curso: hasta qué día hay ventas. Mes cerrado: null.</param>
 /// <param name="AnteriorAl">Mes en curso: el mismo día del mes anterior, para comparar parejo. Mes cerrado: null (completo).</param>
+/// <param name="Volumen">null en el primer mes con datos (no hay base).</param>
 public record AnalisisFocosDto(DateOnly Mes, bool MesEnCurso, DateOnly? CorteAl, DateOnly MesAnterior, DateOnly? AnteriorAl,
-    IReadOnlyList<AnalisisFocoDto> Focos);
+    VolumenFocosDto? Volumen, IReadOnlyList<AnalisisFocoDto> Focos);
 
 /// <param name="ClientesMesAnterior">Clientes que lo compraron el mes pasado (para ver qué se mueve).</param>
 public record ArticuloAdminDto(int IdArticulo, string Descripcion, string? UnidadNegocio, string? Division, bool Anulado,
