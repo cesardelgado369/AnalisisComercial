@@ -34,6 +34,16 @@ antes: `AnalisisComercial_20261030_1750.bak.gz`). La versión para vendedores: e
 Clasificación de clientes del admin (Vital con un click). Migración `ClientesVitales` aplicada (una tabla nueva). La
 republicación de la 1.1 con Vitales (16:50) no llegó a correr: entró con esta.
 
+**Versión `1.3.0`, publicada el 10/11** (OK de Cesar en el chat del back; la corrió él con `publicar.sh`; imágenes
+desde `git archive`: api y sync de `cee9cc2`, web de `291cfcf` (tag `v1.3.0`; desde `cee9cc2` solo cambió Frontend);
+backup antes: `AnalisisComercial_20261110_1933.bak.gz`). Primera con versión 1.Major.Minor y tag git. Trae la 1.2.1
+que no se había publicado (Actualizar ahora), la revisión de seguridad del 04/11 (empresa en las políticas, chatbot
+solo lectura, freno de pedidos, el acceso se enlaza al guardarlo), Focos del mes (por mes, solo admin, CCC o VOL con
+meta, análisis por vendedor con Comparativa y categoría), clientes A, B y C con su filtro, la Comparativa de Volumen
+(parcial o acumulado), los movimientos del cliente y los íconos de productos en Volumen y Devoluciones. Migraciones
+`AccesoLogCanalEmpresa` y `FocosDelMes` (solo agregan). Los bultos en la ficha del vendedor quedan como estaban.
+Verificado: `/api/sesion` 401, la página 200, los tres contenedores en `1.3.0`, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
