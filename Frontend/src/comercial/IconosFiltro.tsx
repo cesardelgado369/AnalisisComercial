@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { ACENTO, ACENTO_CLARO, CABECERA, PIEDRA, SUPERFICIE_ALTA, SUPERFICIE_MEDIA } from './paletaIconos'
 
 /**
  * Los íconos de la barra de filtros, dibujados para Madomi (Cesar, 10/11: nada de íconos de librería). Las formas salen
@@ -8,17 +9,10 @@ import type { ReactNode } from 'react'
  * es que esté violeta, así es un paquete de Madomi). Rellenos claros y detalles oscuros, para que se lean también sobre
  * el violeta lleno del filtro en uso.
  */
-// Los tokens de index.css (--piedra, --cabecera, --acento…): el atributo `fill` no lee variables de CSS
-const PIEDRA = '#1d1630'
-const CABECERA = '#3b1d74'
-const ACENTO = '#7c3aed'
-const ACENTO_CLARO = '#a78bfa'
-const SUPERFICIE_MEDIA = '#ece4ff'
-const SUPERFICIE_ALTA = '#e0d4ff'
-
-function Lienzo({ children, giro = 0 }: { children: ReactNode; giro?: number }) {
+/** El SVG de 24 × 24 de cada ícono (también los de comercial/IconosRubro, con su clase), apenas girado si hace falta. */
+export function Lienzo({ children, giro = 0, clase = 'icono-filtro' }: { children: ReactNode; giro?: number; clase?: string }) {
   return (
-    <svg className="icono-filtro" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <svg className={clase} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <g transform={giro ? `rotate(${giro} 12 12)` : undefined}>{children}</g>
     </svg>
   )

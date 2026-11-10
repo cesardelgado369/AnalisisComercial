@@ -1,0 +1,95 @@
+/* La ventanita (components/Ventana): sutil, en negro y azul para no confundirse con el violeta de la pantalla
+   (Cesar, 10/11), y se despliega hacia el sureste. La fila del cliente se enfoca y las demás se apagan un poco */
+/* Cabecera y pie en azul con letras blancas (Cesar, 10/11) */
+.ventana-cliente {
+  --azul: #1d4ed8; --azul-claro: #93c5fd; --azul-fondo: #eff6ff;
+  position: fixed; z-index: 60; display: flex; flex-direction: column; overflow: hidden;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 10px 28px -14px rgba(15, 23, 42, .35);
+  transform-origin: top left; animation: ventana-sureste .16s ease-out;
+}
+/* El pergamino: el cuerpo pasa de 0 a su alto entre la cabecera y el pie */
+.ventana-cuerpo { display: grid; grid-template-rows: 1fr; min-height: 0; animation: ventana-pergamino .42s cubic-bezier(.2, .7, .2, 1) .08s backwards; }
+.ventana-cuerpo-adentro { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+@keyframes ventana-pergamino {
+  from { grid-template-rows: 0fr; }
+  to { grid-template-rows: 1fr; }
+}
+@keyframes ventana-sureste {
+  from { opacity: 0; transform: translate(-8px, -8px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ventana-cliente, .ventana-cuerpo { animation: none; }
+}
+.ventana-cliente-cabecera {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px;
+  color: #fff; background: var(--azul);
+}
+.ventana-cliente-cabecera strong { font-size: 12px; letter-spacing: .03em; text-transform: uppercase; }
+.ventana-cliente-nombre { display: inline-flex; align-items: center; gap: 8px; }
+.ventana-cliente-cabecera .abc { border: 1px solid #fff; }
+/* El vendedor en la cabecera azul: la cápsula en blanco */
+.ventana-vendedores { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; }
+.ventana-cliente .ventana-cliente-cabecera .capsula { border-color: #fff; background: transparent; }
+.ventana-cliente .ventana-cliente-cabecera .capsula-icono { color: var(--azul); background: #fff; }
+.ventana-cliente .ventana-cliente-cabecera .capsula-texto { color: #fff; }
+.ventana-cliente-aviso { margin: 0; padding: 14px; font-size: 12px; color: #4b5563; }
+.ventana-cliente .loading-default { padding: 14px; }
+.ventana-linea { list-style: none; margin: 0; padding: 4px 14px 2px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+/* Se entregó · Se devolvió: los títulos de las dos columnas de números, alineados con las de abajo */
+.ventana-columnas {
+  display: flex; justify-content: flex-end; gap: 6px; padding: 8px 22px 2px 14px; font-size: 10px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: #6b7280;
+}
+.ventana-columnas span, .ventana-numeros > span { width: 78px; text-align: right; white-space: nowrap; }
+.ventana-numeros { display: inline-flex; gap: 6px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+/* La línea de tiempo: un punto por comprobante (azul compró, rojo devolvió) unidos por un hilo */
+.mov { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; padding-bottom: 10px; }
+.mov:not(:last-child)::before { content: ''; position: absolute; left: 8px; top: 18px; bottom: 0; width: 2px; background: #e5e7eb; }
+.mov-punto {
+  display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 800;
+  line-height: 1; color: #fff; background: var(--azul);
+}
+.mov-notaCredito .mov-punto { background: var(--rojo); }
+.mov-cuerpo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.mov-cabecera { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; }
+.mov-fecha { font-size: 12px; font-weight: 800; color: #111827; }
+.mov-tipo { font-size: 11px; font-weight: 700; color: var(--azul); }
+.mov-notaCredito .mov-tipo { color: var(--rojo); }
+.ventana-cliente .capsula { height: 20px; font-size: 11px; border-color: var(--azul); }
+.ventana-cliente .capsula-icono { background: var(--azul); }
+.ventana-cliente .capsula-texto { color: var(--azul); }
+.mov-totales { margin-left: auto; font-size: 12px; font-weight: 800; }
+.mov-entregado { color: #111827; }
+.mov-devuelto { color: var(--rojo); }
+.mov-lineas { list-style: none; margin: 0; padding: 5px 8px; display: flex; flex-direction: column; gap: 3px; background: #f8fafc; border: 1px solid #f1f5f9; border-radius: 6px; }
+.mov-lineas li { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; }
+.mov-articulo { display: flex; flex-direction: column; min-width: 0; font-weight: 600; color: #111827; }
+.mov-rubro { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; color: #6b7280; }
+.mov-numeros { font-weight: 700; }
+.mov-lineas .ventana-numeros { margin-right: -8px; }
+.mov-comprobante { font-size: 10px; color: #9ca3af; }
+.ventana-cliente-pie {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 22px 9px 14px;
+  font-size: 11px; font-weight: 700; color: #fff; background: var(--azul);
+}
+/* En el pie azul, los números en blanco y lo devuelto en rosa claro (el rojo no se lee sobre azul) */
+.ventana-cliente-pie .mov-entregado { color: #fff; }
+.ventana-cliente-pie .mov-devuelto { color: #fecaca; }
+/* La ventanita de un vendedor en Focos del mes: el foco en la cabecera y sus clientes, los que ya compraron arriba */
+.ventana-foco { font-size: 11px; font-weight: 700; color: #dbeafe; white-space: nowrap; }
+.ventana-clientes { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
+.ventana-clientes li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; font-size: 12px; color: #9ca3af; }
+.ventana-clientes li.compro { color: #111827; font-weight: 700; background: var(--azul-fondo); }
+.ventana-clientes-marca {
+  display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; font-size: 10px; font-weight: 900;
+  color: #fff; background: transparent; border: 1.5px solid #d1d5db;
+}
+.ventana-clientes li.compro .ventana-clientes-marca { background: var(--azul); border-color: var(--azul); }
+.ventana-clientes-nombre { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ventana-clientes-dato { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.ventana-clientes li.compro .ventana-clientes-dato { color: var(--azul); }
+/* El cliente que se está mirando: en azul, y los demás un poco apagados */
+.cob-tabla.con-ventana tbody tr { transition: opacity .2s; }
+.cob-tabla.con-ventana tbody tr:not(.enfocada) { opacity: .55; }
+.cob-tabla tbody tr.enfocada, .cob-tabla tbody tr.enfocada:hover { background: #eff6ff; box-shadow: inset 4px 0 0 #1d4ed8; }

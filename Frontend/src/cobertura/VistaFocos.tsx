@@ -1,7 +1,7 @@
 import { memo, useMemo, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETA_MEDIDA } from '../admin/medidas'
-import { api } from '../api/client'
+import { enParalelo } from '../api/enParalelo'
 import type { ClienteCobertura, Cobertura, EstadoMes, Foco, Volumen } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import type { Filtros } from '../comercial/filtros'
@@ -16,14 +16,6 @@ import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
 import { sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
-
-/**
- * Varias consultas a la vez, como si fueran una (para `useConsulta`: caché, errores y recarga): las rutas van
- * separadas por un salto de línea y vuelven en el mismo orden. Si falla una, falla todo.
- */
-const enParalelo = {
-  get: <R,>(rutas: string) => Promise.all(rutas.split('\n').map((r) => api.get<unknown>(r))) as Promise<R>,
-}
 
 /** Lo de un cliente en un foco: CCC, si compró (el estado de Cobertura); VOL, sus bultos contra el mes anterior. */
 type Celda = { medida: 'ccc'; estado: EstadoMes } | { medida: 'vol'; bultosActual: number; bultosBase: number | null } | null

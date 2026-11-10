@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { KpiMes } from '../api/types'
 import { conUnidad, FACTURAS_QUE_CUENTAN, Parrafo, ParrafoCartera, ParrafoEnCurso, type ContextoAyuda } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
@@ -9,8 +10,8 @@ import { formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreM
  * con «al 22/10»: no se compara de igual a igual con los meses cerrados. Con `ayuda` (el dueño), al lado del «162 de
  * 246» va un ícono que explica cómo se contó ese mes.
  */
-export function ResumenCobertura(props: { kpis: KpiMes[]; ayuda?: ContextoAyuda | null }) {
-  const { kpis, ayuda } = props
+export function ResumenCobertura(props: { kpis: KpiMes[]; ayuda?: ContextoAyuda | null; costado?: ReactNode }) {
+  const { kpis, ayuda, costado } = props
   return (
     <header className="cob-resumen solo-kpis">
       <ul className="cob-kpis" aria-label="Cobertura por mes">
@@ -45,6 +46,7 @@ export function ResumenCobertura(props: { kpis: KpiMes[]; ayuda?: ContextoAyuda 
           )
         })}
       </ul>
+      {costado}
     </header>
   )
 }

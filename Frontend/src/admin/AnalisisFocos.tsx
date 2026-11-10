@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import type { AnalisisFocos as Analisis, CoberturaFoco, FocoAnalizado, VolumenFoco } from '../api/types'
+import type { AnalisisFocos as Analisis, ClaseAbc, CoberturaFoco, FocoAnalizado, VolumenFoco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useMesReferencia } from '../comercial/mesReferencia'
+import type { ClaveVendedorFoco } from './VentanaVendedor'
 import { nombrePropio } from '../cobertura/estados'
 import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesCorto } from '../utils/formato'
 
@@ -91,8 +92,11 @@ const textoMeta = (m: Medicion, meta: number | null) =>
  * El análisis de los focos de un mes (`GET /api/admin/focos/analisis`, solo el dueño; null = no pedirlo, como el mes
  * que viene) y contra qué se compara cada medida, en palabras.
  */
-export function useAnalisisFocos(mes: string | null) {
-  const consulta = useConsulta<Analisis>(mes && `/admin/focos/analisis?mes=${mes}`, 'No pudimos armar cómo vienen los focos.')
+export function useAnalisisFocos(mes: string | null, opciones: { acumulado: boolean; categoria: ClaseAbc | null }) {
+  const qs = new URLSearchParams(mes ? { mes } : {})
+  if (opciones.acumulado) qs.set('comparacion', 'acumulado')
+  if (opciones.categoria) qs.set('abc', opciones.categoria)
+  const consulta = useConsulta<Analisis>(mes && `/admin/focos/analisis?${qs}`, 'No pudimos armar cómo vienen los focos.')
   const a = consulta.datos?.mes === mes ? consulta.datos : null
   const anterior = a ? nombreMes(a.mesAnterior) : ''
   const anteriorCorto = a ? `${nombreMesCorto(a.mesAnterior)}.` : ''
@@ -105,8 +109,13 @@ export function useAnalisisFocos(mes: string | null) {
       anterior,
       anteriorCorto,
       corteAl: a.corteAl,
-      ccc: a.anteriorAl ? `${anterior} al ${formatoFechaCorta(a.anteriorAl)}` : anterior,
-      vol: a.mesEnCurso && a.volumen?.baseHasta ? `${anterior} al ${formatoFechaCorta(a.volumen.baseHasta)} (mismo día hábil)` : anterior,
+      /** Contra el mes anterior al mismo día (parcial) o contra todo el mes anterior (acumulado, o un mes cerrado). */
+      parcial: !!a.anteriorAl,
+      ccc: a.anteriorAl ? `${anterior} al ${formatoFechaCorta(a.anteriorAl)}` : `todo ${anterior}`,
+      vol:
+        a.mesEnCurso && a.volumen?.tipo === 'mismoDiaHabil' && a.volumen.baseHasta
+          ? `${anterior} al ${formatoFechaCorta(a.volumen.baseHasta)} (mismo día hábil)`
+          : `todo ${anterior}`,
     },
   }
 }
@@ -118,7 +127,7 @@ export function LeyendaFocos({ ctx, conMeta }: { ctx: ContextoAnalisis; conMeta:
   return (
     <p className="foco-leyenda">
       <span><span className="foco-leyenda-barra" aria-hidden /> {ctx.enCurso ? `${nombreMes(ctx.mes)} hasta hoy` : nombreMes(ctx.mes)}</span>
-      <span><span className="foco-leyenda-antes" aria-hidden /> {ctx.anterior} al mismo día</span>
+      <span><span className="foco-leyenda-antes" aria-hidden /> {ctx.parcial ? `${ctx.anterior} al mismo día` : `todo ${ctx.anterior}`}</span>
       {conMeta && <span><span className="foco-leyenda-meta" aria-hidden /> meta</span>}
     </p>
   )
@@ -130,7 +139,15 @@ export function LeyendaFocos({ ctx, conMeta }: { ctx: ContextoAnalisis; conMeta:
  * bultos contra el mes anterior al mismo día hábil. La meta, si hay, va marcada en cada barra. Cada vendedor lleva a sus
  * clientes con ese foco (Cobertura o Volumen).
  */
-export function MedicionFoco({ f, ctx }: { f: FocoAnalizado; ctx: ContextoAnalisis }) {
+export function MedicionFoco(props: {
+  f: FocoAnalizado
+  ctx: ContextoAnalisis
+  /** Al pasar el mouse por un vendedor (o llegar con el teclado), y al salir: la ventanita con sus clientes. */
+  alPasar?: (clave: ClaveVendedorFoco | null, fila?: HTMLElement) => void
+  /** El vendedor de la ventanita abierta en este foco, resaltado. */
+  enfocado?: number | null
+}) {
+  const { f, ctx, alPasar, enfocado } = props
   const referencia = useMesReferencia()
   const contra = f.medida === 'vol' ? ctx.vol : ctx.ccc
   const total = f.medida === 'vol' ? deVol(f.total) : deCcc(f.total, true)
@@ -162,7 +179,11 @@ export function MedicionFoco({ f, ctx }: { f: FocoAnalizado; ctx: ContextoAnalis
           <li key={v.idPersonal}>
             <Link
               to={destino(v.idPersonal)}
-              className="foco-vendedor"
+              className={enfocado === v.idPersonal ? 'foco-vendedor enfocada' : 'foco-vendedor'}
+              onMouseEnter={alPasar && ((e) => alPasar({ idFoco: f.idFoco, idPersonal: v.idPersonal, nombre: v.nombre }, e.currentTarget))}
+              onMouseLeave={alPasar && (() => alPasar(null))}
+              onFocus={alPasar && ((e) => alPasar({ idFoco: f.idFoco, idPersonal: v.idPersonal, nombre: v.nombre }, e.currentTarget))}
+              onBlur={alPasar && (() => alPasar(null))}
               // Cobertura y Volumen muestran el mes en el que está parada la app: se para en el del análisis
               onClick={() => referencia.elegir(ctx.enCurso ? null : ctx.mes)}
               title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, f.meta)}`}

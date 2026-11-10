@@ -14,6 +14,13 @@ import { Ayuda } from '../components/Ayuda'
 import { cantidad, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
 import { ETIQUETA_MEDIDA } from './medidas'
+import { VentanaVendedor, type ClaveVendedorFoco } from './VentanaVendedor'
+import type { ClaseAbc } from '../api/types'
+import { OpcionesCategoria, Titulo } from '../comercial/filtros'
+import { IconoCalendario } from '../comercial/IconosFiltro'
+import { Segmentado } from '../components/Segmentado'
+import { useVentana } from '../components/Ventana'
+import '../cobertura/cobertura.css'
 import { ModalFoco } from './ModalFoco'
 import './admin.css'
 
@@ -44,12 +51,27 @@ export function FocosPage() {
   // Los del mes anterior que este todavía no tiene (por nombre): «Copiar los de octubre»
   const paraCopiar = delMes(anterior).filter((f) => !estos.some((e) => e.nombre.toLowerCase() === f.nombre.toLowerCase()))
   // Cómo vienen: desde que el mes empieza (el que viene, todavía no) y si tiene focos
-  const analisis = useAnalisisFocos(mes !== proximo && estos.length > 0 ? mes : null)
+  // Comparativa (parcial o acumulado, solo en el mes en curso) y categoría de cliente, en la URL (Cesar, 10/11)
+  const acumulado = mes === mesEnCurso && params.get('comparacion') === 'acumulado'
+  const categoriaUrl = params.get('abc')
+  const categoria: ClaseAbc | null = categoriaUrl === 'A' || categoriaUrl === 'B' || categoriaUrl === 'C' ? categoriaUrl : null
+  const analisis = useAnalisisFocos(mes !== proximo && estos.length > 0 ? mes : null, { acumulado, categoria })
   const ctx = analisis.contexto
+  // La ventanita de cada vendedor en el análisis
+  const ventanita = useVentana<ClaveVendedorFoco>()
+  const abiertoEn = ventanita.abierta && analisis.a?.focos.find((x) => x.idFoco === ventanita.abierta!.clave.idFoco)
+
+  /** Cambia un parámetro de la URL sin perder los otros. */
+  function cambiarParam(clave: string, valor: string | null) {
+    const p = new URLSearchParams(params)
+    if (valor) p.set(clave, valor)
+    else p.delete(clave)
+    setParams(p, { replace: true })
+  }
 
   function elegirMes(m: string) {
     setAviso(null)
-    setParams(m === referencia.mes ? {} : { mes: m }, { replace: true })
+    cambiarParam('mes', m === referencia.mes ? null : m)
   }
 
   /** Un POST por foco (el contrato no tiene «copiar»): los que fallan se cuentan en el aviso y los demás quedan. */
@@ -81,33 +103,54 @@ export function FocosPage() {
 
   return (
     <section className="pagina adm">
-      <header className="encabezado">
-        <div className="encabezado-textos">
-          <h1>Focos del mes</h1>
-          <p>
-            Los productos que querés seguir cada mes, con todas sus presentaciones. Los del mes en el que estás parado
-            aparecen en el filtro «Foco del mes» de Cobertura, Volumen y Devoluciones. Los vendedores y supervisores no
-            ven los focos.
-          </p>
-        </div>
+      <header className="encabezado foco-encabezado">
+        <h1>Focos del mes</h1>
       </header>
 
-      <div className="foco-meses" role="group" aria-label="Mes">
-        {[...meses].reverse().map((m) => {
-          const n = delMes(m).length
-          return (
-            <button key={m} type="button" className="foco-mes" aria-pressed={m === mes} onClick={() => elegirMes(m)}>
-              <span className="foco-mes-nombre">
-                {nombreMesTitulo(m)}
-                {conAnio(m)}
-              </span>
-              <span className="foco-mes-detalle">
-                {focos.datos ? (n ? cantidad(n, 'foco') : 'sin focos') : ' '}
-                {etiqueta(m) && ` · ${etiqueta(m)}`}
-              </span>
-            </button>
-          )
-        })}
+      {/* Arriba, centradas, las cajitas como las de los filtros (Cesar, 10/11): el mes, la comparativa y la categoría */}
+      <div className="foco-controles">
+        <div className="cob-filtro foco-control">
+          <Titulo icono={<IconoCalendario />}>Mes</Titulo>
+          <div className="foco-meses" role="group" aria-label="Mes">
+            {[...meses].reverse().map((m) => {
+              const n = delMes(m).length
+              return (
+                <button key={m} type="button" className="foco-mes" aria-pressed={m === mes} onClick={() => elegirMes(m)}>
+                  <span className="foco-mes-nombre">
+                    {nombreMesTitulo(m)}
+                    {conAnio(m)}
+                  </span>
+                  <span className="foco-mes-detalle">
+                    {focos.datos ? (n ? cantidad(n, 'foco') : 'sin focos') : ' '}
+                    {etiqueta(m) && ` · ${etiqueta(m)}`}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        {mes === mesEnCurso && estos.length > 0 && (
+          <div className={acumulado ? 'cob-filtro cob-filtro-activo foco-control' : 'cob-filtro foco-control'}>
+            <Titulo icono={<span className="icono-filtro icono-abc" aria-hidden>%</span>}>Comparativa</Titulo>
+            <div className="foco-control-cuerpo">
+              <Segmentado
+                etiqueta="Comparativa"
+                valor={acumulado ? 'acumulado' : 'parcial'}
+                opciones={[
+                  { valor: 'parcial', texto: 'Mes parcial' },
+                  { valor: 'acumulado', texto: 'Mes acumulado' },
+                ]}
+                onCambio={(v) => cambiarParam('comparacion', v === 'acumulado' ? v : null)}
+              />
+            </div>
+          </div>
+        )}
+        {mes !== proximo && estos.length > 0 && (
+          <div className={categoria ? 'cob-filtro cob-filtro-activo foco-control foco-control-categoria' : 'cob-filtro foco-control foco-control-categoria'}>
+            <Titulo icono={<span className="icono-filtro icono-abc" aria-hidden>ABC</span>}>Categoría de cliente</Titulo>
+            <OpcionesCategoria valor={categoria} onCambio={(v) => cambiarParam('abc', v)} />
+          </div>
+        )}
       </div>
 
       {focos.errores.length > 0 && <ErrorCarga errores={focos.errores} onReintentar={focos.recargar} className="adm-error-carga" />}
@@ -119,11 +162,13 @@ export function FocosPage() {
       )}
 
       <section className="foco-del-mes" aria-labelledby="foco-mes-titulo">
+        {/* Focos de noviembre en banda negra, como los títulos de las otras pantallas */}
+        <h2 id="foco-mes-titulo" className="foco-del-mes-titulo">
+          Focos de {nombreMes(mes)}
+          {conAnio(mes)}
+        </h2>
         <div className="foco-del-mes-cabecera">
-          <h2 id="foco-mes-titulo">
-            Focos de {nombreMes(mes)}
-            {conAnio(mes)}
-          </h2>
+          {estos.length > 0 && mes !== proximo && ctx ? <LeyendaFocos ctx={ctx} conMeta={estos.some((f) => f.meta !== null)} /> : <span />}
           <div className="foco-del-mes-acciones">
             {paraCopiar.length > 0 && (
               <button type="button" className="btn" onClick={() => void copiar()} disabled={copiando}>
@@ -144,8 +189,6 @@ export function FocosPage() {
               <span className="icono icono-chico" aria-hidden>calendar_month</span>
               Cómo viene cada vendedor se ve desde el 1 de {nombreMes(mes)}, cuando haya ventas.
             </p>
-          ) : ctx ? (
-            <LeyendaFocos ctx={ctx} conMeta={estos.some((f) => f.meta !== null)} />
           ) : null)}
         {analisis.errores.length > 0 && <ErrorCarga errores={analisis.errores} onReintentar={analisis.recargar} className="adm-error-carga" />}
 
@@ -180,8 +223,8 @@ export function FocosPage() {
                           </Parrafo>
                         )}
                         <Parrafo titulo="La flecha:">
-                          cuánto subió o bajó contra {nombreMes(anterior)} al mismo día
-                          {f.medida === 'vol' ? ' hábil (en %).' : ' (en puntos: +6 es 6 puntos más que entonces).'}
+                          cuánto subió o bajó contra {(f.medida === 'vol' ? ctx?.vol : ctx?.ccc) ?? nombreMes(anterior)}
+                          {f.medida === 'vol' ? ' (en %).' : ' (en puntos: +6 es 6 puntos más que entonces).'}
                         </Parrafo>
                       </Ayuda>
                     </h3>
@@ -204,7 +247,12 @@ export function FocosPage() {
                     ))}
                   </div>
                   {analizado && ctx ? (
-                    <MedicionFoco f={analizado} ctx={ctx} />
+                    <MedicionFoco
+                      f={analizado}
+                      ctx={ctx}
+                      alPasar={ventanita.alPasar}
+                      enfocado={ventanita.abierta?.clave.idFoco === f.idFoco ? ventanita.abierta.clave.idPersonal : null}
+                    />
                   ) : mes !== proximo && !analisis.errores.length ? (
                     <LoadingDefault texto="Armando cómo viene…" />
                   ) : null}
@@ -214,6 +262,19 @@ export function FocosPage() {
           </div>
         )}
       </section>
+
+      {ventanita.abierta && abiertoEn && (
+        <VentanaVendedor
+          clave={ventanita.abierta.clave}
+          foco={abiertoEn}
+          mes={mes}
+          acumulado={acumulado}
+          categoria={categoria}
+          fila={ventanita.abierta.fila}
+          onEntrar={ventanita.quedarse}
+          onSalir={ventanita.salir}
+        />
+      )}
 
       {modal && (
         <ModalFoco

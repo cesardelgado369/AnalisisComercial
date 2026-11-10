@@ -1,6 +1,6 @@
 import { useCallback, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { Foco } from '../api/types'
+import type { ClaseAbc, Foco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
@@ -45,7 +45,7 @@ export function useFiltrosComerciales() {
   const focoElegido = focos.datos?.find((f) => f.idFoco === foco) ?? null
   // La categoría A, B o C del cliente (Cesar, 10/11): solo el dueño, como los focos
   const categoriaUrl = params.get('abc')
-  const categoria = esAdmin && (categoriaUrl === 'A' || categoriaUrl === 'B' || categoriaUrl === 'C') ? categoriaUrl : null
+  const categoria: ClaseAbc | null = esAdmin && (categoriaUrl === 'A' || categoriaUrl === 'B' || categoriaUrl === 'C') ? categoriaUrl : null
   const busqueda = params.get('busqueda')?.trim() ?? ''
   /** Con «Todos los vendedores», debajo de la ruta de cada cliente va también su vendedor. */
   const conVendedor = eligeVendedor && vendedor === null
@@ -205,22 +205,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
         // Botones en lugar de desplegable (Cesar, 10/11): Todas, A, B o C, con las mismas etiquetas de los clientes
         <div className={filtros.categoria === null ? 'cob-filtro' : 'cob-filtro cob-filtro-activo'}>
           <Titulo icono={<span className="icono-filtro icono-abc" aria-hidden>ABC</span>}>Categoría de cliente</Titulo>
-          <div className="cob-filtro-opciones" role="radiogroup" aria-label="Categoría de cliente">
-            {CATEGORIAS.map(({ valor, texto }) => (
-              <button
-                key={texto}
-                type="button"
-                role="radio"
-                aria-checked={filtros.categoria === valor}
-                className="cob-filtro-opcion"
-                title={texto}
-                onClick={() => cambiar('abc', valor)}
-              >
-                {valor ? <span className={`abc abc-${valor.toLowerCase()}`}>{valor}</span> : 'Todas'}
-                {valor && <span className="sr-solo">{texto}</span>}
-              </button>
-            ))}
-          </div>
+          <OpcionesCategoria valor={filtros.categoria} onCambio={(v) => cambiar('abc', v)} />
         </div>
       )}
       {conFoco && (
@@ -239,6 +224,28 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
   )
 }
 
+/** Todas, A, B o C en botones, con las mismas etiquetas de los clientes: en la barra y en Focos del mes (Cesar, 10/11). */
+export function OpcionesCategoria({ valor: elegida, onCambio }: { valor: ClaseAbc | null; onCambio: (v: ClaseAbc | null) => void }) {
+  return (
+    <div className="cob-filtro-opciones" role="radiogroup" aria-label="Categoría de cliente">
+      {CATEGORIAS.map(({ valor, texto }) => (
+        <button
+          key={texto}
+          type="button"
+          role="radio"
+          aria-checked={elegida === valor}
+          className="cob-filtro-opcion"
+          title={texto}
+          onClick={() => onCambio(valor)}
+        >
+          {valor ? <span className={`abc abc-${valor.toLowerCase()}`}>{valor}</span> : 'Todas'}
+          {valor && <span className="sr-solo">{texto}</span>}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 const CATEGORIAS = [
   { valor: null, texto: 'Todas las categorías' },
   { valor: 'A', texto: 'A: los que más compran' },
@@ -250,7 +257,7 @@ const CATEGORIAS = [
  * El título de un filtro, con su ícono, en la banda negra de arriba del desplegable (Cesar, 10/11). Los íconos son los
  * dibujados para Madomi (comercial/IconosFiltro).
  */
-function Titulo({ icono, children }: { icono: ReactNode; children: string }) {
+export function Titulo({ icono, children }: { icono: ReactNode; children: string }) {
   return (
     <span className="cob-filtro-nombre">
       {icono}

@@ -11,6 +11,9 @@ import { useMedia } from '../utils/useMedia'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import '../cobertura/cobertura.css'
 import { ExplicacionDevoluciones } from './ExplicacionDevoluciones'
+import { VentanaCliente } from './VentanaCliente'
+import { useVentana } from '../components/Ventana'
+import { ProductosCliente } from '../comercial/ProductosCliente'
 import './devoluciones.css'
 
 /**
@@ -45,6 +48,8 @@ export function DevolucionesPage() {
   const ficha = useAbrirFicha('Devoluciones', `pestana=devoluciones${mes ? `&mesDev=${mes}` : ''}`)
   useRecordarAltura(!!d)
   const nombreDelMes = d ? nombreMes(d.mes) : ''
+  // La ventanita de cada cliente al pasar el mouse (Cesar, 10/11; en la PC)
+  const ventanita = useVentana<number>()
   const kpiElegido = resumen.errores.length ? null : resumen.datos?.kpis.find((k) => k.mes === (mes ?? mesRef))
 
   return (
@@ -120,12 +125,13 @@ export function DevolucionesPage() {
                       <span className="dev-tarjeta-numeros">
                         <strong>{pct(c.porcentaje)}</strong> · devolvió {formatoBultos(c.bultosDevueltos)} de {formatoBultos(c.bultosVendidos + c.bultosDevueltos)} bultos
                       </span>
+                      <ProductosCliente articulos={c.articulosDevueltos} verbo="Devolvió" />
                     </TarjetaCliente>
                   ))}
                 </ul>
               ) : (
                 <div className="cob-tabla-scroll">
-                  <table className="cob-tabla dev-tabla">
+                  <table className={ventanita.abierta ? 'cob-tabla dev-tabla con-ventana' : 'cob-tabla dev-tabla'}>
                     <thead>
                       <tr>
                         <th className="cob-col-codigo">Cód. cliente</th>
@@ -137,14 +143,35 @@ export function DevolucionesPage() {
                     </thead>
                     <tbody>
                       {d.clientes.map((c) => (
-                        <FilaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
+                        <FilaCliente
+                          key={c.idCliente}
+                          cliente={c}
+                          ficha={ficha}
+                          conVendedor={conVendedor}
+                          alPasar={ventanita.alPasar}
+                          className={ventanita.abierta?.clave === c.idCliente ? 'enfocada' : undefined}
+                        >
                           <td className="dev-col-num apagado">{formatoBultos(c.bultosVendidos + c.bultosDevueltos)}</td>
-                          <td className="dev-col-num">{formatoBultos(c.bultosDevueltos)}</td>
+                          <td className="dev-col-num">
+                            {formatoBultos(c.bultosDevueltos)}
+                            <ProductosCliente articulos={c.articulosDevueltos} verbo="Devolvió" />
+                          </td>
                           <td className="dev-col-num"><strong>{pct(c.porcentaje)}</strong></td>
                         </FilaCliente>
                       ))}
                     </tbody>
                   </table>
+                  {ventanita.abierta && (
+                    <VentanaCliente
+                      idCliente={ventanita.abierta.clave}
+                      abc={d.clientes.find((c) => c.idCliente === ventanita.abierta!.clave)?.abc}
+                      fila={ventanita.abierta.fila}
+                      mes={d.mes}
+                      filtros={filtros.consulta}
+                      onEntrar={ventanita.quedarse}
+                      onSalir={ventanita.salir}
+                    />
+                  )}
                 </div>
               )}
             </section>

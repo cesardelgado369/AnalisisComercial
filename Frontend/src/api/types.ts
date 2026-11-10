@@ -227,6 +227,8 @@ export interface ClienteVolumen {
   porcentaje: number | null
   /** Solo el dueño: la clase A, B o C del cliente en el mes de la comparación. */
   abc?: ClaseAbc
+  /** Lo que compró en el mes (netos > 0), de más a menos bultos: el ícono de cada producto (Cesar, 10/11). */
+  articulos?: { idArticulo: number; descripcion: string; unidadNegocio: string }[]
 }
 
 /** `GET /api/volumen?vendedor=&dia=&unidad=&busqueda=&chip=&mes=`. Cada cliente cae en un solo chip. */
@@ -239,6 +241,42 @@ export interface Volumen {
   clientes: ClienteVolumen[]
   /** Solo el dueño: qué parte de los clientes A, B y C de la cartera compró en el mes (siempre los tres, en orden). */
   abc?: CoberturaAbc[]
+}
+
+/** Una línea de un comprobante: lo que se le entregó y lo que devolvió de un artículo, en bultos. */
+export interface LineaMovimiento {
+  idArticulo: number
+  descripcion: string
+  unidadNegocio: string
+  entregados: number
+  devueltos: number
+}
+
+/**
+ * Un comprobante del cliente: una factura (lo entregado; sus líneas negativas son devoluciones) o una nota de crédito
+ * (solo devuelto). `vendedor`, el del comprobante; null si no es uno de los de quien mira.
+ */
+export interface MovimientoCliente {
+  /** «2026-11-03». */
+  fecha: string
+  tipo: 'factura' | 'notaCredito'
+  /** «A 0001-00001234». */
+  comprobante: string
+  vendedor: string | null
+  entregados: number
+  devueltos: number
+  lineas: LineaMovimiento[]
+}
+
+/**
+ * `GET /api/clientes/{id}/movimientos?mes=&unidad=&foco=` (Cesar, 10/11: la ventanita de Devoluciones): los comprobantes
+ * del mes, del más viejo al más nuevo. Σ entregados − Σ devueltos = los vendidos del cliente en Devoluciones.
+ */
+export interface MovimientosCliente {
+  idCliente: number
+  razonSocial: string
+  mes: string
+  movimientos: MovimientoCliente[]
 }
 
 /**
@@ -310,6 +348,12 @@ export interface Devoluciones {
     bultosVendidos: number
     bultosDevueltos: number
     porcentaje: number | null
+    /** Los tipos de producto que devolvió en el mes, del que más al que menos, como los manda Chess. */
+    unidadesDevueltas: string[]
+    /** Los artículos que devolvió en el mes, del más devuelto al menos (Cesar, 10/11: el ícono de cada producto). */
+    articulosDevueltos?: { idArticulo: number; descripcion: string; unidadNegocio: string }[]
+    /** Solo el dueño: la categoría A, B o C en el mes. */
+    abc?: ClaseAbc
   }[]
   /** De más a menos bultos devueltos. Para el operario, los bultos en null: solo el porcentaje (30/10). */
   articulos: (Omit<ArticuloDevolucion, 'bultosVendidos' | 'bultosDevueltos'> & { bultosVendidos: number | null; bultosDevueltos: number | null })[]
@@ -626,7 +670,7 @@ export interface AnalisisFocos {
   /** El mismo día del mes anterior (solo en el mes en curso); null = el mes anterior completo. */
   anteriorAl: string | null
   /** Contra qué se miden los focos `vol` (la `comparacion` de Volumen para el admin); null en el primer mes con datos. */
-  volumen: Pick<ComparacionVolumen, 'corteAl' | 'baseHasta' | 'diaHabil' | 'diasHabilesMes'> | null
+  volumen: Pick<ComparacionVolumen, 'tipo' | 'corteAl' | 'baseHasta' | 'diaHabil' | 'diasHabilesMes'> | null
   /**
    * Cada foco: «Todos los vendedores» (sin la casa) y los que tuvieron cartera ese mes, por nombre. La API manda
    * todos los campos en las dos medidas (los de la otra, en null o de referencia); el front usa los de su `medida`.

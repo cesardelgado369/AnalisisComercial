@@ -15,6 +15,7 @@ import * as admi from './datosAdmin.ts'
 import { ErrorMock, UNIDADES, ayerArgentina, cobertura, hoyArgentina, vendedoresVisibles, type RolPrueba } from './datosCobertura.ts'
 import { ficha, fichaDevoluciones, fichaVolumen } from './datosFicha.ts'
 import * as focos from './datosFocos.ts'
+import { movimientos } from './datosMovimientos.ts'
 import * as sinc from './datosSincronizacion.ts'
 import { devoluciones, volumen } from './datosVolumen.ts'
 
@@ -123,10 +124,14 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
       await demora(350)
       return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
     }
-    const cliente = ruta.match(/^\/api\/clientes\/(\d+)(\/volumen|\/devoluciones)?$/)
+    const cliente = ruta.match(/^\/api\/clientes\/(\d+)(\/volumen|\/devoluciones|\/movimientos)?$/)
     // Sin veBultos (el operario), Volumen y Devoluciones y sus pestañas dan 403, como la API
     if (rol === 'operario' && (cliente?.[2] || ruta === '/api/volumen' || ruta === '/api/devoluciones'))
       return responder(res, 403, { status: 403, title: 'Volumen y Devoluciones todavía no están habilitados para los vendedores.' })
+    if (cliente?.[2] === '/movimientos') {
+      await demora(250)
+      return responder(res, 200, movimientos(Number(cliente[1]), p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
+    }
     if (cliente) {
       await demora(300)
       const armar = cliente[2] === '/volumen' ? fichaVolumen : cliente[2] === '/devoluciones' ? fichaDevoluciones : ficha

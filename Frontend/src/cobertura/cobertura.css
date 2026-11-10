@@ -41,6 +41,10 @@
 .cob-filtro-nombre .icono { font-size: 16px; font-weight: 400; letter-spacing: normal; text-transform: none; color: var(--acento-claro); }
 /* Los íconos dibujados para Madomi (comercial/IconosFiltro): a 20px para que se lean, sin agrandar la banda */
 .cob-filtro-nombre .icono-filtro { width: 20px; height: 20px; flex-shrink: 0; margin: -2px 0; }
+/* El tipo de producto debajo de un artículo (comercial/lista, NombreArticulo), con el ícono de su clase de producto
+   adelante (comercial/IconosRubro) */
+.articulo-rubro { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.icono-rubro { width: 16px; height: 16px; flex-shrink: 0; }
 /* Categoría de cliente: Todas, A, B o C en botones, en lugar del desplegable */
 .cob-filtro-opciones { display: flex; height: 44px; }
 .cob-filtro-opcion {
@@ -110,6 +114,26 @@
 }
 /* Cobertura: sin textos a la izquierda, los indicadores se reparten a lo ancho */
 .cob-resumen.solo-kpis .cob-kpis { flex: 1; justify-content: space-around; }
+/* Con Todos los vendedores, al costado de los indicadores: cada vendedor con su cobertura del mes (PorVendedor) */
+.cob-por-vendedor { flex: 0 1 340px; min-width: 260px; padding-left: 24px; border-left: 1px solid var(--borde); }
+.cob-por-vendedor-titulo { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--texto-2); }
+.cob-por-vendedor-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.cob-por-vendedor-fila {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; grid-template-rows: auto 4px; align-items: center;
+  column-gap: 8px; row-gap: 3px; width: 100%; padding: 4px 6px; cursor: pointer; font: inherit; text-align: left;
+  background: none; border: 0; border-radius: var(--radio);
+}
+.cob-por-vendedor-fila:hover { background: var(--superficie-baja); }
+.cob-por-vendedor-fila:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+.cob-por-vendedor-avatar { grid-row: 1 / span 2; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--piedra); }
+.cob-por-vendedor-avatar .icono-filtro { width: 18px; height: 18px; }
+.cob-por-vendedor-nombre { font-size: 13px; font-weight: 700; color: var(--texto); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cob-por-vendedor-numeros { display: inline-flex; align-items: baseline; gap: 6px; }
+.cob-por-vendedor-numeros strong { font-size: 14px; color: var(--acento); font-variant-numeric: tabular-nums; }
+.cob-por-vendedor-numeros span { font-size: 11px; color: var(--texto-2); }
+.cob-por-vendedor-barra { grid-column: 2 / -1; height: 4px; overflow: hidden; border-radius: 999px; background: var(--superficie-media); }
+.cob-por-vendedor-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--acento); }
+.cob-por-vendedor-aviso { margin: 0; font-size: 12px; color: var(--texto-2); }
 .cob-resumen-textos p { color: var(--texto-2); }
 
 .cob-kpis { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px 28px; flex-wrap: wrap; }
@@ -195,6 +219,11 @@
 .cob-nombre a { color: var(--texto); font-weight: 700; text-decoration: none; }
 .cob-nombre a:hover { color: var(--acento); text-decoration: underline; }
 .cob-detalle { display: block; margin-top: 2px; font-size: 12px; color: var(--texto-3); }
+/* Debajo del número de la fila, el ícono de cada producto del cliente (comercial/ProductosCliente) */
+.productos-cliente { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 4px; }
+.productos-cliente .icono-rubro { width: 18px; height: 18px; }
+.productos-cliente-mas { font-size: 11px; font-weight: 700; color: var(--texto-2); }
+.cob-tarjetas .productos-cliente { justify-content: flex-start; }
 /* La ruta y el vendedor en cápsulas (comercial/lista, DetalleCliente): ícono blanco sobre violeta, nombre violeta sobre blanco */
 .cliente-capsulas { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; }
 .capsula {
@@ -274,6 +303,7 @@
 
 @media (max-width: 960px) {
   .cob-resumen { flex-direction: column; align-items: flex-start; }
+  .cob-por-vendedor { flex-basis: auto; width: 100%; min-width: 0; padding: 12px 0 0; border-left: 0; border-top: 1px solid var(--borde); }
   .cob-kpis { width: 100%; justify-content: space-between; }
 }
 

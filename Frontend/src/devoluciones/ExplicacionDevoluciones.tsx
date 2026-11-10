@@ -1,11 +1,11 @@
 import type { KpiDevolucion } from '../api/types'
-import { conUnidad, FACTURAS_QUE_CUENTAN, Parrafo, ParrafoCartera, ParrafoEnCurso, type ContextoAyuda } from '../comercial/ayuda'
-import { formatoBultos, formatoPorcentajeDecimal as pct, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { conUnidad, FACTURAS_QUE_CUENTAN, Parrafo, type ContextoAyuda } from '../comercial/ayuda'
+import { formatoBultos, formatoFechaCorta, formatoPorcentajeDecimal as pct, nombreMes } from '../utils/formato'
 
 /**
- * Cómo se calculó el porcentaje de devoluciones del mes elegido, con sus números, para el dueño (pedido de Cesar,
- * 30/10). Las reglas son las del backend (CONTRATO_API.md: `GET /api/devoluciones`, «Fórmula» y «Qué es devolución»):
- * si cambian allá, se cambia este texto.
+ * Cómo se calculó el porcentaje de devoluciones del mes elegido, para el dueño (pedido de Cesar, 30/10; corto desde el
+ * 10/11: la fórmula con sus números y una línea por término). Las reglas son las del backend (CONTRATO_API.md:
+ * `GET /api/devoluciones`, «Fórmula» y «Qué es devolución»): si cambian allá, se cambia este texto.
  */
 export function ExplicacionDevoluciones({ k, ayuda }: { k: KpiDevolucion; ayuda: ContextoAyuda }) {
   const mes = nombreMes(k.mes)
@@ -13,23 +13,16 @@ export function ExplicacionDevoluciones({ k, ayuda }: { k: KpiDevolucion; ayuda:
   const facturados = formatoBultos((k.bultosVendidos ?? 0) + (k.bultosDevueltos ?? 0))
   return (
     <>
-      <Parrafo titulo={`${nombreMesTitulo(k.mes)}${k.porcentaje === null ? '' : `: ${pct(k.porcentaje)}`}.`}>
+      <Parrafo titulo="Fórmula =">
         {k.porcentaje === null
-          ? `En ${mes} no hubo bultos facturados ni devueltos.`
-          : `Se devolvieron ${devueltos} de los ${facturados} bultos facturados: ${devueltos} ÷ ${facturados} = ${pct(k.porcentaje)}.`}
+          ? `devuelto ÷ facturado (en ${mes} no hubo bultos facturados ni devueltos).`
+          : `devuelto ÷ facturado = ${devueltos} ÷ ${facturados} = ${pct(k.porcentaje)}.`}
       </Parrafo>
-      <Parrafo titulo="Devuelto:">
-        lo que se le retiró al cliente en la misma factura (las líneas en negativo, los «cambios») más las notas de crédito
-        de {mes}. El rechazo de Chess es la misma nota de crédito: no se cuenta dos veces.
-      </Parrafo>
+      <Parrafo titulo="Devuelto:">las líneas en negativo de las facturas más las notas de crédito de {mes}.</Parrafo>
       <Parrafo titulo="Facturado:">
-        lo que se entregó en las facturas no anuladas ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)}: lo vendido (los bultos de
-        Volumen, ya descontado lo devuelto) más lo devuelto. La Factura presupuesto todavía no cuenta.
+        lo entregado en las facturas no anuladas ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)}.
+        {k.mesEnCurso && k.corteAl ? ` Hasta el ${formatoFechaCorta(k.corteAl)}.` : ''}
       </Parrafo>
-      <ParrafoCartera mes={k.mes} ayuda={ayuda}>
-        Cada mes se cuenta con su propia cartera.
-      </ParrafoCartera>
-      {k.mesEnCurso && <ParrafoEnCurso mes={k.mes} corteAl={k.corteAl} />}
     </>
   )
 }

@@ -4,6 +4,7 @@ import type { ClaseAbc } from '../api/types'
 import { nombrePropio } from '../cobertura/estados'
 import { formatoEntero } from '../utils/formato'
 import { unidadVisible } from './filtros'
+import { IconoProducto } from './IconosRubro'
 
 /**
  * Las piezas de las listas de clientes de Cobertura, Volumen y Devoluciones: los chips, la lista vacía, las cabeceras
@@ -53,7 +54,8 @@ export function DetalleCliente({ cliente: c, conVendedor }: { cliente: ClienteDe
   )
 }
 
-function Capsula({ icono, que, texto }: { icono: string; que: string; texto: string }) {
+/** Una cápsula de ruta o vendedor: también la usa la ventanita de Devoluciones. */
+export function Capsula({ icono, que, texto }: { icono: string; que: string; texto: string }) {
   return (
     <span className="capsula">
       <span className="capsula-icono">
@@ -154,12 +156,21 @@ interface PropsCliente {
   className?: string
   /** Las columnas (o los números de la tarjeta) de cada sección. */
   children: ReactNode
+  /** Al pasar el mouse (o llegar con el teclado) por la fila, y al salir (null): la ventanita de Devoluciones. */
+  alPasar?: (idCliente: number | null, fila?: HTMLElement) => void
 }
 
 /** La fila de la tabla: código, nombre (link a la ficha) con su ruta debajo, y las columnas de la sección. */
-export function FilaCliente({ cliente: c, ficha, conVendedor, marca, className, children }: PropsCliente) {
+export function FilaCliente({ cliente: c, ficha, conVendedor, marca, className, children, alPasar }: PropsCliente) {
   return (
-    <tr className={className} onClick={ficha.alTocarFila(c.idCliente)}>
+    <tr
+      className={className}
+      onClick={ficha.alTocarFila(c.idCliente)}
+      onMouseEnter={alPasar && ((e) => alPasar(c.idCliente, e.currentTarget))}
+      onMouseLeave={alPasar && (() => alPasar(null))}
+      onFocus={alPasar && ((e) => alPasar(c.idCliente, e.currentTarget))}
+      onBlur={alPasar && (() => alPasar(null))}
+    >
       <td className="cob-col-codigo">{c.idCliente}</td>
       <td>
         <span className="cob-nombre">
@@ -194,12 +205,18 @@ export function TarjetaCliente({ cliente: c, ficha, conVendedor, marca, classNam
   )
 }
 
-/** El artículo como nombre propio, con su unidad de negocio debajo. */
+/**
+ * El artículo como nombre propio, con su tipo de producto (la unidad de negocio) debajo y adelante el ícono de su clase
+ * de producto (ravioles, tallarines…; si no tiene uno propio, el del rubro).
+ */
 export function NombreArticulo({ articulo, className }: { articulo: { descripcion: string; unidadNegocio: string }; className: string }) {
   return (
     <span className={className}>
       <strong>{nombrePropio(articulo.descripcion)}</strong>
-      <span className="apagado">{unidadVisible(articulo.unidadNegocio)}</span>
+      <span className="apagado articulo-rubro">
+        <IconoProducto descripcion={articulo.descripcion} unidad={articulo.unidadNegocio} />
+        {unidadVisible(articulo.unidadNegocio)}
+      </span>
     </span>
   )
 }

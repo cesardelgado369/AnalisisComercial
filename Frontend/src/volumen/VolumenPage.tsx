@@ -16,6 +16,10 @@ import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { Avance, TotalComparado } from './Avance'
 import { textosComparacion as textos } from './comparacion'
 import { CubiertosPorClase } from './CubiertosPorClase'
+import { ProductosCliente } from '../comercial/ProductosCliente'
+import { useVentana } from '../components/Ventana'
+import { VentanaCliente } from '../devoluciones/VentanaCliente'
+import '../devoluciones/devoluciones.css'
 import { ExplicacionVolumen } from './ExplicacionVolumen'
 import '../cobertura/cobertura.css'
 import './volumen.css'
@@ -70,6 +74,8 @@ export function VolumenPage() {
   const vigentes = errores.length ? null : datos
   const t = vigentes ? textos(vigentes.comparacion, sesion.mesEnCurso) : null
   const cambiarOrden = useCallback((o: Orden) => cambiar('orden', o === 'nombre' ? null : o, false), [cambiar])
+  // La ventanita de comprobantes de cada cliente, como en Devoluciones (Cesar, 10/11)
+  const ventanita = useVentana<number>()
   useRecordarAltura(!!datos)
 
   // «Nuevos» no le pasa al admin (su base siempre es un número): el chip no se muestra si no hay ninguno
@@ -140,10 +146,8 @@ export function VolumenPage() {
                 onCambio={(v) => cambiar('comparacion', v === 'parcial' ? null : v)}
               />
               <Ayuda etiqueta="Qué compara cada opción">
-                <Parrafo titulo="Mes parcial:">contra el mes anterior hasta el mismo día hábil, de igual a igual.</Parrafo>
-                <Parrafo titulo="Mes acumulado:">
-                  contra el mes anterior entero: lo que va del mes contra todo lo que se vendió entonces.
-                </Parrafo>
+                <Parrafo titulo="Mes parcial:">contra el mes anterior hasta el mismo día hábil.</Parrafo>
+                <Parrafo titulo="Mes acumulado:">contra todo el mes anterior.</Parrafo>
               </Ayuda>
             </div>
           )}
@@ -163,15 +167,30 @@ export function VolumenPage() {
           ) : datos.clientes.length === 0 ? (
             <SinClientes icono="inventory_2" filtrado={!!busqueda || chip !== 'todos'} onVerTodos={verTodos} />
           ) : (
-            <TablaVolumen
-              clientes={datos.clientes}
-              orden={orden}
-              onOrden={cambiarOrden}
-              columnaBase={t.columnaBase}
-              referencia={t.referencia}
-              conVendedor={conVendedor}
-              mes={mes}
-            />
+            <>
+              <TablaVolumen
+                clientes={datos.clientes}
+                orden={orden}
+                onOrden={cambiarOrden}
+                columnaBase={t.columnaBase}
+                referencia={t.referencia}
+                conVendedor={conVendedor}
+                mes={mes}
+                alPasar={ventanita.alPasar}
+                enfocado={ventanita.abierta?.clave ?? null}
+              />
+              {ventanita.abierta && (
+                <VentanaCliente
+                  idCliente={ventanita.abierta.clave}
+                  abc={datos.clientes.find((c) => c.idCliente === ventanita.abierta!.clave)?.abc}
+                  fila={ventanita.abierta.fila}
+                  mes={datos.comparacion.mes}
+                  filtros={filtros.consulta}
+                  onEntrar={ventanita.quedarse}
+                  onSalir={ventanita.salir}
+                />
+              )}
+            </>
           )}
         </div>
       </div>
@@ -203,10 +222,14 @@ interface PropsTabla {
   referencia: number
   conVendedor: boolean
   mes: string | null
+  /** La ventanita de comprobantes al pasar el mouse por un cliente (en la PC), y el cliente que tiene abierta. */
+  alPasar: (idCliente: number | null, fila?: HTMLElement) => void
+  enfocado: number | null
 }
 
 /** Memoizada como la de Cobertura: tipear en el buscador no re-dibuja cientos de filas. */
-const TablaVolumen = memo(function TablaVolumen({ clientes, orden, onOrden, columnaBase, referencia, conVendedor, mes }: PropsTabla) {
+const TablaVolumen = memo(function TablaVolumen(props: PropsTabla) {
+  const { clientes, orden, onOrden, columnaBase, referencia, conVendedor, mes, alPasar, enfocado } = props
   const angosto = useMedia('(max-width: 767px)')
   const ficha = useAbrirFicha('Volumen', `pestana=volumen${mes ? `&mesVol=${mes}` : ''}`)
   const lista = useMemo(() => ordenar(clientes, orden), [clientes, orden])
@@ -221,6 +244,7 @@ const TablaVolumen = memo(function TablaVolumen({ clientes, orden, onOrden, colu
               <span className="apagado"> · {c.bultosBase === null ? 'nuevo, sin base' : `${formatoBultos(c.bultosBase)} de ${columnaBase.toLowerCase()}`}</span>
             </span>
             <Avance porcentaje={c.porcentaje} referencia={referencia} />
+            <ProductosCliente articulos={c.articulos} verbo="Compró" />
           </TarjetaCliente>
         ))}
       </ul>
@@ -230,7 +254,7 @@ const TablaVolumen = memo(function TablaVolumen({ clientes, orden, onOrden, colu
   const cabecera = { orden, onOrden }
   return (
     <div className="cob-tabla-scroll">
-      <table className="cob-tabla vol-tabla">
+      <table className={enfocado !== null ? 'cob-tabla vol-tabla con-ventana' : 'cob-tabla vol-tabla'}>
         <thead>
           <tr>
             <CabeceraOrden {...cabecera} campo="codigo" texto="Cód. cliente" className="cob-col-codigo" />
@@ -242,8 +266,18 @@ const TablaVolumen = memo(function TablaVolumen({ clientes, orden, onOrden, colu
         </thead>
         <tbody>
           {lista.map((c) => (
-            <FilaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
-              <td className="vol-col-num"><strong>{formatoBultos(c.bultosActual)}</strong></td>
+            <FilaCliente
+              key={c.idCliente}
+              cliente={c}
+              ficha={ficha}
+              conVendedor={conVendedor}
+              alPasar={alPasar}
+              className={enfocado === c.idCliente ? 'enfocada' : undefined}
+            >
+              <td className="vol-col-num">
+                <strong>{formatoBultos(c.bultosActual)}</strong>
+                <ProductosCliente articulos={c.articulos} verbo="Compró" />
+              </td>
               <td className="vol-col-num apagado">{c.bultosBase === null ? 'Nuevo' : formatoBultos(c.bultosBase)}</td>
               <td className="vol-col-avance"><Avance porcentaje={c.porcentaje} referencia={referencia} /></td>
             </FilaCliente>

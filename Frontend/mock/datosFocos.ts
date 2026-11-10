@@ -23,6 +23,7 @@ import {
   type ClienteFake,
   type FocoConsulta,
 } from './datosCobertura.ts'
+import { filtroCategoria } from './datosAbc.ts'
 import { comparacion, volumen } from './datosVolumen.ts'
 
 type Medida = 'ccc' | 'vol'
@@ -214,17 +215,25 @@ export function analisis(p: URLSearchParams) {
   if (mes > MES) throw new ErrorMock(400, 'Ese mes todavía no empezó.', { mes: ['Ese mes todavía no empezó.'] })
   const m = indiceMes(mes)
   const enCurso = mes === MES
+  // Comparativa (Cesar, 10/11): parcial, contra el mes anterior al mismo día; acumulado, contra todo el mes anterior
+  const pedida = p.get('comparacion')
+  if (pedida && pedida !== 'parcial' && pedida !== 'acumulado')
+    throw new ErrorMock(400, 'Esa comparativa no existe.', { comparacion: ['Elegí parcial o acumulado.'] })
+  const acumulado = pedida === 'acumulado'
+  // La categoría A, B o C: cada mes con la suya
+  const categoria = p.get('abc')
+  const deLaCategoria = filtroCategoria(p)
   const mesAnterior = sumarMeses(mes, -1)
   const corteAl = enCurso ? ayerArgentina() : null
   const diaCorte = corteAl && corteAl >= mes ? Number(corteAl.slice(8, 10)) : 31
   const finAnterior = new Date(Date.UTC(Number(mesAnterior.slice(0, 4)), Number(mesAnterior.slice(5, 7)), 0)).getUTCDate()
-  const anteriorAl = enCurso ? `${mesAnterior.slice(0, 8)}${String(Math.min(diaCorte, finAnterior)).padStart(2, '0')}` : null
+  const anteriorAl = enCurso && !acumulado ? `${mesAnterior.slice(0, 8)}${String(Math.min(diaCorte, finAnterior)).padStart(2, '0')}` : null
   const clientes = datos().filter((c) => !excluidos.has(c.idCliente))
   const vendedores = VENDEDORES.filter((v) => !v.esCasa)
   // El primer mes con datos no tiene con qué compararse en Volumen: sus focos `vol` van sin base
-  let comp: { corteAl: string | null; baseHasta: string | null; diaHabil: number; diasHabilesMes: number } | null = null
+  let comp: { tipo: string; corteAl: string | null; baseHasta: string | null; diaHabil: number; diasHabilesMes: number } | null = null
   try {
-    comp = comparacion('admin', mes).publica
+    comp = comparacion('admin', mes, pedida).publica
   } catch {
     comp = null
   }
@@ -234,15 +243,17 @@ export function analisis(p: URLSearchParams) {
     if (!comp) return { bultosActual: 0, bultosBase: null, porcentaje: null }
     const p = new URLSearchParams({ mes })
     if (vendedor !== null) p.set('vendedor', String(vendedor))
+    if (acumulado) p.set('comparacion', 'acumulado')
+    if (categoria) p.set('abc', categoria)
     const { total } = volumen(p, 'admin', [], comoConsulta(f))
     return { bultosActual: total.bultosActual ?? 0, bultosBase: total.bultosBase, porcentaje: total.porcentaje }
   }
 
   const medir = (ids: number[], filtro: ReturnType<typeof filtroCompra>) => {
-    const cartera = clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m))
+    const cartera = clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m) && deLaCategoria(c, m))
     const conCompra = cartera.filter((c) => compro(c, m, filtro)).length
-    const antes = m > 0 ? clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m - 1)) : []
-    const conCompraAntes = antes.filter((c) => compro(c, m - 1, filtro) && (!enCurso || diaDeCompra(c, m - 1) <= diaCorte)).length
+    const antes = m > 0 ? clientes.filter((c) => ids.includes(c.ruta.idPersonal) && enCartera(c, m - 1) && deLaCategoria(c, m - 1)) : []
+    const conCompraAntes = antes.filter((c) => compro(c, m - 1, filtro) && (!enCurso || acumulado || diaDeCompra(c, m - 1) <= diaCorte)).length
     return {
       clientesConCompra: conCompra,
       clientesCartera: cartera.length,
@@ -257,14 +268,14 @@ export function analisis(p: URLSearchParams) {
     corteAl,
     mesAnterior,
     anteriorAl,
-    volumen: comp && { corteAl: comp.corteAl, baseHasta: comp.baseHasta, diaHabil: comp.diaHabil, diasHabilesMes: comp.diasHabilesMes },
+    volumen: comp && { tipo: comp.tipo, corteAl: comp.corteAl, baseHasta: comp.baseHasta, diaHabil: comp.diaHabil, diasHabilesMes: comp.diasHabilesMes },
     focos: focos
       .filter((f) => f.mes === mes)
       .sort(porNombre)
       .map((f) => {
         const cabecera = { idFoco: f.idFoco, nombre: f.nombre, medida: f.medida, meta: f.meta }
         // Con cartera ese mes: los mismos vendedores para las dos medidas
-        const conCartera = vendedores.filter((v) => clientes.some((c) => c.ruta.idPersonal === v.id && enCartera(c, m)))
+        const conCartera = vendedores.filter((v) => clientes.some((c) => c.ruta.idPersonal === v.id && enCartera(c, m) && deLaCategoria(c, m)))
         if (f.medida === 'vol')
           return {
             ...cabecera,

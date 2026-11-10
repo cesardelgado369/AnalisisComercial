@@ -119,13 +119,20 @@ export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[
   // La clase A, B o C, solo para el admin (Cesar, 10/11)
   const clases = rol === 'admin' ? clasesDelMes(comp.m) : null
   const filas = cartera(comp.m).map((c) => {
-    const bultosActual = suma(lineas(c, comp.m, unidad), 'bultos')
+    const delMes = lineas(c, comp.m, unidad)
+    const bultosActual = suma(delMes, 'bultos')
+    // Lo que compró, de más a menos bultos (para el ícono de cada producto)
+    const articulos = delMes
+      .filter((l) => l.bultos > 0)
+      .map((l) => ({ ...articuloDe(l.idArticulo), bultos: l.bultos }))
+      .sort((a, b) => b.bultos - a.bultos || a.descripcion.localeCompare(b.descripcion, 'es'))
+      .map(({ idArticulo, descripcion, unidadNegocio }) => ({ idArticulo, descripcion, unidadNegocio }))
     // Gobernanza: si en el mes base no era de su cartera, la base no viaja («nuevo en tu cartera»)
     const bultosBase = estricto && !enCartera(c, comp.mBase) ? null : medio(suma(lineas(c, comp.mBase, unidad), 'bultos') * comp.fraccionBase)
     const esperado = bultosBase === null ? null : bultosBase * comp.ritmo
     const grupo: Exclude<ChipVolumen, 'todos'> =
       bultosActual <= 0 ? 'sinCompraAun' : esperado === null ? 'nuevos' : bultosActual < esperado ? 'bajaron' : 'subieron'
-    return { ...fila(c), bultosActual, bultosBase, porcentaje: pct(bultosActual, bultosBase), grupo, ...(clases ? { abc: clases.get(c.idCliente) } : {}) }
+    return { ...fila(c), bultosActual, bultosBase, porcentaje: pct(bultosActual, bultosBase), grupo, articulos, ...(clases ? { abc: clases.get(c.idCliente) } : {}) }
   })
 
   const bultosActual = medio(filas.reduce((s, f) => s + f.bultosActual, 0))
@@ -184,12 +191,32 @@ export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: nu
 
   const mes = meses[meses.length - 1]
   const m = indiceMes(mes)
+  // La categoría A, B o C, solo para el admin (Cesar, 10/11)
+  const clases = rol === 'admin' ? clasesDelMes(m) : null
   const clientes = cartera(m)
     .map((c) => {
       const ls = lineas(c, m, unidad)
       const bultosVendidos = suma(ls, 'bultos')
       const bultosDevueltos = suma(ls, 'devueltos')
-      return { ...fila(c), bultosVendidos, bultosDevueltos, porcentaje: porcentajeDevolucion(bultosVendidos, bultosDevueltos) }
+      // Los tipos de producto que devolvió, del que más al que menos (empate: por nombre)
+      const porUnidad = new Map<string, number>()
+      for (const l of ls) if (l.devueltos > 0) porUnidad.set(articuloDe(l.idArticulo).unidadNegocio, (porUnidad.get(articuloDe(l.idArticulo).unidadNegocio) ?? 0) + l.devueltos)
+      const unidadesDevueltas = [...porUnidad].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).map(([u]) => u)
+      // Los artículos que devolvió, del más devuelto al menos (Cesar, 10/11: el ícono de cada producto, no del rubro)
+      const articulosDevueltos = ls
+        .filter((l) => l.devueltos > 0)
+        .map((l) => ({ ...articuloDe(l.idArticulo), devueltos: l.devueltos }))
+        .sort((a, b) => b.devueltos - a.devueltos || a.descripcion.localeCompare(b.descripcion, 'es'))
+        .map(({ idArticulo, descripcion, unidadNegocio }) => ({ idArticulo, descripcion, unidadNegocio }))
+      return {
+        ...fila(c),
+        bultosVendidos,
+        bultosDevueltos,
+        porcentaje: porcentajeDevolucion(bultosVendidos, bultosDevueltos),
+        unidadesDevueltas,
+        articulosDevueltos,
+        ...(clases ? { abc: clases.get(c.idCliente) } : {}),
+      }
     })
     .filter((c) => c.bultosDevueltos > 0)
     .sort((a, b) => (b.porcentaje ?? 0) - (a.porcentaje ?? 0))

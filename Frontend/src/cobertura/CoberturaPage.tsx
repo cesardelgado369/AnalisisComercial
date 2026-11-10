@@ -13,6 +13,7 @@ import { formatoEntero, nombreMes } from '../utils/formato'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CHIPS, textoChip } from './estados'
+import { PorVendedor } from './PorVendedor'
 import { ResumenCobertura } from './ResumenCobertura'
 import { TablaCobertura, type Orden } from './TablaCobertura'
 import { VistaFocos } from './VistaFocos'
@@ -102,7 +103,12 @@ export function CoberturaPage() {
         <TituloTarjeta titulo={titulo} />
         {vigentes ? (
           // Sin el «715 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando
-          <ResumenCobertura kpis={vigentes.kpis} ayuda={filtros.ayuda} />
+          <ResumenCobertura
+            kpis={vigentes.kpis}
+            ayuda={filtros.ayuda}
+            // Con Todos los vendedores, cada uno con su cobertura del mes al costado (dueño y supervisor)
+            costado={filtros.vendedor === null && !filtros.esOperario ? <PorVendedor filtros={filtros} mes={mes ?? mesRef} /> : null}
+          />
         ) : errores.length === 0 ? (
           <header className="cob-resumen">
             <div className="cob-resumen-textos">
