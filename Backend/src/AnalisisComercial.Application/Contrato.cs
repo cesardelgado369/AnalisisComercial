@@ -196,9 +196,10 @@ public record FiltroVolumen(int? Vendedor = null, int? Dia = null, string? Unida
 public record ChipsVolumenDto(int Todos, int SinCompraAun, int Nuevos, int Bajaron, int Subieron);
 
 /// <param name="BultosBase">null = el cliente no era de la cartera de quien mira en el mes base («nuevo en tu cartera»).</param>
+/// <param name="Articulos">Lo que compró en el mes (netos &gt; 0), de más a menos bultos: los íconos de la lista.</param>
 /// <param name="Abc">Su grupo ABC en el mes. Solo el Admin: para el resto no viaja.</param>
 public record ClienteVolumenDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
-    decimal BultosActual, decimal? BultosBase, decimal? Porcentaje,
+    decimal BultosActual, decimal? BultosBase, decimal? Porcentaje, IReadOnlyList<ArticuloIconoDto> Articulos,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
 
 /// <summary>
@@ -222,7 +223,8 @@ public interface IVolumenService
 public record FiltroDevoluciones(int? Vendedor = null, int? Dia = null, string? Unidad = null, DateOnly? MesDesde = null,
     DateOnly? MesHasta = null, int? Foco = null, string? Abc = null);
 
-public record ArticuloDevueltoDto(int IdArticulo, string Descripcion, string? UnidadNegocio);
+/// <summary>Un artículo para dibujar su ícono en una lista (Volumen y Devoluciones): sin cantidades.</summary>
+public record ArticuloIconoDto(int IdArticulo, string Descripcion, string? UnidadNegocio);
 
 /// <param name="UnidadesDevueltas">Las unidades de negocio que devolvió en el mes, de la que más a la que menos.</param>
 /// <param name="ArticulosDevueltos">Los artículos que devolvió en el mes, del más devuelto al menos (los íconos de la
@@ -230,7 +232,7 @@ public record ArticuloDevueltoDto(int IdArticulo, string Descripcion, string? Un
 /// <param name="Abc">Su grupo ABC en el mes. Solo el Admin: para el resto no viaja.</param>
 public record ClienteDevolucionDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
     decimal BultosVendidos, decimal BultosDevueltos, decimal? Porcentaje, IReadOnlyList<string> UnidadesDevueltas,
-    IReadOnlyList<ArticuloDevueltoDto> ArticulosDevueltos,
+    IReadOnlyList<ArticuloIconoDto> ArticulosDevueltos,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
 
 /// <param name="Mes">El mes de <paramref name="Clientes"/> y <paramref name="Articulos"/> (= mesHasta).</param>

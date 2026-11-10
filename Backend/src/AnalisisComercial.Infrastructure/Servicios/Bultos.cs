@@ -35,6 +35,9 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
             ? null
             : (await lectura.PropiosAsync(ids, ct)).Where(x => x.Mes == c.MesBase).Select(x => x.IdCliente).ToHashSet();
         var sumaActual = actual.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
+        // Los íconos de lo que compró cada uno (Cesar, 10/11/2026), como en Devoluciones.
+        var datos = await Detalle.ArticulosAsync(db, actual.Select(b => b.IdArticulo), ct);
+        var porCliente = actual.ToLookup(b => b.IdCliente);
         var sumaBase = enBase.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
 
         var nombres = await Detalle.NombresAsync(db, ids, ct);
@@ -47,7 +50,9 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
             decimal? bas = conBase is null || conBase.Contains(k.IdCliente) ? Volumen.Redondear(sumaBase.GetValueOrDefault(k.IdCliente)) : null;
             var dto = new ClienteVolumenDto(k.IdCliente, nombres.GetValueOrDefault(k.IdCliente) ?? $"Cliente {k.IdCliente}",
                 rutas.GetValueOrDefault(k.IdRuta), k.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                k.IdPersonal, act, bas, Volumen.Porcentaje(act, bas), abc is null ? null : GrupoAbc.De(abc, k.IdCliente));
+                k.IdPersonal, act, bas, Volumen.Porcentaje(act, bas),
+                Detalle.Iconos(porCliente[k.IdCliente].Select(b => (b.IdArticulo, b.Netos)), datos),
+                abc is null ? null : GrupoAbc.De(abc, k.IdCliente));
             return (Dto: dto, Chip: Volumen.Chip(act, bas, Volumen.Esperado(c, bas)));
         }).ToList();
 
@@ -126,13 +131,8 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
             .Select(g => g.Key!)
             .ToList();
         // Cesar, 10/11: mejor el ícono de cada producto que el rubro. Empates: por descripción.
-        IReadOnlyList<ArticuloDevueltoDto> Devueltos(int idCliente) => delMes.Where(b => b.IdCliente == idCliente && b.Devuelto > 0)
-            .GroupBy(b => b.IdArticulo)
-            .Select(g => (Dto: new ArticuloDevueltoDto(g.Key, Detalle.Descripcion(datos, g.Key), datos.GetValueOrDefault(g.Key)?.UnidadNegocio),
-                Devuelto: g.Sum(b => b.Devuelto)))
-            .OrderByDescending(x => x.Devuelto).ThenBy(x => x.Dto.Descripcion, StringComparer.Ordinal)
-            .Select(x => x.Dto)
-            .ToList();
+        IReadOnlyList<ArticuloIconoDto> Devueltos(int idCliente)
+            => Detalle.Iconos(delMes.Where(b => b.IdCliente == idCliente).Select(b => (b.IdArticulo, b.Devuelto)), datos);
         var clientes = delMes.GroupBy(b => b.IdCliente)
             .Select(g => (Id: g.Key, Vendidos: Volumen.Redondear(g.Sum(b => b.Netos)), Devueltos: Volumen.Redondear(g.Sum(b => b.Devuelto))))
             .Where(x => x.Devueltos > 0)
@@ -173,6 +173,16 @@ internal static class Detalle
 
     public static string Descripcion(Dictionary<int, Articulo> datos, int id)
         => datos.GetValueOrDefault(id)?.Descripcion ?? $"Artículo {id}";
+
+    /// <summary>Los artículos con cantidad &gt; 0 (sumada por artículo), de más a menos; empates, por descripción.</summary>
+    public static IReadOnlyList<ArticuloIconoDto> Iconos(IEnumerable<(int IdArticulo, decimal Cantidad)> filas, Dictionary<int, Articulo> datos)
+        => filas.GroupBy(x => x.IdArticulo)
+            .Select(g => (Dto: new ArticuloIconoDto(g.Key, Descripcion(datos, g.Key), datos.GetValueOrDefault(g.Key)?.UnidadNegocio),
+                Cantidad: g.Sum(x => x.Cantidad)))
+            .Where(x => x.Cantidad > 0)
+            .OrderByDescending(x => x.Cantidad).ThenBy(x => x.Dto.Descripcion, StringComparer.Ordinal)
+            .Select(x => x.Dto)
+            .ToList();
 
     public static Task<Dictionary<int, string>> NombresAsync(ComercialDbContext db, List<int> ids, CancellationToken ct)
         => db.Clientes.AsNoTracking().Where(c => ids.Contains(c.IdCliente)).ToDictionaryAsync(c => c.IdCliente, c => c.RazonSocial, ct);

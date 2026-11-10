@@ -26,6 +26,10 @@ public class AbcTests(Entorno e)
         // Volumen de octubre, todos los vendedores: 101 y 102 (A, compró 101), 201 (B) y 501 (C).
         var volumen = await admin.JsonAsync("/api/volumen");
         Assert.Equal("C", Abc(volumen["clientes"]!, 501));
+        // Los íconos de lo que compró: 101 llevó tallarín en octubre; 501, nada.
+        var clientesVol = volumen["clientes"]!.AsArray();
+        Assert.Equal([900], clientesVol.Single(c => (int)c!["idCliente"]! == 101)!["articulos"]!.AsArray().Select(x => (int)x!["idArticulo"]!));
+        Assert.Empty(clientesVol.Single(c => (int)c!["idCliente"]! == 501)!["articulos"]!.AsArray());
         Assert.Equal("A", Abc((await admin.JsonAsync("/api/devoluciones"))["clientes"]!, 101));
         var grupos = volumen["abc"]!.AsArray();
         Assert.Equal(["A", "B", "C"], grupos.Select(g => (string?)g!["grupo"]));

@@ -330,6 +330,9 @@ datos (2026-07-01) no tiene base → 400 (`errors.mes`).
   "clientes": [{ "idCliente": 59003, "razonSocial": "GP BRIGIDO", "ruta": "ELENA WHITE" | null,
                  "vendedor": "FRANCO BAIGORRIA" | null, "idPersonal": 2 | null,
                  "bultosActual": 12, "bultosBase": 15 | null, "porcentaje": 80.0 | null,
+                 "articulos": [{ "idArticulo": 201, "descripcion": "TAPAS DE EMPANADA FREIR X12",
+                                 "unidadNegocio": "TAPAS" | null }],   // lo que compró (netos > 0 al corte), de más a
+                                                                       // menos bultos; empates por descripción; o []
                  "abc": "A" | "B" | "C" }],               // solo admin
   "abc": [{ "grupo": "A", "clientes": 207, "conCompra": 170, "porcentaje": 82.1 },   // solo admin: A, B y C
           { "grupo": "B", … }, { "grupo": "C", … }] }
@@ -645,7 +648,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
 - 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
 - 10/11: **`/api/clientes/{id}/movimientos`**: los comprobantes del mes de un cliente (la ventanita de Devoluciones).
-- 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`.
+- 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
+  de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
