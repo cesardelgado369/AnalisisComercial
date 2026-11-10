@@ -1,13 +1,10 @@
 /* ---- Cobertura de clientes: la estructura de la web actual con la estética violeta de la app */
-.cob { max-width: 1120px; gap: 16px; }
+/* Usa el ancho de la pantalla (Cesar, 10/11: se desaprovechaba una banda a la derecha), con tope en monitores muy anchos */
+.cob { max-width: 1680px; gap: 16px; }
 
-/* Filtros: tres desplegables en fila, cada uno con su título en una banda (en el celular, uno debajo del otro y sin el
-   título a la vista: el valor elegido ya dice qué filtra) */
-.cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-/* El dueño, con focos en el mes: uno más */
-.cob-filtros.con-foco { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.cob-filtros.sin-vendedor.con-foco { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+/* Filtros: los desplegables en fila (`--columnas` lo pone la barra: el dueño suma categoría y foco), cada uno con su
+   título en una banda. En el celular, uno debajo del otro y sin el título a la vista: el valor elegido ya dice qué filtra */
+.cob-filtros { display: grid; grid-template-columns: repeat(var(--columnas, 3), minmax(0, 1fr)); gap: 12px; }
 /* El mes del dueño (con «Focos» al lado): en la PC está en la cabecera; en la barra, solo en el celular */
 .cob-filtro-mes { display: none; align-items: flex-end; gap: 8px; min-width: 0; }
 .cob-filtro-mes .cob-filtro { flex: 1; min-width: 0; }
@@ -44,6 +41,24 @@
 .cob-filtro-nombre .icono { font-size: 16px; font-weight: 400; letter-spacing: normal; text-transform: none; color: var(--acento-claro); }
 /* Los íconos dibujados para Madomi (comercial/IconosFiltro): a 20px para que se lean, sin agrandar la banda */
 .cob-filtro-nombre .icono-filtro { width: 20px; height: 20px; flex-shrink: 0; margin: -2px 0; }
+/* Categoría de cliente: Todas, A, B o C en botones, en lugar del desplegable */
+.cob-filtro-opciones { display: flex; height: 44px; }
+.cob-filtro-opcion {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; min-width: 0; padding: 0 4px; cursor: pointer;
+  font: inherit; font-size: 13px; font-weight: 700; color: var(--texto-2); background: transparent; border: 0;
+  border-left: 1px solid var(--superficie-media);
+}
+.cob-filtro-opcion:first-child { border-left: 0; }
+.cob-filtro-opcion:hover { background: var(--superficie-baja); }
+.cob-filtro-opcion:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+.cob-filtro-opcion[aria-checked="true"] { color: var(--acento); background: var(--superficie-media); box-shadow: inset 0 -3px 0 var(--acento); }
+.cob-filtro-opcion .abc { width: 24px; height: 24px; font-size: 12px; }
+/* Categoría de cliente: las tres letras en una etiqueta, con el contorno blanco de los otros íconos */
+.cob-filtro-nombre .icono-abc {
+  display: inline-grid; place-items: center; width: auto; height: 18px; margin: 0; padding: 0 4px; font-size: 9px;
+  font-weight: 900; letter-spacing: .04em; color: var(--piedra); background: var(--acento-claro);
+  border: 1.5px solid #fff; border-radius: 5px;
+}
 /* Foco del mes, el que más pesa: la banda va de negro al violeta de la cabecera, con una línea violeta abajo y el borde
    de la cajita en violeta */
 .cob-filtro-foco { border-color: var(--acento-claro); }
@@ -180,6 +195,24 @@
 .cob-nombre a { color: var(--texto); font-weight: 700; text-decoration: none; }
 .cob-nombre a:hover { color: var(--acento); text-decoration: underline; }
 .cob-detalle { display: block; margin-top: 2px; font-size: 12px; color: var(--texto-3); }
+/* La ruta y el vendedor en cápsulas (comercial/lista, DetalleCliente): ícono blanco sobre violeta, nombre violeta sobre blanco */
+.cliente-capsulas { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 5px; }
+.capsula {
+  display: inline-flex; align-items: stretch; height: 22px; overflow: hidden; font-size: 12px; font-weight: 600;
+  line-height: 1; border: 1px solid var(--acento); border-radius: 999px; background: var(--superficie);
+}
+.capsula-icono { display: inline-flex; align-items: center; padding: 0 4px 0 6px; color: #fff; background: var(--acento); }
+.capsula-icono .icono { font-size: 14px; }
+.capsula-texto { display: inline-flex; align-items: center; padding: 0 9px 0 6px; color: var(--acento); white-space: nowrap; }
+/* La clase A, B o C (solo los dueños): A en violeta lleno, B en violeta claro, C apagada */
+.abc {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px;
+  font-size: 11px; font-weight: 800; line-height: 1;
+}
+.abc.grande { width: 28px; height: 28px; border-radius: 8px; font-size: 15px; }
+.abc-a { color: #fff; background: var(--acento); }
+.abc-b { color: var(--cabecera); background: var(--superficie-alta); }
+.abc-c { color: var(--texto-2); background: var(--superficie); border: 1px solid var(--borde-fuerte); }
 
 /* Quien dejó de comprar: la fila entera marcada y la etiqueta roja al lado del nombre */
 .cob-tabla tr.dejo, .cob-tarjetas li.dejo { background: var(--fila-alerta); }
@@ -246,7 +279,7 @@
 
 @media (max-width: 767px) {
   /* Filtros compactos (con el teléfono en la mano, primero los números): el valor elegido ya dice qué filtra */
-  .cob-filtros, .cob-filtros.sin-vendedor, .cob-filtros.con-foco, .cob-filtros.sin-vendedor.con-foco { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .cob-filtros { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .cob-filtro-mes { display: flex; }
   .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }

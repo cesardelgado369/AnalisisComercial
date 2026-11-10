@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { detalleCliente, nombrePropio } from '../cobertura/estados'
+import type { ClaseAbc } from '../api/types'
+import { nombrePropio } from '../cobertura/estados'
 import { formatoEntero } from '../utils/formato'
 import { unidadVisible } from './filtros'
 
@@ -18,6 +19,50 @@ interface ClienteDeLista {
   razonSocial: string
   ruta: string | null
   vendedor: string | null
+  /** Solo para los dueños (la API no la manda a los demás). */
+  abc?: ClaseAbc
+}
+
+const TEXTO_ABC: Record<ClaseAbc, string> = {
+  A: 'Clase A: de los que más compran (juntos suman el 80 % de los bultos de los últimos 3 meses)',
+  B: 'Clase B: los que siguen, hasta el 95 % de los bultos de los últimos 3 meses',
+  C: 'Clase C: el resto, y los que no compraron en los últimos 3 meses',
+}
+
+/** La categoría A, B o C del cliente, después del nombre (Cesar, 10/11). Solo la ven los dueños: si no viene, nada. */
+export function EtiquetaAbc({ abc, grande = false }: { abc?: ClaseAbc; grande?: boolean }) {
+  if (!abc) return null
+  return (
+    <span className={`abc abc-${abc.toLowerCase()}${grande ? ' grande' : ''}`} title={TEXTO_ABC[abc]}>
+      <span className="sr-solo">Clase </span>
+      {abc}
+    </span>
+  )
+}
+
+/**
+ * La ruta y el vendedor del cliente en cápsulas (Cesar, 10/11, pensado para Checho): el ícono en blanco sobre violeta y
+ * el nombre en violeta sobre blanco. Sin vendedor a la vista (el operario de un vendedor), solo la ruta.
+ */
+export function DetalleCliente({ cliente: c, conVendedor }: { cliente: ClienteDeLista; conVendedor: boolean }) {
+  return (
+    <span className="cliente-capsulas">
+      <Capsula icono="location_on" que="Ruta" texto={c.ruta ? nombrePropio(c.ruta) : 'Sin ruta'} />
+      {conVendedor && <Capsula icono="person" que="Vendedor" texto={c.vendedor ? nombrePropio(c.vendedor) : 'Sin vendedor'} />}
+    </span>
+  )
+}
+
+function Capsula({ icono, que, texto }: { icono: string; que: string; texto: string }) {
+  return (
+    <span className="capsula">
+      <span className="capsula-icono">
+        <span className="icono" aria-hidden>{icono}</span>
+        <span className="sr-solo">{que}: </span>
+      </span>
+      <span className="capsula-texto">{texto}</span>
+    </span>
+  )
 }
 
 /** Los chips de arriba de la lista, con la cantidad de cada uno (la cuenta la API). El de alerta va en rojo. */
@@ -119,9 +164,10 @@ export function FilaCliente({ cliente: c, ficha, conVendedor, marca, className, 
       <td>
         <span className="cob-nombre">
           <Link {...ficha.enlace(c.idCliente)}>{c.razonSocial}</Link>
+          <EtiquetaAbc abc={c.abc} />
           {marca}
         </span>
-        <span className="cob-detalle">{detalleCliente(c, conVendedor)}</span>
+        <DetalleCliente cliente={c} conVendedor={conVendedor} />
       </td>
       {children}
     </tr>
@@ -135,11 +181,13 @@ export function TarjetaCliente({ cliente: c, ficha, conVendedor, marca, classNam
       <Link {...ficha.enlace(c.idCliente)} className="cob-tarjeta">
         <span className="cob-tarjeta-nombre">
           <strong>{c.razonSocial}</strong>
+          <EtiquetaAbc abc={c.abc} />
           {marca}
         </span>
         <span className="cob-tarjeta-detalle">
-          <strong className="cob-tarjeta-codigo">Cód. {c.idCliente}</strong> · {detalleCliente(c, conVendedor)}
+          <strong className="cob-tarjeta-codigo">Cód. {c.idCliente}</strong>
         </span>
+        <DetalleCliente cliente={c} conVendedor={conVendedor} />
         {children}
       </Link>
     </li>

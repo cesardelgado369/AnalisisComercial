@@ -6,9 +6,22 @@
   background: var(--superficie-baja) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237c3aed' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center / 18px;
 }
 
-.vol-total { display: flex; flex-direction: column; gap: 4px; min-width: min(100%, 360px); max-width: 440px; }
-.vol-total-numero { font-size: 14px; font-weight: 600; color: var(--texto-2); }
-.vol-total-numero > strong { font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -.02em; color: var(--acento); font-variant-numeric: tabular-nums; }
+/* Los bultos van primero y en grande (Cesar, 10/11: más prioridad a los bultos) */
+.vol-total { display: flex; flex-direction: column; gap: 4px; flex: 1 1 360px; min-width: min(100%, 360px); max-width: 520px; }
+.vol-total-numero { font-size: 15px; font-weight: 600; color: var(--texto-2); }
+.vol-total-numero > strong { font-size: 46px; line-height: 52px; font-weight: 800; letter-spacing: -.02em; color: var(--acento); font-variant-numeric: tabular-nums; }
+/* Comparativa: mes parcial o acumulado, en la barra de los chips */
+.vol-comparativa { display: inline-flex; align-items: center; gap: 8px; }
+.vol-comparativa-nombre { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--texto-2); }
+/* Los clientes A, B y C cubiertos (solo los dueños), al lado de los bultos */
+.vol-abc { display: flex; flex-direction: column; gap: 10px; flex: 1 1 320px; max-width: 460px; }
+.vol-abc-titulo { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 13px; font-weight: 700; color: var(--texto-2); }
+.vol-abc-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.vol-abc-grupo { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px 10px; }
+.vol-abc-grupo .cob-kpi-barra { grid-column: 1 / -1; width: 100%; }
+.vol-abc-numeros { display: flex; flex-direction: column; line-height: 1.15; }
+.vol-abc-numeros strong { font-size: 24px; font-weight: 800; color: var(--texto); font-variant-numeric: tabular-nums; }
+.vol-abc-numeros span { font-size: 12px; color: var(--texto-2); }
 .vol-total-detalle { font-size: 14px; color: var(--texto-2); }
 .vol-total-detalle > strong { color: var(--texto); font-variant-numeric: tabular-nums; }
 .vol-total-corte { font-size: 12px; font-weight: 600; color: var(--texto-2); }
@@ -41,5 +54,6 @@
 
 @media (max-width: 767px) {
   .vol-total { min-width: 0; max-width: none; width: 100%; }
-  .vol-total-numero > strong { font-size: 28px; line-height: 34px; }
+  .vol-total-numero > strong { font-size: 34px; line-height: 40px; }
+  .vol-abc { max-width: none; width: 100%; }
 }

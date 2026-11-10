@@ -1,5 +1,5 @@
 /* ---- Administración: Gestión de cuentas y Clientes excluidos */
-.adm { max-width: 1120px; gap: 16px; }
+.adm { max-width: 1680px; gap: 16px; }
 .adm .adm-nuevo { min-height: 44px; }
 .adm-barra { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
 .adm-barra .pestanas { flex: 1 1 auto; }

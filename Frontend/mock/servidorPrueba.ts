@@ -111,6 +111,9 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
     // Los focos son solo del dueño (Cesar, 05/11): la lista y el filtro `foco=` dan 403 a los empleados
     if (rol !== 'admin' && (ruta === '/api/cobertura/focos' || p.has('foco')))
       return responder(res, 403, { status: 403, title: 'Los focos del mes son solo para administradores.' })
+    // La categoría A, B o C, también solo del dueño (Cesar, 10/11)
+    if (rol !== 'admin' && p.has('abc'))
+      return responder(res, 403, { status: 403, title: 'La categoría de clientes es solo para administradores.' })
     if (ruta === '/api/sesion') return responder(res, 200, sesionApp(email, rol))
     if (ruta === '/api/sincronizacion/estado') return responder(res, 200, sinc.estado(ayerArgentina()))
     if (ruta === '/api/cobertura/vendedores') return responder(res, 200, vendedoresVisibles(rol, vendedoresDelOperario(email)))

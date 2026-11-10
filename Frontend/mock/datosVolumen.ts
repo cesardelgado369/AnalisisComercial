@@ -3,6 +3,7 @@
  * (bases según el rol, día hábil, chips, gobernanza). **No es la lógica oficial** (la del backend): la base «al mismo
  * día hábil» se aproxima con la proporción de días hábiles del mes base.
  */
+import { clasesDelMes, coberturaAbc, filtroCategoria } from './datosAbc.ts'
 import { articuloDe, lineas, suma } from './datosArticulos.ts'
 import {
   ErrorMock,
@@ -47,7 +48,10 @@ const pct = (a: number, b: number | null) => (b ? uno((a / b) * 100) : null)
 export type TipoComparacion = 'mismoDiaHabil' | 'mesAnteriorCompleto'
 
 /** La comparación del contrato: el operario contra el mes anterior completo; admin y supervisor, al mismo día hábil. */
-export function comparacion(rol: RolPrueba, mesParam: string | null) {
+export function comparacion(rol: RolPrueba, mesParam: string | null, pedida: string | null = null) {
+  // `comparacion=parcial|acumulado` (Cesar, 10/11): admin y supervisor eligen; el operario, siempre el mes completo
+  if (pedida && pedida !== 'parcial' && pedida !== 'acumulado')
+    throw new ErrorMock(400, 'Esa comparativa no existe.', { comparacion: ['Elegí parcial o acumulado.'] })
   const mesActual = mesDe(hoyArgentina())
   const mes = mesParam ? mesDe(mesParam) : mesActual
   if (mes <= PRIMER_MES || mes > mesActual) {
@@ -59,7 +63,7 @@ export function comparacion(rol: RolPrueba, mesParam: string | null) {
   const corteAl = enCurso ? (ayer >= mes ? ayer : null) : finDeMes(mes)
   const diasHabilesMes = habiles(mes, finDeMes(mes)).length
   const diaHabil = corteAl ? habiles(mes, corteAl).length : 0
-  const tipo: TipoComparacion = enCurso && rol !== 'operario' ? 'mismoDiaHabil' : 'mesAnteriorCompleto'
+  const tipo: TipoComparacion = enCurso && rol !== 'operario' && pedida !== 'acumulado' ? 'mismoDiaHabil' : 'mesAnteriorCompleto'
   const habilesBase = habiles(mesBase, finDeMes(mesBase))
   const baseHasta =
     tipo === 'mismoDiaHabil' ? (diaHabil ? habilesBase[Math.min(diaHabil, habilesBase.length) - 1] : null) : finDeMes(mesBase)
@@ -91,7 +95,9 @@ function filtros(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco
   const delFiltro = datos().filter(
     (c) => !excluidos.has(c.idCliente) && ids.includes(c.ruta.idPersonal) && (dia === null || c.ruta.dias.includes(dia)),
   )
-  const cartera = (m: number) => delFiltro.filter((c) => enCartera(c, m)).sort((a, b) => a.razonSocial.localeCompare(b.razonSocial, 'es'))
+  const deLaCategoria = filtroCategoria(p)
+  const cartera = (m: number) =>
+    delFiltro.filter((c) => enCartera(c, m) && deLaCategoria(c, m)).sort((a, b) => a.razonSocial.localeCompare(b.razonSocial, 'es'))
   return { unidad, titulo, cartera, dia }
 }
 
@@ -105,11 +111,13 @@ type ChipVolumen = 'todos' | 'sinCompraAun' | 'nuevos' | 'bajaron' | 'subieron'
 /** `GET /api/volumen` (CONTRATO_API.md). */
 export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco: FocoConsulta | null = null) {
   const { unidad, titulo, cartera } = filtros(p, rol, idsOperario, foco)
-  const comp = comparacion(rol, p.get('mes'))
+  const comp = comparacion(rol, p.get('mes'), p.get('comparacion'))
   const estricto = rol !== 'admin'
   const chip = (p.get('chip') ?? 'todos') as ChipVolumen
   const busqueda = sinTildes(p.get('busqueda')?.trim() ?? '')
 
+  // La clase A, B o C, solo para el admin (Cesar, 10/11)
+  const clases = rol === 'admin' ? clasesDelMes(comp.m) : null
   const filas = cartera(comp.m).map((c) => {
     const bultosActual = suma(lineas(c, comp.m, unidad), 'bultos')
     // Gobernanza: si en el mes base no era de su cartera, la base no viaja («nuevo en tu cartera»)
@@ -117,7 +125,7 @@ export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[
     const esperado = bultosBase === null ? null : bultosBase * comp.ritmo
     const grupo: Exclude<ChipVolumen, 'todos'> =
       bultosActual <= 0 ? 'sinCompraAun' : esperado === null ? 'nuevos' : bultosActual < esperado ? 'bajaron' : 'subieron'
-    return { ...fila(c), bultosActual, bultosBase, porcentaje: pct(bultosActual, bultosBase), grupo }
+    return { ...fila(c), bultosActual, bultosBase, porcentaje: pct(bultosActual, bultosBase), grupo, ...(clases ? { abc: clases.get(c.idCliente) } : {}) }
   })
 
   const bultosActual = medio(filas.reduce((s, f) => s + f.bultosActual, 0))
@@ -138,6 +146,7 @@ export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[
       porcentaje: pct(bultosActual, bultosBase),
     },
     chips,
+    ...(clases ? { abc: coberturaAbc(cartera(comp.m), comp.m, unidad, clases) } : {}),
     clientes: filas
       .filter((f) => !busqueda || String(f.idCliente) === busqueda || sinTildes(f.razonSocial).includes(busqueda))
       .filter((f) => chip === 'todos' || f.grupo === chip)

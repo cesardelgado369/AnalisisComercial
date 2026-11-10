@@ -1,7 +1,8 @@
 /* ---- Devoluciones: un indicador por mes (se elige tocándolo) y, del mes elegido, clientes y artículos */
-.dev-kpis { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+/* Los meses se reparten a lo ancho de la tarjeta */
+.dev-kpis { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; flex: 1 1 100%; }
 .dev-kpi {
-  display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 112px; min-height: 44px; padding: 10px 12px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-width: 112px; min-height: 44px; padding: 10px 12px;
   cursor: pointer; font: inherit; text-align: center; color: var(--texto);
   background: var(--superficie); border: 1.5px solid transparent; border-radius: var(--radio-grande);
   transition: background-color .15s, border-color .15s;
@@ -15,10 +16,17 @@
 .dev-kpi-detalle { font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
 
 .dev-cuerpo { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
-.dev-bloque { min-width: 0; padding: 16px 0 8px; }
+.dev-bloque { min-width: 0; padding: 0 0 8px; }
 .dev-bloque + .dev-bloque { border-left: 1px solid var(--borde); }
-.dev-bloque h2 { display: flex; align-items: center; gap: 8px; padding: 0 24px 8px; font-size: 15px; font-weight: 800; }
-.dev-cantidad { padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--texto-2); background: var(--superficie-media); }
+/* Clientes con devoluciones y Artículos más devueltos, con énfasis (Cesar, 10/11): en banda negra, como los otros títulos */
+.dev-bloque h2 {
+  display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 8px; padding: 10px 24px;
+  font-size: 13px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #fff; background: var(--piedra);
+}
+.dev-cantidad {
+  padding: 0 8px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0; color: var(--piedra);
+  background: var(--acento-claro);
+}
 .dev-tabla th { top: var(--alto-header); }
 .dev-col-num { width: 96px; text-align: right !important; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
@@ -39,6 +47,6 @@
 @media (max-width: 767px) {
   .dev-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
   .dev-kpi { min-width: 0; }
-  .dev-bloque h2 { padding: 0 16px 8px; }
+  .dev-bloque h2 { padding: 10px 16px; }
   .dev-articulos { padding: 0 16px; }
 }

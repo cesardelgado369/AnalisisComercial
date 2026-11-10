@@ -46,16 +46,7 @@ export function ExplicacionVolumen(props: { total: TotalVolumen; c: ComparacionV
         La base es lo que compraron en {base} esos mismos clientes, aunque entonces estuvieran en otra ruta. Los que
         salieron de la cartera no cuentan.
       </ParrafoCartera>
-      {alDia && (
-        <Parrafo titulo="Día hábil:">
-          de lunes a sábado, sin los feriados nacionales ni el 24/9. Hoy no cuenta: los datos de Chess llegan a las 5 de la
-          mañana, y comparar medio día contra un día entero daría una baja que no es.
-        </Parrafo>
-      )}
-      <Parrafo titulo="Cada cliente,">
-        con la misma cuenta: «{t.textoChip.bajaron}» si lleva menos que su base, «{t.textoChip.subieron}» si lleva lo mismo
-        o más y «{t.textoChip.sinCompraAun}» si {t.enCurso ? 'todavía ' : ''}no le quedó nada comprado.
-      </Parrafo>
+      {/* Sin «Día hábil» ni «Cada cliente» (Cesar, 10/11: no hacían falta) */}
     </>
   )
 }

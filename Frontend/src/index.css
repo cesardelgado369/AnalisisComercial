@@ -228,14 +228,14 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 .header-mes select:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 /* Franja de datos viejos (Layout): visible en todos los anchos */
 .aviso-datos-viejos {
-  display: flex; align-items: flex-start; gap: 8px; max-width: 1120px; margin: 0 0 16px; padding: 10px 14px;
+  display: flex; align-items: flex-start; gap: 8px; max-width: 1680px; margin: 0 0 16px; padding: 10px 14px;
   font-size: 13px; font-weight: 600; color: var(--alerta-texto); background: var(--alerta-fondo);
   border: 1px solid var(--alerta-borde); border-radius: var(--radio);
 }
 .aviso-datos-viejos .icono { color: var(--alerta-icono, #d97706); margin-top: 1px; }
 /* El dueño parado en un mes pasado: en todas las pantallas comerciales, con la vuelta al mes en curso */
 .aviso-mes-pasado {
-  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; max-width: 1120px; margin: 0 0 16px; padding: 8px 10px 8px 14px;
+  display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; max-width: 1680px; margin: 0 0 16px; padding: 8px 10px 8px 14px;
   font-size: 13px; font-weight: 600; color: #451a03; background: #fef3c7; border: 1px solid #fcd34d; border-radius: var(--radio);
 }
 .aviso-mes-pasado > span:nth-child(2) { flex: 1; min-width: 200px; }
@@ -244,7 +244,7 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 /* Sin señal (el vendedor en la calle): pegada arriba, para que se vea aunque esté a mitad de la lista */
 .aviso-sin-conexion {
   position: sticky; top: calc(var(--alto-header) + 8px); z-index: 20;
-  display: flex; align-items: flex-start; gap: 8px; max-width: 1120px; margin: 0 0 16px; padding: 10px 14px;
+  display: flex; align-items: flex-start; gap: 8px; max-width: 1680px; margin: 0 0 16px; padding: 10px 14px;
   font-size: 13px; font-weight: 600; color: #fff; background: var(--piedra); border-radius: var(--radio);
   box-shadow: 0 6px 18px -8px rgba(29, 22, 48, .6);
 }

@@ -27,7 +27,7 @@ const enParalelo = {
 
 /** Lo de un cliente en un foco: CCC, si compró (el estado de Cobertura); VOL, sus bultos contra el mes anterior. */
 type Celda = { medida: 'ccc'; estado: EstadoMes } | { medida: 'vol'; bultosActual: number; bultosBase: number | null } | null
-type FilaFocos = Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | 'vendedor'> & { celdas: Celda[] }
+type FilaFocos = Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | 'vendedor' | 'abc'> & { celdas: Celda[] }
 /** Lo de arriba de cada foco: el porcentaje, su detalle y el ancho de la barra. */
 type Indicador = { valor: number | null; detalle: string }
 
@@ -77,12 +77,13 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
     })
     // La cartera es la del mes en todas (el foco no la cambia): las filas salen de la primera
     const primera = respuestas[0]
-    const clientes: Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | 'vendedor'>[] = primera.clientes
+    const clientes: Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | 'vendedor' | 'abc'>[] = primera.clientes
     const filas: FilaFocos[] = clientes.map((c) => ({
       idCliente: c.idCliente,
       razonSocial: c.razonSocial,
       ruta: c.ruta,
       vendedor: c.vendedor,
+      abc: c.abc,
       celdas: porFoco.map((m) => m.get(c.idCliente) ?? null),
     }))
     const indicadores: Indicador[] = respuestas.map((_, i) => {

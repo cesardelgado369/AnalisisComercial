@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { Foco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
@@ -43,6 +43,9 @@ export function useFiltrosComerciales() {
   const focoUrl = Number(params.get('foco'))
   const foco = esAdmin && focoUrl > 0 && (focos.datos === null || focos.datos.some((f) => f.idFoco === focoUrl)) ? focoUrl : null
   const focoElegido = focos.datos?.find((f) => f.idFoco === foco) ?? null
+  // La categoría A, B o C del cliente (Cesar, 10/11): solo el dueño, como los focos
+  const categoriaUrl = params.get('abc')
+  const categoria = esAdmin && (categoriaUrl === 'A' || categoriaUrl === 'B' || categoriaUrl === 'C') ? categoriaUrl : null
   const busqueda = params.get('busqueda')?.trim() ?? ''
   /** Con «Todos los vendedores», debajo de la ruta de cada cliente va también su vendedor. */
   const conVendedor = eligeVendedor && vendedor === null
@@ -87,6 +90,7 @@ export function useFiltrosComerciales() {
   if (dia !== null) consulta.set('dia', String(dia))
   if (unidad) consulta.set('unidad', unidad)
   if (foco !== null) consulta.set('foco', String(foco))
+  if (categoria !== null) consulta.set('abc', categoria)
 
   // El título: el vendedor elegido, los del operario (unidos, como la API) o «Todos los vendedores». Se arma acá
   // (recomendado en el contrato: el `titulo` de la API es de referencia y trae los nombres como Chess, en mayúsculas)
@@ -129,6 +133,7 @@ export function useFiltrosComerciales() {
     unidad,
     focos,
     foco,
+    categoria,
     busqueda,
     consulta,
     titulo,
@@ -150,8 +155,11 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
   // El foco, solo si el mes tiene alguno (si la lista no llegó, no se muestra: es un filtro de más). En la vista por
   // focos de Cobertura (`sinFoco`) tampoco: ahí están todos, uno por columna
   const conFoco = !sinFoco && !!focos.datos?.length
+  // La categoría de cliente, solo el dueño
+  const conCategoria = sesion.rol === 'admin'
+  const columnas = Number(eligeVendedor) + 2 + Number(conCategoria) + Number(conFoco)
   return (
-    <div className={['cob-filtros', !eligeVendedor && 'sin-vendedor', conFoco && 'con-foco'].filter(Boolean).join(' ')}>
+    <div className="cob-filtros" style={{ '--columnas': columnas } as CSSProperties}>
       {eligeVendedor && (
         <label className="cob-filtro">
           <Titulo icono={<IconoVendedor />}>Vendedor</Titulo>
@@ -193,6 +201,28 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
           </p>
         )}
       </div>
+      {conCategoria && (
+        // Botones en lugar de desplegable (Cesar, 10/11): Todas, A, B o C, con las mismas etiquetas de los clientes
+        <div className={filtros.categoria === null ? 'cob-filtro' : 'cob-filtro cob-filtro-activo'}>
+          <Titulo icono={<span className="icono-filtro icono-abc" aria-hidden>ABC</span>}>Categoría de cliente</Titulo>
+          <div className="cob-filtro-opciones" role="radiogroup" aria-label="Categoría de cliente">
+            {CATEGORIAS.map(({ valor, texto }) => (
+              <button
+                key={texto}
+                type="button"
+                role="radio"
+                aria-checked={filtros.categoria === valor}
+                className="cob-filtro-opcion"
+                title={texto}
+                onClick={() => cambiar('abc', valor)}
+              >
+                {valor ? <span className={`abc abc-${valor.toLowerCase()}`}>{valor}</span> : 'Todas'}
+                {valor && <span className="sr-solo">{texto}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {conFoco && (
         <label className={foco === null ? 'cob-filtro cob-filtro-foco' : 'cob-filtro cob-filtro-foco cob-filtro-activo'}>
           <Titulo icono={<IconoFoco />}>Foco del mes</Titulo>
@@ -208,6 +238,13 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
     </div>
   )
 }
+
+const CATEGORIAS = [
+  { valor: null, texto: 'Todas las categorías' },
+  { valor: 'A', texto: 'A: los que más compran' },
+  { valor: 'B', texto: 'B: los que siguen' },
+  { valor: 'C', texto: 'C: el resto' },
+] as const
 
 /**
  * El título de un filtro, con su ícono, en la banda negra de arriba del desplegable (Cesar, 10/11). Los íconos son los

@@ -3,6 +3,7 @@
  * del contexto), y `GET /api/cobertura` armado con las reglas de CONTRATO_API.md. **No es la lógica oficial**: la
  * oficial es la del backend. Se borra cuando la API esté arriba (puerto 5030).
  */
+import { clasesDelMes, filtroCategoria } from './datosAbc.ts'
 
 export type EstadoMes = 'compro' | 'noCompro' | 'sinCompraAun' | 'dejoDeComprar' | 'fueraDeCartera'
 type Chip = 'todos' | 'compraronMesActual' | 'sinCompraMesActual' | 'dejaronDeComprar'
@@ -267,9 +268,10 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
   const delFiltro = datos().filter(
     (c) => !excluidos.has(c.idCliente) && ids.includes(c.ruta.idPersonal) && (dia === null || c.ruta.dias.includes(dia)),
   )
+  const deLaCategoria = filtroCategoria(p)
   const kpis = meses.map((mes, i) => {
     const m = indices[i]
-    const cartera = delFiltro.filter((c) => enCartera(c, m))
+    const cartera = delFiltro.filter((c) => enCartera(c, m) && deLaCategoria(c, m))
     const conCompra = cartera.filter((c) => compro(c, m, unidad)).length
     return {
       mes,
@@ -289,7 +291,7 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
     (ultimo !== actual || !compro(c, actual, unidad))
 
   const cartera = delFiltro
-    .filter((c) => enCartera(c, ultimo))
+    .filter((c) => enCartera(c, ultimo) && deLaCategoria(c, ultimo))
     .sort((a, b) => a.razonSocial.localeCompare(b.razonSocial, 'es'))
   const chips: Record<Chip, number> = {
     todos: cartera.length,
@@ -314,6 +316,7 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
       : true,
     )
 
+  const clases = rol === 'admin' ? clasesDelMes(ultimo) : null
   return {
     titulo: nombreVendedor ?? 'Todos los vendedores',
     subtitulo: `${cartera.length} clientes, ${dia ? DIAS[dia] : 'todos los días'}, ${unidadTexto ?? 'todas las unidades'}${foco ? `, foco ${foco.nombre}` : ''}`,
@@ -330,6 +333,8 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
       idPersonal: c.ruta.idPersonal,
       lat: c.lat,
       lng: c.lng,
+      // La clase A, B o C, solo para el admin (Cesar, 10/11), según el último mes del rango
+      ...(clases?.has(c.idCliente) ? { abc: clases.get(c.idCliente) } : {}),
     })),
   }
 }

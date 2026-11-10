@@ -127,6 +127,8 @@ export interface ClienteCobertura {
   /** Ubicación de Chess (la misma de la ficha y de Mi ruta); null si no la tiene. */
   lat: number | null
   lng: number | null
+  /** Solo el dueño (Cesar, 10/11): la clase A, B o C del cliente según el último mes del rango. Para los demás no viene. */
+  abc?: ClaseAbc
 }
 
 /** `GET /api/cobertura?vendedor=&dia=&unidad=&busqueda=&chip=&mesDesde=&mesHasta=`. */
@@ -223,6 +225,8 @@ export interface ClienteVolumen {
   /** null: ese cliente no era de su cartera en el mes base («nuevo en tu cartera»). */
   bultosBase: number | null
   porcentaje: number | null
+  /** Solo el dueño: la clase A, B o C del cliente en el mes de la comparación. */
+  abc?: ClaseAbc
 }
 
 /** `GET /api/volumen?vendedor=&dia=&unidad=&busqueda=&chip=&mes=`. Cada cliente cae en un solo chip. */
@@ -233,6 +237,24 @@ export interface Volumen {
   total: TotalVolumen
   chips: Record<ChipVolumen, number>
   clientes: ClienteVolumen[]
+  /** Solo el dueño: qué parte de los clientes A, B y C de la cartera compró en el mes (siempre los tres, en orden). */
+  abc?: CoberturaAbc[]
+}
+
+/**
+ * La clase del cliente (Cesar, 10/11; como el Grupo ABC de De Ruta): por los bultos de los 3 meses cerrados anteriores,
+ * de mayor a menor, A suma el primer 80 % del total de Madomi, B hasta el 95 % y C el resto (y los que no compraron).
+ * Solo la ven los dueños.
+ */
+export type ClaseAbc = 'A' | 'B' | 'C'
+
+/** Los clientes de una clase en la cartera del mes y cuántos compraron (cubiertos), con los filtros de la pantalla. */
+export interface CoberturaAbc {
+  grupo: ClaseAbc
+  clientes: number
+  conCompra: number
+  /** 0–100, un decimal; 0 si no hay clientes de esa clase. */
+  porcentaje: number
 }
 
 /** `GET /api/clientes/{id}/volumen?mes=`: la pestaña Volumen de la ficha. */

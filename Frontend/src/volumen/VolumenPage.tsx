@@ -6,13 +6,16 @@ import { PRIMER_MES } from '../cobertura/estados'
 import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { CabeceraOrden, Chips, FilaCliente, SinClientes, TarjetaCliente, porNombre, useAbrirFicha } from '../comercial/lista'
+import { Parrafo } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
+import { Segmentado } from '../components/Segmentado'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { formatoBultos, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { Avance, TotalComparado } from './Avance'
 import { textosComparacion as textos } from './comparacion'
+import { CubiertosPorClase } from './CubiertosPorClase'
 import { ExplicacionVolumen } from './ExplicacionVolumen'
 import '../cobertura/cobertura.css'
 import './volumen.css'
@@ -20,6 +23,7 @@ import './volumen.css'
 type Orden = 'nombre' | 'nombre-desc' | 'codigo' | 'codigo-desc' | 'actual' | 'actual-desc' | 'porcentaje' | 'porcentaje-desc'
 const ORDENES: Orden[] = ['nombre', 'nombre-desc', 'codigo', 'codigo-desc', 'actual', 'actual-desc', 'porcentaje', 'porcentaje-desc']
 const CHIPS: ChipVolumen[] = ['todos', 'bajaron', 'subieron', 'nuevos', 'sinCompraAun']
+const COMPARATIVAS = ['parcial', 'acumulado'] as const
 /** Mientras llega la primera respuesta (después, los textos dependen de la comparación). */
 const CHIP_SIN_DATOS: Record<ChipVolumen, string> = {
   todos: 'Todos',
@@ -39,21 +43,25 @@ export function VolumenPage() {
   const filtros = useFiltrosComerciales()
   const { sesion, params, cambiar, buscar, elegirChip, verTodos, esOperario, busqueda, conVendedor, titulo, referencia } = filtros
   const chip = deLista(params.get('chip'), CHIPS, 'todos')
+  // Comparativa (Cesar, 10/11): contra el mes anterior hasta el mismo día hábil (parcial) o entero (acumulado). Solo en el
+  // mes en curso (cerrado, los dos son lo mismo) y no para el vendedor (siempre el mes entero)
+  const comparativa = deLista(params.get('comparacion'), COMPARATIVAS, 'parcial')
   const orden = deLista(params.get('orden'), ORDENES, 'nombre')
   // Los meses que se ven (el en curso y los tres anteriores), menos julio: es el primero con datos y no tiene base.
   const meses = filtros.ventana.filter((m) => m !== PRIMER_MES).reverse()
   const mes = referencia.puedeElegir ? null : filtros.mesElegido(meses)
   const mesVolumen = mes ?? filtros.mesRef
-  // El desplegable del mes: el vendedor, los de su ventana; el dueño elige acá el mes de toda la app (el de la cabecera)
-  const opcionesMes = referencia.puedeElegir ? [...referencia.opciones].reverse() : meses
-  const valorMes = referencia.puedeElegir ? (referencia.enCurso ? '' : referencia.mes) : (mes ?? '')
-  const elegirMes = (m: string | null) => (referencia.puedeElegir ? referencia.elegir(m) : cambiar('mes', m))
+  // El desplegable del mes, solo para el supervisor (los de su ventana): el dueño ya tiene el de la cabecera (Cesar,
+  // 10/11: era redundante) y en el celular, el de la barra de filtros
+  const opcionesMes = referencia.puedeElegir ? [] : meses
   const sinMesAnterior = mesVolumen === PRIMER_MES
 
   const consulta = new URLSearchParams(filtros.consulta)
   if (busqueda) consulta.set('busqueda', busqueda)
   if (chip !== 'todos') consulta.set('chip', chip)
   if (mesVolumen !== sesion.mesEnCurso) consulta.set('mes', mesVolumen)
+  const eligeComparativa = !esOperario && mesVolumen === sesion.mesEnCurso
+  if (eligeComparativa && comparativa === 'acumulado') consulta.set('comparacion', 'acumulado')
   const qs = consulta.toString()
   const { datos, errores, cargando, recargar } = useConsulta<Volumen>(
     sinMesAnterior ? null : `/volumen${qs ? `?${qs}` : ''}`,
@@ -69,17 +77,17 @@ export function VolumenPage() {
 
   return (
     <section className="pagina cob vol">
-      <BarraFiltros filtros={filtros} conMes={false} />
+      <BarraFiltros filtros={filtros} />
 
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
         <TituloTarjeta titulo={titulo} />
         <header className="cob-resumen vol-resumen">
           {/* Sin el «702 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando */}
-          <div className="cob-resumen-textos">
-            {opcionesMes.length > 1 && (
+          {opcionesMes.length > 1 && (
+            <div className="cob-resumen-textos">
               <label className="vol-mes">
                 <span className="sr-solo">Mes</span>
-                <select value={valorMes} onChange={(e) => elegirMes(e.target.value || null)}>
+                <select value={mes ?? ''} onChange={(e) => cambiar('mes', e.target.value || null)}>
                   {opcionesMes.map((m) => (
                     <option key={m} value={m === sesion.mesEnCurso ? '' : m}>
                       {nombreMesTitulo(m)}{m === sesion.mesEnCurso ? ' (en curso)' : ''}
@@ -87,8 +95,8 @@ export function VolumenPage() {
                   ))}
                 </select>
               </label>
-            )}
-          </div>
+            </div>
+          )}
           {/* Sin clientes (p. ej. todavía sin datos de Chess) no hay total que comparar: la lista lo explica */}
           {vigentes && t && vigentes.chips.todos > 0 ? (
             <TotalComparado
@@ -106,6 +114,8 @@ export function VolumenPage() {
               }
             />
           ) : null}
+          {/* Los clientes A, B y C cubiertos: solo los dueños (la API no lo manda a los demás) */}
+          {vigentes?.abc && vigentes.chips.todos > 0 && <CubiertosPorClase abc={vigentes.abc} mes={vigentes.comparacion.mes} />}
         </header>
 
         <div className="cob-barra">
@@ -117,6 +127,26 @@ export function VolumenPage() {
             cantidades={vigentes?.chips ?? null}
             onElegir={elegirChip}
           />
+          {eligeComparativa && (
+            <div className="vol-comparativa">
+              <span className="vol-comparativa-nombre">Comparativa</span>
+              <Segmentado
+                etiqueta="Comparativa"
+                valor={comparativa}
+                opciones={[
+                  { valor: 'parcial', texto: 'Mes parcial' },
+                  { valor: 'acumulado', texto: 'Mes acumulado' },
+                ]}
+                onCambio={(v) => cambiar('comparacion', v === 'parcial' ? null : v)}
+              />
+              <Ayuda etiqueta="Qué compara cada opción">
+                <Parrafo titulo="Mes parcial:">contra el mes anterior hasta el mismo día hábil, de igual a igual.</Parrafo>
+                <Parrafo titulo="Mes acumulado:">
+                  contra el mes anterior entero: lo que va del mes contra todo lo que se vendió entonces.
+                </Parrafo>
+              </Ayuda>
+            </div>
+          )}
           <BuscadorCobertura busqueda={busqueda} onBuscar={buscar} />
         </div>
 
