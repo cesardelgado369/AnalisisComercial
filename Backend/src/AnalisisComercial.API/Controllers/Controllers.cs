@@ -159,7 +159,9 @@ public class AdminController(IAdminService admin) : ControllerBase
     }
 
     [HttpGet("focos/analisis")]
-    public Task<AnalisisFocosDto> AnalisisFocos([FromQuery] DateOnly? mes, CancellationToken ct) => admin.AnalisisFocosAsync(mes, ct);
+    public Task<AnalisisFocosDto> AnalisisFocos([FromQuery] DateOnly? mes, [FromQuery] string? comparacion, [FromQuery] string? abc,
+        CancellationToken ct)
+        => admin.AnalisisFocosAsync(mes, comparacion, abc, ct);
 
     [HttpGet("articulos")]
     public Task<IReadOnlyList<ArticuloAdminDto>> Articulos(CancellationToken ct) => admin.ArticulosAsync(ct);

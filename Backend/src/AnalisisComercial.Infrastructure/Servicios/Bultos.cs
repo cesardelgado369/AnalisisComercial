@@ -17,14 +17,7 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
         await lectura.ExigirBultosAsync(ct);
-        // La comparativa de la pantalla (Cesar, 10/11/2026): mes parcial (al mismo día hábil) o acumulado (el mes entero).
-        TipoComparacion? elegida = f.Comparacion?.Trim().ToLowerInvariant() switch
-        {
-            null or "" => null,
-            "parcial" => TipoComparacion.MismoDiaHabil,
-            "acumulado" => TipoComparacion.MesAnteriorCompleto,
-            _ => throw new ValidacionException("comparacion", "La comparativa es parcial o acumulado."),
-        };
+        var elegida = Lectura.Comparativa(f.Comparacion);
         var mirada = await lectura.MiradaAsync(f.Vendedor, "volumen", ct);
         var c = await lectura.ComparacionAsync(f.Mes, ct, elegida);
         var a = await lectura.AlcanceAsync(ct);

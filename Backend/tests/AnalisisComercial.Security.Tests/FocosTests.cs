@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json.Nodes;
 using AnalisisComercial.Domain;
@@ -154,6 +154,25 @@ public class FocosTests(Entorno e)
             // El ccc sigue sin bultos.
             Assert.Equal("ccc", (string?)oct["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Tallarín")!["medida"]);
             Assert.Null(oct["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Tallarín")!["total"]!["bultosActual"]);
+            Assert.Equal("mismoDiaHabil", (string?)oct["volumen"]!["tipo"]);
+
+            // Acumulado: contra septiembre entero. El vol suma la factura del 28/09 (base 101 = 4, 102 = 2).
+            var acum = await admin.JsonAsync("/api/admin/focos/analisis?comparacion=acumulado");
+            Assert.Null(acum["anteriorAl"]);
+            Assert.Equal("mesAnteriorCompleto", (string?)acum["volumen"]!["tipo"]);
+            var volAcum = acum["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Vol tallarín")!["total"]!;
+            Assert.Equal((6m, 16.7m), ((decimal)volAcum["bultosBase"]!, (decimal)volAcum["porcentaje"]!));
+            AssertCcc(acum["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Tallarín")!["total"]!, 1, 4, 25.0m, 50.0m);
+
+            // Clientes A: octubre 101 y 102 (de UNO); septiembre, con su categoría, 102, 103 y 201 (compró 102 al 25/09).
+            var a = await admin.JsonAsync("/api/admin/focos/analisis?abc=A");
+            var ccc = a["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Tallarín")!;
+            AssertCcc(ccc["total"]!, 1, 2, 50.0m, 33.3m);
+            Assert.Equal(["VENDEDOR UNO"], ccc["vendedores"]!.AsArray().Select(x => (string?)x!["nombre"]));
+            AssertCcc(ccc["vendedores"]![0]!, 1, 2, 50.0m, 0m);   // UNO en septiembre: solo 103 era A, y no compró
+
+            Assert.NotNull((await admin.JsonAsync("/api/admin/focos/analisis?comparacion=semanal", HttpStatusCode.BadRequest))["errors"]!["comparacion"]);
+            Assert.NotNull((await admin.JsonAsync("/api/admin/focos/analisis?abc=Z", HttpStatusCode.BadRequest))["errors"]!["abc"]);
         }
         finally
         {

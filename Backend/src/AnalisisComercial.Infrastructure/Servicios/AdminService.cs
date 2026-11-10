@@ -318,9 +318,11 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     /// regla de compró, cartera y exclusiones que <c>/api/cobertura?foco=</c>. Contra el mes anterior: en el mes en
     /// curso, hasta el mismo día; en uno cerrado, completo.
     /// </summary>
-    public async Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, CancellationToken ct = default)
+    public async Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, string? comparacion = null, string? abc = null,
+        CancellationToken ct = default)
     {
         await AdminAsync("admin-focos-analisis", ct);
+        var elegida = Lectura.Comparativa(comparacion);
         var m = Calendario.Mes(mes ?? lectura.MesEnCurso);
         if (m > lectura.MesEnCurso)
             throw new ValidacionException("mes", "No puede ser posterior al mes en curso.");
@@ -329,21 +331,27 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         var anterior = m.AddMonths(-1);
         var hayAnterior = anterior >= lectura.Op.PrimerMes;
         var enCurso = m == lectura.MesEnCurso;
+        // Comparativa (Cesar, 10/11/2026): parcial = el anterior al mismo día; acumulado = el anterior entero.
+        var alMismoDia = enCurso && elegida != TipoComparacion.MesAnteriorCompleto;
+        var grupo = await lectura.FiltroAbcAsync(abc, m, ct);
 
         DateOnly? corteAl = null, anteriorAl = null;
         if (enCurso && await lectura.VentasHastaAsync(ct) is { } hasta && hasta >= m)
         {
             corteAl = hasta;
             var fin = Calendario.FinDeMes(anterior);
-            anteriorAl = anterior.AddDays(hasta.Day - 1) is var d && d <= fin ? d : fin;
+            if (alMismoDia)
+                anteriorAl = anterior.AddDays(hasta.Day - 1) is var d && d <= fin ? d : fin;
         }
 
         var focos = await FocosAsync(db, m, ct);
         var vendedores = await lectura.VendedoresAsync(ct);
         var mirada = await lectura.MiradaAsync(null, "admin-focos-analisis", ct);   // las personas: sin la casa
         var carteras = await lectura.CarterasAsync(mirada, [m, anterior], null, ct);
+        if (grupo is not null)
+            await lectura.RecortarAbcAsync(carteras, grupo, ct);   // cada mes con su categoría, como en Cobertura
         // Los vol, con la comparación de /api/volumen del admin (el primer mes con datos no tiene base).
-        var comparacion = m > lectura.Op.PrimerMes ? await lectura.ComparacionAsync(m, ct) : null;
+        var comparacionVol = m > lectura.Op.PrimerMes ? await lectura.ComparacionAsync(m, ct, elegida) : null;
 
         var resultado = new List<AnalisisFocoDto>();
         foreach (var foco in focos)
@@ -352,12 +360,12 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             var compras = await lectura.ComprasAsync([m], filtro, ct);   // trae también el mes anterior completo
             var esVol = foco.Medida == MedidaFoco.Vol;
             HashSet<int> compraronAntes = !hayAnterior || esVol ? []
-                : enCurso ? anteriorAl is { } al ? await CompraronHastaAsync(foco.Articulos.Select(a => a.IdArticulo).ToList(), anterior, al, ct) : []
+                : alMismoDia ? anteriorAl is { } al ? await CompraronHastaAsync(foco.Articulos.Select(a => a.IdArticulo).ToList(), anterior, al, ct) : []
                 : compras.Where(c => c.Mes == anterior).Select(c => c.IdCliente).ToHashSet();
             Dictionary<int, decimal> actual = [], enBase = [];
-            if (esVol && comparacion is not null)
+            if (esVol && comparacionVol is not null)
             {
-                var (act, bas) = await lectura.BultosComparadosAsync(comparacion, carteras[m].Keys.ToList(), filtro, ct);
+                var (act, bas) = await lectura.BultosComparadosAsync(comparacionVol, carteras[m].Keys.ToList(), filtro, ct);
                 actual = act.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
                 enBase = bas.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
             }
@@ -368,7 +376,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
                 var conCompra = ahora.Count(c => compras.Contains((c.IdCliente, m)));
                 if (esVol)
                 {
-                    if (comparacion is null)
+                    if (comparacionVol is null)
                         return new CccFocoDto(conCompra, ahora.Count, null, null);
                     // Como /api/volumen: cada cliente redondeado y después la suma.
                     var bultosActual = Volumen.Redondear(ahora.Sum(c => Volumen.Redondear(actual.GetValueOrDefault(c.IdCliente))));
@@ -377,7 +385,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
                         bultosActual, bultosBase);
                 }
                 var antes = carteras[anterior].Values.Where(deQuien).ToList();
-                decimal? porcentajeAnterior = hayAnterior && (!enCurso || anteriorAl is not null) && antes.Count > 0
+                decimal? porcentajeAnterior = hayAnterior && (!alMismoDia || anteriorAl is not null) && antes.Count > 0
                     ? Cobertura.Porcentaje(antes.Count(c => compraronAntes.Contains(c.IdCliente)), antes.Count)
                     : null;
                 return new CccFocoDto(conCompra, ahora.Count, Cobertura.Porcentaje(conCompra, ahora.Count), porcentajeAnterior);
@@ -394,8 +402,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
                 .ToList();
             resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, foco.Medida, foco.Meta, Medir(_ => true), porVendedor));
         }
-        await alcance.RegistrarAsync("admin-focos-analisis", $"mes={m:yyyy-MM-dd}", denegado: false, ct);
-        var volumen = comparacion is { } k ? new VolumenFocosDto(k.CorteAl, k.BaseHasta, k.DiaHabil, k.DiasHabilesMes) : null;
+        await alcance.RegistrarAsync("admin-focos-analisis", $"mes={m:yyyy-MM-dd};comparacion={comparacion};abc={abc}", denegado: false, ct);
+        var volumen = comparacionVol is { } k ? new VolumenFocosDto(k.CorteAl, k.BaseHasta, k.DiaHabil, k.DiasHabilesMes, k.Tipo) : null;
         return new AnalisisFocosDto(m, enCurso, corteAl, anterior, anteriorAl, volumen, resultado);
     }
 

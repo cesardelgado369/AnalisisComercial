@@ -561,15 +561,21 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 400: `errors.mes` (obligatorio, día 1, desde el primer mes con datos hasta el mes que viene, para dejarlo armado),
   `errors.nombre` (1–60, único en el mes: «Ya hay un foco con ese nombre en ese mes.»), `errors.idsArticulo` (entre 1
   y 50, todos existentes), `errors.medida` (otra cosa que ccc o vol), `errors.meta` (fuera de rango).
-- `GET /api/admin/focos/analisis?mes=` (sin mes: el en curso) → cómo vienen vendiendo los focos de ese mes, por
-  vendedor: el número de Checho («CCC Manteca»).
+- `GET /api/admin/focos/analisis?mes=&comparacion=&abc=` (sin mes: el en curso) → cómo vienen vendiendo los focos de
+  ese mes, por vendedor: el número de Checho («CCC Manteca»).
+  - `comparacion` (Cesar, 10/11): `parcial` (por defecto) = CCC contra el mes anterior al mismo día y VOL al mismo día
+    hábil; `acumulado` = contra el mes anterior entero (CCC con `anteriorAl` null; VOL con `mesAnteriorCompleto`, como
+    en Volumen). En un mes cerrado dan lo mismo. Otro valor → 400 en `errors.comparacion`.
+  - `abc`: `A`, `B` o `C`, como en Cobertura: recorta la cartera de cada vendedor y del total, cada mes con su
+    categoría (el anterior, con la del anterior). Otra letra o un mes sin base → 400 en `errors.abc`.
 
 ```jsonc
 { "mes": "2026-11-01", "mesEnCurso": true,
   "corteAl": "2026-11-04" | null,        // mes en curso: ventas hasta (como los KPI de cobertura); cerrado: null
   "mesAnterior": "2026-10-01",
   "anteriorAl": "2026-10-04" | null,     // mes en curso: el mismo día del anterior (recortado a fin de mes); cerrado: null
-  "volumen": { "corteAl", "baseHasta", "diaHabil", "diasHabilesMes" } | null,   // la comparación de los vol (abajo)
+  "volumen": { "corteAl", "baseHasta", "diaHabil", "diasHabilesMes",
+              "tipo": "mismoDiaHabil" | "mesAnteriorCompleto" } | null,   // la comparación de los vol (abajo)
   "focos": [{ "idFoco": 2, "nombre": "Ravioles", "medida": "ccc", "meta": 80 | null,
     "total": { "clientesConCompra": 120, "clientesCartera": 246, "porcentaje": 48.8, "porcentajeAnterior": 51.2 | null,
                "bultosActual": null, "bultosBase": null },
@@ -638,6 +644,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
 - 10/11: **`/api/clientes/{id}/movimientos`**: los comprobantes del mes de un cliente (la ventanita de Devoluciones).
 - 10/11: `unidadesDevueltas` y `abc` en los clientes de `/api/devoluciones`.
+- 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

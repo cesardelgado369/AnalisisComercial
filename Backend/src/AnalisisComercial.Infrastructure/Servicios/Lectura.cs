@@ -407,6 +407,18 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
         return Volumen.Comparar(m, tipo, await UltimoDiaCompletoAsync(ct), Op.DiasFeriados());
     }
 
+    /// <summary>
+    /// La Comparativa elegida en la pantalla (Cesar, 10/11/2026): "parcial" = al mismo día hábil, "acumulado" = el mes
+    /// anterior entero; sin valor, null (la del rol). Otro valor → 400 en <c>comparacion</c>.
+    /// </summary>
+    public static TipoComparacion? Comparativa(string? valor) => valor?.Trim().ToLowerInvariant() switch
+    {
+        null or "" => null,
+        "parcial" => TipoComparacion.MismoDiaHabil,
+        "acumulado" => TipoComparacion.MesAnteriorCompleto,
+        _ => throw new ValidacionException("comparacion", "La comparativa es parcial o acumulado."),
+    };
+
     /// <summary>Los bultos del mes (del 1 al corte) y los de la base (del 1 a BaseHasta) de una comparación.</summary>
     public async Task<(List<BultosMes> Actual, List<BultosMes> Base)> BultosComparadosAsync(Comparacion c,
         IReadOnlyCollection<int>? clientes, FiltroArticulos? articulos, CancellationToken ct)

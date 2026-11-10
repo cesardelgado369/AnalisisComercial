@@ -106,7 +106,7 @@ public record AnalisisFocoDto(int IdFoco, string Nombre, MedidaFoco Medida, deci
     IReadOnlyList<CccVendedorFocoDto> Vendedores);
 
 /// <summary>La comparación de los focos vol: la de <c>/api/volumen</c> del admin.</summary>
-public record VolumenFocosDto(DateOnly? CorteAl, DateOnly? BaseHasta, int DiaHabil, int DiasHabilesMes);
+public record VolumenFocosDto(DateOnly? CorteAl, DateOnly? BaseHasta, int DiaHabil, int DiasHabilesMes, TipoComparacion Tipo);
 
 /// <param name="CorteAl">Mes en curso: hasta qué día hay ventas. Mes cerrado: null.</param>
 /// <param name="AnteriorAl">Mes en curso: el mismo día del mes anterior, para comparar parejo. Mes cerrado: null (completo).</param>
@@ -349,8 +349,12 @@ public interface IAdminService
     Task<FocoDto> ActualizarFocoAsync(int idFoco, GuardarFocoDto dto, CancellationToken ct = default);
     Task BorrarFocoAsync(int idFoco, CancellationToken ct = default);
 
-    /// <summary>Cómo vienen los focos de un mes, por vendedor (sin mes: el en curso).</summary>
-    Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, CancellationToken ct = default);
+    /// <summary>
+    /// Cómo vienen los focos de un mes, por vendedor (sin mes: el en curso), con la Comparativa ("parcial" o
+    /// "acumulado") y la categoría de cliente (A, B o C) elegidas.
+    /// </summary>
+    Task<AnalisisFocosDto> AnalisisFocosAsync(DateOnly? mes, string? comparacion = null, string? abc = null,
+        CancellationToken ct = default);
 
     /// <summary>Los artículos para armar los focos.</summary>
     Task<IReadOnlyList<ArticuloAdminDto>> ArticulosAsync(CancellationToken ct = default);
