@@ -227,8 +227,8 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
           </label>
         </div>
 
-        <fieldset className="foco-articulos" aria-invalid={!!errores.idsArticulo}>
-          <legend className="foco-titulo">Seleccionar artículos</legend>
+        <section className="foco-articulos" aria-labelledby="foco-seleccionar">
+          <h3 id="foco-seleccionar" className="foco-titulo">Seleccionar artículos</h3>
 
           <div className="foco-elegidos" aria-live="polite" data-campo="articulos">
             <span className="foco-elegidos-titulo">Artículos seleccionados:</span>
@@ -289,7 +289,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
               ))}
             </div>
           )}
-        </fieldset>
+        </section>
       </form>
     </Modal>
   )
