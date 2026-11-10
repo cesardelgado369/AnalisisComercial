@@ -42,6 +42,8 @@
 }
 /* El ícono es una ligadura en minúscula: sin las mayúsculas ni el espaciado del título, o se ve el nombre en texto */
 .cob-filtro-nombre .icono { font-size: 16px; font-weight: 400; letter-spacing: normal; text-transform: none; color: var(--acento-claro); }
+/* Los íconos dibujados para Madomi (comercial/IconosFiltro): a 20px para que se lean, sin agrandar la banda */
+.cob-filtro-nombre .icono-filtro { width: 20px; height: 20px; flex-shrink: 0; margin: -2px 0; }
 /* Foco del mes, el que más pesa: la banda va de negro al violeta de la cabecera, con una línea violeta abajo y el borde
    de la cajita en violeta */
 .cob-filtro-foco { border-color: var(--acento-claro); }
