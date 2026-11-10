@@ -396,7 +396,8 @@ Parámetros como en `/api/cobertura`.
              "mesEnCurso": true, "corteAl": "2026-10-28" | null }],   // corteAl como en /cobertura
   "mes": "2026-10-01",                                    // = mesHasta: el mes de `clientes` y `articulos`
   "clientes": [{ "idCliente": 59003, "razonSocial": "GP BRIGIDO", "ruta": "…" | null, "vendedor": "…" | null,
-                 "idPersonal": 2 | null, "bultosVendidos": 20, "bultosDevueltos": 5, "porcentaje": 20.0 }],
+                 "idPersonal": 2 | null, "bultosVendidos": 20, "bultosDevueltos": 5, "porcentaje": 20.0,
+                 "unidadesDevueltas": ["TAPAS", "PASTAS FRESCAS"] }],   // las que devolvió, de la que más a la que menos
   "articulos": [{ "idArticulo": 101, "descripcion": "…", "unidadNegocio": "PASTAS FRESCAS",
                   "bultosVendidos": 300, "bultosDevueltos": 25, "porcentaje": 7.7 }] }
 ```
@@ -635,6 +636,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
 - 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
 - 10/11: **`/api/clientes/{id}/movimientos`**: los comprobantes del mes de un cliente (la ventanita de Devoluciones).
+- 10/11: `unidadesDevueltas` en los clientes de `/api/devoluciones` (los íconos debajo del devuelto).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

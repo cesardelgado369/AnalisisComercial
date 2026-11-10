@@ -196,6 +196,7 @@ public class FaseDosTests(Entorno e)
         // Octubre: lo que retiró en la misma factura es devolución. Entregó 2, retiró 1 → 1 vendido, 1 / 2 = 50 %.
         var oct = (await e.Operario().JsonAsync("/api/devoluciones"))["clientes"]!.AsArray().Single()!;
         Assert.Equal((101, 1m, 1m, 50.0m), ((int)oct["idCliente"]!, (decimal)oct["bultosVendidos"]!, (decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
+        Assert.Equal(["124 - PASTAS FRESCAS"], oct["unidadesDevueltas"]!.AsArray().Select(u => (string?)u));
 
         // Toda la empresa (sin la casa) en septiembre: 101 y 102 → 6 vendidos, 1 devuelto.
         var admin = (await e.Admin().JsonAsync("/api/devoluciones?mesHasta=2026-09-01"))["kpis"]!.AsArray()[^1]!;

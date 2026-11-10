@@ -222,8 +222,9 @@ public interface IVolumenService
 public record FiltroDevoluciones(int? Vendedor = null, int? Dia = null, string? Unidad = null, DateOnly? MesDesde = null,
     DateOnly? MesHasta = null, int? Foco = null, string? Abc = null);
 
+/// <param name="UnidadesDevueltas">Las unidades de negocio que devolvió en el mes, de la que más a la que menos.</param>
 public record ClienteDevolucionDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
-    decimal BultosVendidos, decimal BultosDevueltos, decimal? Porcentaje);
+    decimal BultosVendidos, decimal BultosDevueltos, decimal? Porcentaje, IReadOnlyList<string> UnidadesDevueltas);
 
 /// <param name="Mes">El mes de <paramref name="Clientes"/> y <paramref name="Articulos"/> (= mesHasta).</param>
 public record DevolucionesDto(string Titulo, IReadOnlyList<DateOnly> Meses, IReadOnlyList<KpiDevolucionDto> Kpis, DateOnly Mes,
