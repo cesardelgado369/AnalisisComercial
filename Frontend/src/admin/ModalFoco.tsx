@@ -6,8 +6,10 @@ import { useConsulta } from '../api/useConsulta'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { Modal } from '../components/Modal'
+import { useSesionApp } from '../auth/SesionApp'
+import { mesesDisponibles, sumarMes } from '../cobertura/estados'
 import { nombrePropio } from '../cobertura/estados'
-import { cantidad, nombreMes } from '../utils/formato'
+import { cantidad, nombreMes, nombreMesTitulo } from '../utils/formato'
 
 /** Los límites del backend (CONTRATO_API.md, «Focos del mes»). */
 const MAXIMO_NOMBRE = 60
@@ -27,8 +29,13 @@ const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
  * compraron el mes pasado (para elegir las presentaciones que se venden). Los anulados se ofrecen solo si se piden o si
  * el foco ya los tiene. Editando, también se borra (con confirmación).
  */
-export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () => void; onGuardado: (texto: string) => void }) {
+export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () => void; onGuardado: (texto: string, mes: string) => void }) {
   const { foco, mes, onCerrar, onGuardado } = props
+  // El mes se elige acá, al lado del nombre (Cesar, 10/11): del primero con datos al que viene; de entrada, el de la pantalla
+  const { mesEnCurso } = useSesionApp()
+  const proximo = sumarMes(mesEnCurso, 1)
+  const meses = [...mesesDisponibles(mesEnCurso), proximo].reverse()
+  const [mesFoco, setMesFoco] = useState(mes)
   const articulos = useConsulta<ArticuloChess[]>('/admin/articulos', 'No pudimos leer los artículos de Chess.')
   const [nombre, setNombre] = useState(foco?.nombre ?? '')
   const [ids, setIds] = useState<number[]>(() => foco?.articulos.map((a) => a.idArticulo) ?? [])
@@ -90,10 +97,10 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     }
     setGuardando(true)
     try {
-      const cuerpo: FocoEnvio = { mes, nombre: nombre.trim(), idsArticulo: ids, medida, meta: metaNumero }
+      const cuerpo: FocoEnvio = { mes: mesFoco, nombre: nombre.trim(), idsArticulo: ids, medida, meta: metaNumero }
       const r = foco ? await api.put<Foco>(`/admin/focos/${foco.idFoco}`, cuerpo) : await api.post<Foco>('/admin/focos', cuerpo)
       avisarCambio()
-      onGuardado(`${r.nombre}: ${foco ? 'guardado' : `creado en ${nombreMes(r.mes)}`}.`)
+      onGuardado(`${r.nombre}: ${foco ? 'guardado' : `creado en ${nombreMes(r.mes)}`}.`, r.mes)
     } catch (err) {
       if (!(err instanceof ApiError)) {
         setGeneral('No se pudo guardar. Probá de nuevo.')
@@ -101,7 +108,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
       }
       const porCampo = Object.fromEntries(Object.entries(err.errores).map(([k, v]) => [k.toLowerCase() === 'idsarticulo' ? 'idsArticulo' : k.toLowerCase(), v.join(' ')]))
       setErrores(porCampo)
-      const sueltos = Object.entries(porCampo).filter(([k]) => !['nombre', 'idsArticulo', 'meta'].includes(k)).map(([, v]) => v)
+      const sueltos = Object.entries(porCampo).filter(([k]) => !['nombre', 'idsArticulo', 'meta', 'mes'].includes(k)).map(([, v]) => v)
       if (sueltos.length || !Object.keys(porCampo).length) setGeneral([...sueltos, ...(Object.keys(porCampo).length ? [] : [err.message])].join(' '))
       // Otro lo borró en el medio: la lista se vuelve a leer
       if (err.status === 404) avisarCambio()
@@ -117,12 +124,12 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     try {
       await api.borrar(`/admin/focos/${foco.idFoco}`)
       avisarCambio()
-      onGuardado(`${foco.nombre}: borrado.`)
+      onGuardado(`${foco.nombre}: borrado.`, foco.mes)
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
         // Ya no estaba: queda como se quería
         avisarCambio()
-        onGuardado(`${foco.nombre}: ya estaba borrado.`)
+        onGuardado(`${foco.nombre}: ya estaba borrado.`, foco.mes)
         return
       }
       setGeneral(err instanceof ApiError ? err.mensajes.join(' ') : 'No se pudo borrar. Probá de nuevo.')
@@ -136,8 +143,8 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     <Modal
       abierto
       onCerrar={onCerrar}
-      titulo={foco ? 'Editar foco' : `Nuevo foco de ${nombreMes(mes)}`}
-      subtitulo={foco ? `${foco.nombre} · ${nombreMes(mes)}` : undefined}
+      titulo={foco ? 'Editar foco' : 'Nuevo foco'}
+      subtitulo={foco ? foco.nombre : undefined}
       tamano="grande"
       cerrable={!guardando}
       pie={
@@ -170,23 +177,45 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     >
       {/* Simple (Cesar, 10/11): nombre, tipo de métrica con su meta, y los artículos; sin textos de ayuda */}
       <form id="form-foco" className="adm-form" onSubmit={(e) => void guardar(e)} noValidate autoComplete="off">
-        <label>
-          <span className="foco-titulo">Nombre del foco</span>
-          <input
-            type="text"
-            value={nombre}
-            maxLength={MAXIMO_NOMBRE}
-            placeholder="Manteca"
-            onChange={(e) => {
-              setNombre(e.target.value)
-              setErrores((v) => (v.nombre ? { ...v, nombre: '' } : v))
-            }}
-            aria-invalid={!!errores.nombre}
-            data-campo="nombre"
-            data-autofocus
-          />
-          {errores.nombre && <span className="campo-error">{errores.nombre}</span>}
-        </label>
+        <div className="foco-fila-nombre">
+          <label>
+            <span className="foco-titulo">Nombre del foco</span>
+            <input
+              type="text"
+              value={nombre}
+              maxLength={MAXIMO_NOMBRE}
+              placeholder="Manteca"
+              onChange={(e) => {
+                setNombre(e.target.value)
+                setErrores((v) => (v.nombre ? { ...v, nombre: '' } : v))
+              }}
+              aria-invalid={!!errores.nombre}
+              data-campo="nombre"
+              data-autofocus
+            />
+            {errores.nombre && <span className="campo-error">{errores.nombre}</span>}
+          </label>
+          <label className="foco-mes-campo">
+            <span className="foco-titulo">Mes</span>
+            <select
+              value={mesFoco}
+              onChange={(e) => {
+                setMesFoco(e.target.value)
+                setErrores((v) => (v.mes || v.nombre ? { ...v, mes: '', nombre: '' } : v))
+              }}
+              aria-invalid={!!errores.mes}
+              data-campo="mes"
+            >
+              {meses.map((m) => (
+                <option key={m} value={m}>
+                  {nombreMesTitulo(m)} {m.slice(0, 4)}
+                  {m === mesEnCurso ? ' (en curso)' : m === proximo ? ' (el que viene)' : ''}
+                </option>
+              ))}
+            </select>
+            {errores.mes && <span className="campo-error">{errores.mes}</span>}
+          </label>
+        </div>
 
         <div className="foco-fila">
           <div className="foco-campo">

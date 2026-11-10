@@ -280,8 +280,10 @@ export function FocosPage() {
           foco={modal.foco}
           mes={modal.foco?.mes ?? mes}
           onCerrar={() => setModal(null)}
-          onGuardado={(texto) => {
+          onGuardado={(texto, mesGuardado) => {
             setModal(null)
+            // Si se creó (o se pasó) a otro mes, la pantalla va a ese mes
+            if (mesGuardado !== mes) elegirMes(mesGuardado)
             setAviso({ ok: true, texto })
           }}
         />

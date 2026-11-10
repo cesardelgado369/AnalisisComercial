@@ -316,6 +316,10 @@
 #form-foco > label, .foco-meta-campo { gap: 10px; }
 .foco-articulos > .foco-titulo { margin-bottom: 4px; }
 .foco-elegidos-titulo { font-size: 14px; }
+/* El nombre y, al lado, el mes del foco (Cesar, 10/11) */
+.foco-fila-nombre { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; gap: 16px; }
+.foco-fila-nombre > label { display: flex; flex-direction: column; gap: 10px; }
+.foco-mes-campo select { height: 44px; font-size: 15px; font-weight: 600; }
 #form-foco input[type="text"] { height: 44px; font-size: 15px; }
 .foco-campo .segmentado button { min-height: 40px; padding: 0 18px; }
 .foco-elegidos-ninguno { font-size: 13px; color: var(--texto-2); }
@@ -353,7 +357,7 @@
 
 /* Celular: las tablas pasan a tarjetas (sin scroll horizontal) y todo lo que se toca mide 44 px */
 @media (max-width: 720px) {
-  .foco-fila { grid-template-columns: minmax(0, 1fr); }
+  .foco-fila, .foco-fila-nombre { grid-template-columns: minmax(0, 1fr); }
   .adm-barra .buscador-pagina, .adm-barra .buscador-pagina input { width: 100%; }
   .adm .adm-nuevo { width: 100%; justify-content: center; }
   .adm-tabla-scroll { overflow: visible; }
