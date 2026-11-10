@@ -46,8 +46,10 @@ public enum ChipCobertura
 /// <param name="Vendedor">idPersonal; null = todos los visibles sin la casa.</param>
 /// <param name="Dia">Código de Chess (2 lunes … 7 sábado).</param>
 /// <param name="Foco">idFoco de <c>/api/cobertura/focos</c>: cuenta como compra solo la de sus artículos.</param>
+/// <param name="Abc">A, B o C (solo Admin): la cartera de cada mes, solo los clientes de esa categoría ese mes.</param>
 public record FiltroCobertura(int? Vendedor = null, int? Dia = null, string? Unidad = null, string? Busqueda = null,
-    ChipCobertura Chip = ChipCobertura.Todos, DateOnly? MesDesde = null, DateOnly? MesHasta = null, int? Foco = null);
+    ChipCobertura Chip = ChipCobertura.Todos, DateOnly? MesDesde = null, DateOnly? MesHasta = null, int? Foco = null,
+    string? Abc = null);
 
 public record KpiMesDto(DateOnly Mes, int ClientesConCompra, int ClientesCartera, decimal Porcentaje, bool MesEnCurso,
     DateOnly? CorteAl);
@@ -164,7 +166,7 @@ public interface IClienteService
 
 /// <param name="Mes">Por defecto, el mes en curso.</param>
 public record FiltroVolumen(int? Vendedor = null, int? Dia = null, string? Unidad = null, string? Busqueda = null,
-    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null, int? Foco = null);
+    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null, int? Foco = null, string? Abc = null);
 
 public record ChipsVolumenDto(int Todos, int SinCompraAun, int Nuevos, int Bajaron, int Subieron);
 
@@ -193,7 +195,7 @@ public interface IVolumenService
 // ---- Devoluciones ----------------------------------------------------------------------------------------------
 
 public record FiltroDevoluciones(int? Vendedor = null, int? Dia = null, string? Unidad = null, DateOnly? MesDesde = null,
-    DateOnly? MesHasta = null, int? Foco = null);
+    DateOnly? MesHasta = null, int? Foco = null, string? Abc = null);
 
 public record ClienteDevolucionDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
     decimal BultosVendidos, decimal BultosDevueltos, decimal? Porcentaje);

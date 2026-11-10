@@ -124,12 +124,45 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     }
 
     /// <summary>Los focos (el filtro y su lista) son solo del Admin: 403 para operario y supervisor, y queda registrado.</summary>
-    public async Task ExigirAdminFocosAsync(string? parametros, CancellationToken ct)
+    public Task ExigirAdminFocosAsync(string? parametros, CancellationToken ct)
+        => ExigirAdminAsync("focos", parametros, "Los focos del mes son solo para administradores.", ct);
+
+    private async Task ExigirAdminAsync(string pantalla, string? parametros, string mensaje, CancellationToken ct)
     {
         if ((await AlcanceAsync(ct)).EsAdmin)
             return;
-        await RegistrarAsync("focos", parametros, ct, denegado: true);
-        throw new AccesoDenegadoException("Los focos del mes son solo para administradores.");
+        await RegistrarAsync(pantalla, parametros, ct, denegado: true);
+        throw new AccesoDenegadoException(mensaje);
+    }
+
+    /// <summary>
+    /// El filtro de categoría de un pedido (Cesar, 10/11/2026): null si no viene. Solo el Admin (403 registrado, como
+    /// <c>foco</c>); A, B o C (400 en <c>abc</c>); y <paramref name="mes"/> tiene que tener base.
+    /// </summary>
+    public async Task<string?> FiltroAbcAsync(string? abc, DateOnly mes, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(abc))
+            return null;
+        await ExigirAdminAsync("abc", $"abc={abc}", "La categoría de clientes es solo para administradores.", ct);
+        var grupo = abc.Trim().ToUpperInvariant();
+        if (!GrupoAbc.Grupos.Contains(grupo))
+            throw new ValidacionException("abc", "La categoría es A, B o C.");
+        if (GrupoAbc.Base(mes, Op.PrimerMes).Count == 0)
+            throw new ValidacionException("abc", $"En {mes:MM/yyyy} todavía no hay categorías: se calculan con los meses anteriores.");
+        return grupo;
+    }
+
+    /// <summary>
+    /// Deja en la cartera de cada mes solo los clientes de esa categoría en ese mes. Un mes sin base queda vacío (ahí
+    /// nadie tiene categoría).
+    /// </summary>
+    public async Task RecortarAbcAsync(Dictionary<DateOnly, Dictionary<int, CarteraMes>> carteras, string grupo, CancellationToken ct)
+    {
+        foreach (var m in carteras.Keys.ToList())
+        {
+            var abc = await AbcAsync(m, ct);
+            carteras[m] = abc is null ? [] : carteras[m].Where(kv => GrupoAbc.De(abc, kv.Key) == grupo).ToDictionary();
+        }
     }
 
     /// <summary>Volumen y Devoluciones: 403 para el operario mientras vea solo Cobertura (<see cref="OpcionesComercial.OperarioSoloCobertura"/>).</summary>
@@ -312,6 +345,8 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     {
         if (!(await AlcanceAsync(ct)).EsAdmin || GrupoAbc.Base(mes, Op.PrimerMes) is not { Count: > 0 } meses)
             return null;
+        if (_abc.TryGetValue(mes, out var calculada))
+            return calculada;
         var regla = Op.Regla();
         var tipos = regla.TiposFactura.Concat(regla.TiposCredito).ToList();
         var desde = meses[0];
@@ -330,8 +365,11 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
             .ToListAsync(ct);
         var netos = filas.GroupBy(f => f.IdCliente).ToDictionary(g => g.Key,
             g => g.Sum(f => regla.EsFactura(f.TipoDocumento) ? f.Cantidad : regla.EsCredito(f.TipoDocumento) ? -f.Absoluta : 0m));
-        return GrupoAbc.Clasificar(netos);
+        return _abc[mes] = GrupoAbc.Clasificar(netos);
     }
+
+    // Por pedido (Lectura es scoped): el filtro y el campo abc piden el mismo mes.
+    private readonly Dictionary<DateOnly, IReadOnlyDictionary<int, string>> _abc = [];
 
     /// <summary>
     /// El último día con las ventas completas: hasta dónde llegó la última lectura de ventas, sin el día en que se leyó

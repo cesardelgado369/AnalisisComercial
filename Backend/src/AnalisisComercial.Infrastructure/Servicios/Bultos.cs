@@ -20,8 +20,12 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         var mirada = await lectura.MiradaAsync(f.Vendedor, "volumen", ct);
         var c = await lectura.ComparacionAsync(f.Mes, ct);
         var a = await lectura.AlcanceAsync(ct);
+        var grupo = await lectura.FiltroAbcAsync(f.Abc, c.Mes, ct);
 
-        var cartera = (await lectura.CarterasAsync(mirada, [c.Mes], f.Dia, ct))[c.Mes];
+        var carteras = await lectura.CarterasAsync(mirada, [c.Mes], f.Dia, ct);
+        if (grupo is not null)
+            await lectura.RecortarAbcAsync(carteras, grupo, ct);
+        var cartera = carteras[c.Mes];
         var ids = cartera.Keys.ToList();
         var articulos = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
         var (actual, enBase) = await lectura.BultosComparadosAsync(c, ids, articulos, ct);
@@ -75,7 +79,7 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
             lista = lista.Where(x => x.IdCliente.ToString(CultureInfo.InvariantCulture) == b || Texto.Normalizar(x.RazonSocial).Contains(b));
 
         await lectura.RegistrarAsync("volumen",
-            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
+            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};abc={f.Abc};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
         return new VolumenDto(mirada.Titulo, c, total, chips, Detalle.PorRazonSocial(lista, x => x.RazonSocial, x => x.IdCliente), grupos);
     }
 }
@@ -93,7 +97,10 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
         var meses = await lectura.MesesAsync(f.MesDesde, f.MesHasta, ct);
         var mirada = await lectura.MiradaAsync(f.Vendedor, "devoluciones", ct);
+        var grupo = await lectura.FiltroAbcAsync(f.Abc, meses[^1], ct);
         var carteras = await lectura.CarterasAsync(mirada, meses, f.Dia, ct);
+        if (grupo is not null)
+            await lectura.RecortarAbcAsync(carteras, grupo, ct);
         var ids = carteras.Values.SelectMany(x => x.Keys).Distinct().ToList();
         var filtro = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
         var bultos = (await lectura.BultosAsync(meses[0], Calendario.FinDeMes(meses[^1]), ids, filtro, ct))
@@ -129,7 +136,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
         }
 
         await lectura.RegistrarAsync("devoluciones",
-            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};desde={f.MesDesde};hasta={f.MesHasta}", ct);
+            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};abc={f.Abc};desde={f.MesDesde};hasta={f.MesHasta}", ct);
         return new DevolucionesDto(mirada.Titulo, meses, kpis, mes, clientes, articulos);
     }
 }

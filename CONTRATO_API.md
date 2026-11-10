@@ -133,7 +133,7 @@ Administración. Con `veBultos: false` (hoy, el operario) no se muestran Volumen
 
 Si `ultimaOk` tiene más de 36 h, el front muestra el aviso de datos viejos.
 
-### `GET /api/cobertura?vendedor=&dia=&unidad=&foco=&busqueda=&chip=&mesDesde=&mesHasta=`
+### `GET /api/cobertura?vendedor=&dia=&unidad=&foco=&abc=&busqueda=&chip=&mesDesde=&mesHasta=`
 
 Todos los parámetros son opcionales.
 
@@ -146,6 +146,12 @@ Todos los parámetros son opcionales.
   ventana. Se puede combinar con `unidad`. El `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no
   existe. Operario y supervisor → 403 «Los focos del mes son solo para administradores.» (queda registrado): un enlace
   con foco falla en vez de mostrar números sin el filtro. Igual en `/api/volumen` y `/api/devoluciones`.
+- `abc` (**solo Admin**): `A`, `B` o `C` (ver Clientes A, B y C). Recorta la cartera de **cada mes** a los clientes de
+  esa categoría en ese mes (agosto con la de agosto, noviembre con la de noviembre): KPIs, chips y `clientes` salen
+  sobre esa cartera. El `subtitulo` termina en «, clientes A». Otra letra → 400 en `errors.abc`; mesHasta sin base
+  (07/2026) → 400 en `errors.abc`; un mes del rango sin base queda con la cartera vacía. Operario y supervisor → 403
+  «La categoría de clientes es solo para administradores.» (queda registrado). Igual en `/api/volumen` (con la
+  categoría de `mes`) y `/api/devoluciones` (la de cada mes).
 - `busqueda`: código exacto o parte de la razón social, sin mayúsculas ni tildes. Solo filtra `clientes`.
 - `chip`: `todos` (por defecto) · `compraronMesActual` · `sinCompraMesActual` · `dejaronDeComprar`. Solo filtra
   `clientes`.
@@ -282,7 +288,7 @@ orden de visita de la ruta en Chess.
 - ⚠️ Pendiente de confirmar con los datos: que `cantidadesTotal` venga en bultos y no en unidades, y si la FACTURA
   PRESUPUESTO suma volumen. Si cambia, cambian los números, no la forma.
 
-### `GET /api/volumen?vendedor=&dia=&unidad=&foco=&busqueda=&chip=&mes=` · todos los roles
+### `GET /api/volumen?vendedor=&dia=&unidad=&foco=&abc=&busqueda=&chip=&mes=` · todos los roles
 
 Cuántos bultos lleva cada cliente en el mes contra una base. `vendedor`, `dia`, `unidad` y `busqueda` como en
 `/api/cobertura` (la unidad y el foco filtran los artículos que suman). `mes`: por defecto el mes en curso; el primer mes con
@@ -348,8 +354,9 @@ mirar filtros, y cambia de un mes al otro.
 - Viaja como `abc` en los clientes de `/api/cobertura` (en mesHasta), de `/api/volumen` (en `mes`) y en la ficha (en
   mesHasta), y como el bloque `abc` de `/api/volumen`. **Operario y supervisor no la ven nunca**: el campo no está (no
   viene en null). En el primer mes con datos (07/2026) no hay base y tampoco viaja.
+- Filtro **`abc=A|B|C`** en Cobertura, Volumen y Devoluciones (ver `/api/cobertura`).
 
-### `GET /api/devoluciones?vendedor=&dia=&unidad=&foco=&mesDesde=&mesHasta=` · todos los roles
+### `GET /api/devoluciones?vendedor=&dia=&unidad=&foco=&abc=&mesDesde=&mesHasta=` · todos los roles
 
 Parámetros como en `/api/cobertura`.
 
@@ -596,6 +603,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   bloque `volumen`. Otra vez dentro de la migración `FocosDelMes` (sin publicar).
 - 10/11: **clientes A, B y C**, solo para el Admin: `abc` en los clientes de Cobertura, Volumen y la ficha, y la
   cobertura por grupo en `/api/volumen`. Sin cambios en la base. Sale en la 1.3.
+- 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

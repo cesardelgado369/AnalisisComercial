@@ -26,8 +26,9 @@ public class CoberturaController(ICoberturaService cobertura) : ControllerBase
     [HttpGet]
     public Task<CoberturaDto> Obtener([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
         [FromQuery] string? busqueda, [FromQuery] ChipCobertura? chip, [FromQuery] DateOnly? mesDesde,
-        [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, CancellationToken ct)
-        => cobertura.ObtenerAsync(new FiltroCobertura(vendedor, dia, unidad, busqueda, chip ?? ChipCobertura.Todos, mesDesde, mesHasta, foco), ct);
+        [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, [FromQuery] string? abc, CancellationToken ct)
+        => cobertura.ObtenerAsync(new FiltroCobertura(vendedor, dia, unidad, busqueda, chip ?? ChipCobertura.Todos, mesDesde, mesHasta,
+            foco, abc), ct);
 
     [HttpGet("vendedores")]
     public Task<IReadOnlyList<OpcionVendedorDto>> Vendedores(CancellationToken ct) => cobertura.VendedoresAsync(ct);
@@ -72,13 +73,14 @@ public class BultosController(IVolumenService volumen, IDevolucionesService devo
     [HttpGet("api/volumen")]
     public Task<VolumenDto> Volumen([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
         [FromQuery] string? busqueda, [FromQuery] ChipVolumen? chip, [FromQuery] DateOnly? mes, [FromQuery] int? foco,
-        CancellationToken ct)
-        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes, foco), ct);
+        [FromQuery] string? abc, CancellationToken ct)
+        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes, foco, abc), ct);
 
     [HttpGet("api/devoluciones")]
     public Task<DevolucionesDto> Devoluciones([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
-        [FromQuery] DateOnly? mesDesde, [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, CancellationToken ct)
-        => devoluciones.ObtenerAsync(new FiltroDevoluciones(vendedor, dia, unidad, mesDesde, mesHasta, foco), ct);
+        [FromQuery] DateOnly? mesDesde, [FromQuery] DateOnly? mesHasta, [FromQuery] int? foco, [FromQuery] string? abc,
+        CancellationToken ct)
+        => devoluciones.ObtenerAsync(new FiltroDevoluciones(vendedor, dia, unidad, mesDesde, mesHasta, foco, abc), ct);
 }
 
 /// <summary>

@@ -62,7 +62,10 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
         var mesEnCurso = lectura.MesEnCurso;
 
         var articulos = await lectura.ArticulosAsync(f.Unidad, f.Foco, ct);
+        var grupo = await lectura.FiltroAbcAsync(f.Abc, mesRef, ct);
         var carteras = await lectura.CarterasAsync(mirada, meses, f.Dia, ct);
+        if (grupo is not null)
+            await lectura.RecortarAbcAsync(carteras, grupo, ct);
         var compras = await lectura.ComprasAsync(meses, articulos, ct);
         var ventasHasta = await lectura.VentasHastaAsync(ct);
         var rutas = await db.Rutas.AsNoTracking().ToDictionaryAsync(r => r.IdRuta, r => r.Nombre, ct);
@@ -102,7 +105,8 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
             f.Dia is { } dia ? DiasSemana.Nombre(dia).ToLowerInvariant() : "todos los días",
             articulos?.NombreFoco is { } nombreFoco
                 ? string.IsNullOrWhiteSpace(f.Unidad) ? $"foco {nombreFoco}" : $"{f.Unidad}, foco {nombreFoco}"
-                : string.IsNullOrWhiteSpace(f.Unidad) ? "todas las unidades" : f.Unidad);
+                : string.IsNullOrWhiteSpace(f.Unidad) ? "todas las unidades" : f.Unidad)
+            + (grupo is null ? "" : $", clientes {grupo}");
 
         await lectura.RegistrarAsync("cobertura", Parametros(f), ct);
         return new CoberturaDto(mirada.Titulo, subtitulo, meses, lectura.Kpis(meses, carteras, compras, ventasHasta), chips,
@@ -126,7 +130,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
     }
 
     private static string Parametros(FiltroCobertura f)
-        => $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};chip={f.Chip};desde={f.MesDesde};hasta={f.MesHasta}";
+        => $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};abc={f.Abc};chip={f.Chip};desde={f.MesDesde};hasta={f.MesHasta}";
 }
 
 public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteService
