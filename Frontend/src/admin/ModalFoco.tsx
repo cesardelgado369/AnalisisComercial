@@ -8,17 +8,19 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { Modal } from '../components/Modal'
 import { nombrePropio } from '../cobertura/estados'
 import { cantidad, nombreMes } from '../utils/formato'
-import { MEDIDAS } from './medidas'
+import { Segmentado } from '../components/Segmentado'
 
 /** Los límites del backend (CONTRATO_API.md, «Focos del mes»). */
 const MAXIMO_NOMBRE = 60
 const MAXIMO_ARTICULOS = 50
+/** El tope de bultos de un objetivo VOL (el del backend). */
+const MAXIMO_BULTOS = 1_000_000
 
 const sinTildes = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /**
- * Crear o editar un foco de un mes: el nombre que se ve en el filtro, qué se mide (CCC o VOL, como los objetivos de
- * Checho) con una meta opcional, y sus artículos de Chess, agrupados por la DIVISION de Chess y con cuántos clientes los
+ * Crear o editar un foco de un mes: el nombre que se ve en el filtro, el tipo de métrica (CCC, con una meta opcional en
+ * porcentaje, o Volumen, con la cantidad de bultos del objetivo) y sus artículos de Chess, agrupados por la DIVISION de Chess y con cuántos clientes los
  * compraron el mes pasado (para elegir las presentaciones que se venden). Los anulados se ofrecen solo si se piden o si
  * el foco ya los tiene. Editando, también se borra (con confirmación).
  */
@@ -30,7 +32,6 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
   const [medida, setMedida] = useState<MedidaFoco>(foco?.medida ?? 'ccc')
   // La meta es opcional (Cesar, 05/11): vacía = sin meta
   const [meta, setMeta] = useState(foco?.meta === null || foco?.meta === undefined ? '' : String(foco.meta))
-  const medidaElegida = MEDIDAS.find((m) => m.valor === medida)!
   const [texto, setTexto] = useState('')
   const [conAnulados, setConAnulados] = useState(false)
   const [errores, setErrores] = useState<Record<string, string>>({})
@@ -65,14 +66,25 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
     if (guardando) return
     const faltan: Record<string, string> = {}
     if (!nombre.trim()) faltan.nombre = 'Poné el nombre del foco, como se va a ver en el filtro.'
-    const metaNumero = meta.trim() === '' ? null : Number(meta.replace(',', '.'))
-    if (metaNumero !== null && (!Number.isFinite(metaNumero) || metaNumero < 1 || metaNumero > medidaElegida.metaMaxima))
-      faltan.meta = `La meta va de 1 a ${medidaElegida.metaMaxima} %, o dejala vacía.`
+    // CCC: la meta en porcentaje, opcional. Volumen: la cantidad de bultos del objetivo, obligatoria (Cesar, 10/11)
+    const metaNumero = meta.trim() === '' ? null : Number(meta.replace(/\./g, '').replace(',', '.'))
+    if (medida === 'vol') {
+      if (metaNumero === null) faltan.meta = 'Poné la cantidad de bultos del objetivo.'
+      else if (!Number.isFinite(metaNumero) || metaNumero <= 0 || metaNumero > MAXIMO_BULTOS)
+        faltan.meta = `La cantidad de bultos va de 1 a ${MAXIMO_BULTOS.toLocaleString('es-AR')}.`
+    } else if (metaNumero !== null && (!Number.isFinite(metaNumero) || metaNumero < 1 || metaNumero > 100))
+      faltan.meta = 'La meta va de 1 a 100 %, o dejala vacía.'
     if (!ids.length) faltan.idsArticulo = 'Elegí al menos un artículo.'
     else if (ids.length > MAXIMO_ARTICULOS) faltan.idsArticulo = `Hasta ${MAXIMO_ARTICULOS} artículos por foco.`
     setErrores(faltan)
     setGeneral(null)
-    if (Object.keys(faltan).length) return
+    if (Object.keys(faltan).length) {
+      // Lleva al primero que falta (con la lista de artículos scrolleada, el aviso de arriba no se veía)
+      const campo = faltan.nombre ? 'nombre' : faltan.meta ? 'meta' : 'articulos'
+      document.querySelector<HTMLElement>(`#form-foco [data-campo="${campo}"]`)?.focus({ preventScroll: true })
+      document.querySelector(`#form-foco [data-campo="${campo}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return
+    }
     setGuardando(true)
     try {
       const cuerpo: FocoEnvio = { mes, nombre: nombre.trim(), idsArticulo: ids, medida, meta: metaNumero }
@@ -153,9 +165,10 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
         </>
       }
     >
+      {/* Simple (Cesar, 10/11): nombre, tipo de métrica con su meta, y los artículos; sin textos de ayuda */}
       <form id="form-foco" className="adm-form" onSubmit={(e) => void guardar(e)} noValidate autoComplete="off">
         <label>
-          Nombre
+          Nombre del foco
           <input
             type="text"
             value={nombre}
@@ -166,58 +179,57 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
               setErrores((v) => (v.nombre ? { ...v, nombre: '' } : v))
             }}
             aria-invalid={!!errores.nombre}
+            data-campo="nombre"
             data-autofocus
           />
-          <span className="campo-ayuda">
-            Así lo ves en Cobertura, Volumen y Devoluciones cuando estás parado en {nombreMes(mes)}. Los vendedores no ven
-            los focos.
-          </span>
           {errores.nombre && <span className="campo-error">{errores.nombre}</span>}
         </label>
 
-        <fieldset className="foco-medicion">
-          <legend>Qué se mide</legend>
-          <div className="foco-medidas" role="radiogroup" aria-label="Qué se mide">
-            {MEDIDAS.map((m) => (
-              <label key={m.valor} className={m.valor === medida ? 'foco-opcion-medida elegida' : 'foco-opcion-medida'}>
-                <input type="radio" name="medida" checked={m.valor === medida} onChange={() => setMedida(m.valor)} />
-                <span className="foco-opcion-textos">
-                  <span className="foco-opcion-titulo">{m.texto}</span>
-                  <span className="campo-ayuda">{m.ayuda}</span>
-                </span>
-              </label>
-            ))}
+        <div className="foco-fila">
+          <div className="foco-campo">
+            <span className="foco-campo-titulo">Tipo de métrica</span>
+            <Segmentado
+              etiqueta="Tipo de métrica"
+              valor={medida}
+              opciones={[
+                { valor: 'ccc', texto: 'CCC' },
+                { valor: 'vol', texto: 'Volumen' },
+              ]}
+              onCambio={(v) => {
+                setMedida(v)
+                // La meta cambia de unidad (porcentaje o bultos): se vuelve a poner
+                setMeta('')
+                setErrores((e) => (e.meta ? { ...e, meta: '' } : e))
+              }}
+            />
           </div>
           <label className="foco-meta-campo">
-            Meta (opcional)
+            {medida === 'vol' ? 'Cantidad de bultos' : 'Meta (opcional)'}
             <span className="foco-meta-entrada">
               <input
                 type="text"
                 inputMode="decimal"
                 value={meta}
-                placeholder="Sin meta"
+                placeholder={medida === 'vol' ? '1.200' : 'Sin meta'}
                 onChange={(e) => {
                   setMeta(e.target.value)
                   setErrores((v) => (v.meta ? { ...v, meta: '' } : v))
                 }}
                 aria-invalid={!!errores.meta}
+                data-campo="meta"
               />
-              <span aria-hidden>%</span>
+              <span aria-hidden>{medida === 'vol' ? 'bultos' : '%'}</span>
             </span>
-            <span className="campo-ayuda">{medidaElegida.metaEjemplo} Se marca en cada barra del análisis.</span>
             {errores.meta && <span className="campo-error">{errores.meta}</span>}
           </label>
-        </fieldset>
+        </div>
 
         <fieldset className="foco-articulos" aria-invalid={!!errores.idsArticulo}>
-          <legend>Artículos</legend>
-          <p className="campo-ayuda">
-            Tildá todas las presentaciones que cuentan como una (por ejemplo, la manteca de 100 y de 200 gramos): un
-            cliente compró el foco si compró cualquiera de ellas.
-          </p>
+          <legend>Seleccionar artículos</legend>
 
-          <div className="foco-elegidos" aria-live="polite">
-            <span className="foco-elegidos-titulo">{ids.length ? cantidad(ids.length, 'elegido') : 'Ninguno elegido todavía'}</span>
+          <div className="foco-elegidos" aria-live="polite" data-campo="articulos">
+            <span className="foco-elegidos-titulo">Artículos seleccionados:</span>
+            {ids.length === 0 && <span className="foco-elegidos-ninguno">ninguno todavía</span>}
             {ids.map((id) => (
               <button key={id} type="button" className="foco-elegido" onClick={() => alternar(id)} title="Sacarlo del foco">
                 {nombrePropio(descripcion(id))}
@@ -257,7 +269,9 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
                   <div className="foco-lista">
                     {lista.map((a) => (
                       <label key={a.idArticulo} className={ids.includes(a.idArticulo) ? 'adm-vendedor foco-articulo elegido' : 'adm-vendedor foco-articulo'}>
-                        <input type="checkbox" checked={ids.includes(a.idArticulo)} onChange={() => alternar(a.idArticulo)} />
+                        {/* El tilde de los elegidos, bien visible (Cesar, 10/11); la casilla queda para el teclado */}
+                        <input type="checkbox" className="sr-solo" checked={ids.includes(a.idArticulo)} onChange={() => alternar(a.idArticulo)} />
+                        <span className="foco-check" aria-hidden>{ids.includes(a.idArticulo) ? '✓' : ''}</span>
                         <span className="foco-articulo-textos">
                           <span className="adm-vendedor-nombre">{nombrePropio(a.descripcion)}</span>
                           <span className="foco-articulo-detalle">

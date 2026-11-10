@@ -151,14 +151,16 @@ export function MedicionFoco(props: {
   const referencia = useMesReferencia()
   const contra = f.medida === 'vol' ? ctx.vol : ctx.ccc
   const total = f.medida === 'vol' ? deVol(f.total) : deCcc(f.total, true)
+  // La meta en porcentaje (la de CCC) se marca en las barras; la de VOL es en bultos y va como avance en el total
+  const metaBarra = f.medida === 'ccc' ? f.meta : null
+  const avanceMeta =
+    f.medida === 'vol' && f.meta ? (f.total.porcentajeMeta ?? Math.round((f.total.bultosActual / f.meta) * 1000) / 10) : null
   const vendedores = (f.medida === 'vol' ? f.vendedores.map((v) => ({ ...v, m: deVol(v) })) : f.vendedores.map((v) => ({ ...v, m: deCcc(v) }))).sort(
     (x, y) => (y.m.valor ?? -1) - (x.m.valor ?? -1) || x.nombre.localeCompare(y.nombre, 'es'),
   )
   // CCC va de 0 a 100; VOL puede pasar el 100 % del mes anterior: la escala crece hasta el más alto
   const escala =
-    f.medida === 'ccc'
-      ? 100
-      : Math.max(120, (f.meta ?? 0) + 10, Math.ceil(Math.max(total.valor ?? 0, ...vendedores.map((v) => v.m.valor ?? 0)) / 10) * 10)
+    f.medida === 'ccc' ? 100 : Math.max(120, Math.ceil(Math.max(total.valor ?? 0, ...vendedores.map((v) => v.m.valor ?? 0)) / 10) * 10)
   const destino = (idPersonal: number) =>
     f.medida === 'vol' ? `/volumen?vendedor=${idPersonal}&foco=${f.idFoco}` : `/?vendedor=${idPersonal}&foco=${f.idFoco}`
 
@@ -171,9 +173,14 @@ export function MedicionFoco(props: {
           {f.medida === 'ccc' && ctx.corteAl ? ` al ${formatoFechaCorta(ctx.corteAl)}` : ''}
         </span>
         <Diferencia m={total} contra={contra} corto={ctx.anteriorCorto} />
-        {f.meta !== null && <span className="sr-solo">{textoMeta(total, f.meta)}</span>}
+        {metaBarra !== null && <span className="sr-solo">{textoMeta(total, metaBarra)}</span>}
+        {avanceMeta !== null && f.meta !== null && (
+          <span className="foco-meta foco-avance-meta">
+            {formatoPorcentaje(avanceMeta)} de la meta de {formatoBultos(f.meta)} bultos
+          </span>
+        )}
       </div>
-      <Barra m={total} meta={f.meta} escala={escala} />
+      <Barra m={total} meta={metaBarra} escala={escala} />
       <ul className="foco-analisis-vendedores" aria-label={`${f.nombre} por vendedor`}>
         {vendedores.map((v) => (
           <li key={v.idPersonal}>
@@ -186,16 +193,16 @@ export function MedicionFoco(props: {
               onBlur={alPasar && (() => alPasar(null))}
               // Cobertura y Volumen muestran el mes en el que está parada la app: se para en el del análisis
               onClick={() => referencia.elegir(ctx.enCurso ? null : ctx.mes)}
-              title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, f.meta)}`}
+              title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, metaBarra)}`}
             >
               <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
-              <Barra m={v.m} meta={f.meta} escala={escala} />
+              <Barra m={v.m} meta={metaBarra} escala={escala} />
               <span className="foco-vendedor-numeros">
                 <strong>{v.m.valor === null ? '—' : formatoPorcentaje(v.m.valor)}</strong>
                 <span className="foco-analisis-detalle">{v.m.detalle}</span>
               </span>
               <Diferencia m={v.m} contra={contra} corto={ctx.anteriorCorto} />
-              {f.meta !== null && <span className="sr-solo">{textoMeta(v.m, f.meta)}</span>}
+              {metaBarra !== null && <span className="sr-solo">{textoMeta(v.m, metaBarra)}</span>}
             </Link>
           </li>
         ))}

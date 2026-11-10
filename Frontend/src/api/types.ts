@@ -609,8 +609,8 @@ export interface Foco {
   nombre: string
   medida: MedidaFoco
   /**
-   * Opcional (Cesar, 05/11: «sin meta pero dejemos la opción»), siempre en porcentaje: con `ccc`, qué parte de la
-   * cartera tiene que comprarlo (1–100); con `vol`, contra el mes anterior al mismo día hábil (100 = igualarlo).
+   * Con `ccc`, opcional, en porcentaje: qué parte de la cartera tiene que comprarlo (1–100). Con `vol`, obligatoria: la
+   * cantidad de bultos del objetivo del mes (Cesar, 10/11).
    */
   meta: number | null
   articulos: ArticuloFoco[]
@@ -650,6 +650,8 @@ export interface VolumenFoco {
   bultosBase: number | null
   /** `bultosActual / bultosBase` × 100, un decimal; null si la base es 0. */
   porcentaje: number | null
+  /** Solo en el total: el avance hacia la meta en bultos (`bultosActual / meta` × 100). */
+  porcentajeMeta?: number | null
 }
 
 type VendedorFoco = { idPersonal: number; nombre: string }

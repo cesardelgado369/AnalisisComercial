@@ -11,7 +11,7 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { mesesDisponibles, nombrePropio, sumarMes } from '../cobertura/estados'
 import { Parrafo } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
-import { cantidad, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { cantidad, formatoBultos, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
 import { ETIQUETA_MEDIDA } from './medidas'
 import { VentanaVendedor, type ClaveVendedorFoco } from './VentanaVendedor'
@@ -236,8 +236,7 @@ export function FocosPage() {
                   {f.meta !== null && (
                     <p className="foco-contenedor-mide">
                       <strong className="foco-meta">
-                        Meta {formatoPorcentaje(f.meta)}
-                        {f.medida === 'vol' ? ` de ${nombreMes(anterior)}` : ' de los clientes'}
+                        {f.medida === 'vol' ? `Meta ${formatoBultos(f.meta)} bultos` : `Meta ${formatoPorcentaje(f.meta)} de los clientes`}
                       </strong>
                     </p>
                   )}

@@ -291,6 +291,18 @@
 .foco-opcion-textos { display: flex; flex-direction: column; gap: 2px; }
 .foco-opcion-titulo { font-size: 14px; font-weight: 700; color: var(--texto); }
 .foco-meta-entrada { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; color: var(--texto); }
+/* El modal simple: tipo de métrica y meta en una fila, el tilde de los artículos elegidos */
+.foco-fila { display: flex; align-items: flex-start; gap: 16px 28px; flex-wrap: wrap; }
+.foco-campo { display: flex; flex-direction: column; gap: 4px; }
+.foco-campo-titulo { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.foco-campo .segmentado button { min-height: 40px; padding: 0 18px; }
+.foco-elegidos-ninguno { font-size: 13px; color: var(--texto-2); }
+.foco-check {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; font-size: 14px; font-weight: 900;
+  color: #fff; background: var(--superficie); border: 1.5px solid var(--borde-fuerte); border-radius: 6px;
+}
+.foco-articulo.elegido .foco-check { background: var(--acento); border-color: var(--acento); }
+.foco-articulo:focus-within { outline: 2px solid var(--acento); outline-offset: 1px; }
 .adm-form .foco-meta-entrada input { width: 120px; }
 .foco-articulos { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; border: none; min-width: 0; }
 .foco-articulos legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }

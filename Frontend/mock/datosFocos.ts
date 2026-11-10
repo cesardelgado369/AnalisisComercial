@@ -91,13 +91,13 @@ const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number,
   actualizado: hace(dias),
 })
 const focos: FocoMock[] = [
-  nuevo(MES, 'Tapas', TAPAS, 4, 'vol'),
+  nuevo(MES, 'Tapas', TAPAS, 4, 'vol', 1500),
   nuevo(MES, 'Manteca', MANTECA, 4),
   nuevo(MES, 'Dulce de leche', DULCE, 4),
   nuevo(MES, 'Masa para tacos', TACOS, 4),
   nuevo(MES, 'Pionono', PIONONO, 4),
   nuevo(ANTERIOR, 'Ravioles', RAVIOLES, 33),
-  nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol'),
+  nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol', 400),
   nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
 ]
 
@@ -169,8 +169,10 @@ function validar(cuerpo: Record<string, unknown>, idFoco: number | null) {
   const medida = cuerpo.medida ?? 'ccc'
   if (medida !== 'ccc' && medida !== 'vol') errores.medida = ['Elegí qué se mide: CCC o VOL.']
   const meta = cuerpo.meta ?? null
-  const maximo = medida === 'vol' ? 999 : 100
-  if (meta !== null && (typeof meta !== 'number' || meta < 1 || meta > maximo)) errores.meta = [`La meta va de 1 a ${maximo} %.`]
+  // CCC: porcentaje opcional. VOL: la cantidad de bultos del objetivo, obligatoria (Cesar, 10/11)
+  if (medida === 'vol' && (meta === null || typeof meta !== 'number' || meta <= 0 || meta > 1_000_000))
+    errores.meta = ['Poné la cantidad de bultos del objetivo.']
+  else if (medida !== 'vol' && meta !== null && (typeof meta !== 'number' || meta < 1 || meta > 100)) errores.meta = ['La meta va de 1 a 100 %.']
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el foco.', errores)
   return { mes, nombre, ids, medida: medida as Medida, meta: meta as number | null }
 }
@@ -276,12 +278,14 @@ export function analisis(p: URLSearchParams) {
         const cabecera = { idFoco: f.idFoco, nombre: f.nombre, medida: f.medida, meta: f.meta }
         // Con cartera ese mes: los mismos vendedores para las dos medidas
         const conCartera = vendedores.filter((v) => clientes.some((c) => c.ruta.idPersonal === v.id && enCartera(c, m) && deLaCategoria(c, m)))
-        if (f.medida === 'vol')
+        if (f.medida === 'vol') {
+          const total = bultos(f, null)
           return {
             ...cabecera,
-            total: bultos(f, null),
+            total: { ...total, porcentajeMeta: f.meta ? Math.round((total.bultosActual / f.meta) * 1000) / 10 : null },
             vendedores: conCartera.map((v) => ({ idPersonal: v.id, nombre: v.nombre, ...bultos(f, v.id) })),
           }
+        }
         const filtro = filtroCompra(null, comoConsulta(f))
         return {
           ...cabecera,
