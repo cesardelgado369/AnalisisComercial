@@ -73,8 +73,8 @@ export function VolumenPage() {
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
         <header className="cob-resumen vol-resumen">
           <div className="cob-resumen-textos">
+            {/* Sin el «702 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando */}
             <h1>{titulo}</h1>
-            <p>{vigentes ? filtros.subtitulo(vigentes.chips.todos) : ' '}</p>
             {opcionesMes.length > 1 && (
               <label className="vol-mes">
                 <span className="sr-solo">Mes</span>
