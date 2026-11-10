@@ -8,11 +8,14 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { Modal } from '../components/Modal'
 import { nombrePropio } from '../cobertura/estados'
 import { cantidad, nombreMes } from '../utils/formato'
-import { Segmentado } from '../components/Segmentado'
 
 /** Los límites del backend (CONTRATO_API.md, «Focos del mes»). */
 const MAXIMO_NOMBRE = 60
 const MAXIMO_ARTICULOS = 50
+const TIPOS: { valor: MedidaFoco; texto: string }[] = [
+  { valor: 'ccc', texto: 'CCC' },
+  { valor: 'vol', texto: 'Volumen' },
+]
 /** El tope de bultos de un objetivo VOL (el del backend). */
 const MAXIMO_BULTOS = 1_000_000
 
@@ -188,20 +191,27 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
         <div className="foco-fila">
           <div className="foco-campo">
             <span className="foco-titulo">Tipo de métrica</span>
-            <Segmentado
-              etiqueta="Tipo de métrica"
-              valor={medida}
-              opciones={[
-                { valor: 'ccc', texto: 'CCC' },
-                { valor: 'vol', texto: 'Volumen' },
-              ]}
-              onCambio={(v) => {
-                setMedida(v)
-                // La meta cambia de unidad (porcentaje o bultos): se vuelve a poner
-                setMeta('')
-                setErrores((e) => (e.meta ? { ...e, meta: '' } : e))
-              }}
-            />
+            {/* Dos botones grandes, lo principal del foco (Cesar, 10/11: más protagonismo) */}
+            <div className="foco-tipos" role="radiogroup" aria-label="Tipo de métrica">
+              {TIPOS.map(({ valor, texto }) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={medida === valor}
+                  className="foco-tipo-opcion"
+                  onClick={() => {
+                    if (medida === valor) return
+                    setMedida(valor)
+                    // La meta cambia de unidad (porcentaje o bultos): se vuelve a poner
+                    setMeta('')
+                    setErrores((e) => (e.meta ? { ...e, meta: '' } : e))
+                  }}
+                >
+                  {texto}
+                </button>
+              ))}
+            </div>
           </div>
           <label className="foco-meta-campo">
             <span className="foco-titulo">
