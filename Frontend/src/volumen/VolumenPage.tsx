@@ -182,6 +182,7 @@ export function VolumenPage() {
               {ventanita.abierta && (
                 <VentanaCliente
                   idCliente={ventanita.abierta.clave}
+                  serie="volumen"
                   abc={datos.clientes.find((c) => c.idCliente === ventanita.abierta!.clave)?.abc}
                   fila={ventanita.abierta.fila}
                   mes={datos.comparacion.mes}

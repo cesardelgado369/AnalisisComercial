@@ -164,6 +164,7 @@ export function DevolucionesPage() {
                   {ventanita.abierta && (
                     <VentanaCliente
                       idCliente={ventanita.abierta.clave}
+                      serie="devueltos"
                       abc={d.clientes.find((c) => c.idCliente === ventanita.abierta!.clave)?.abc}
                       fila={ventanita.abierta.fila}
                       mes={d.mes}
