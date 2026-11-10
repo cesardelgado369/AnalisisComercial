@@ -294,9 +294,9 @@
 /* El modal simple: tipo de métrica y meta en una fila, el tilde de los artículos elegidos */
 /* Tipo de métrica (lo principal, a todo el ancho) y abajo la meta, cada una con su banda y lo de abajo centrado */
 .foco-fila { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 22px; }
-.foco-tipos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
+.foco-tipos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; width: min(100%, 520px); }
 .foco-tipo-opcion {
-  min-height: 64px; cursor: pointer; font: inherit; font-size: 22px; font-weight: 900; letter-spacing: .06em;
+  min-height: 46px; cursor: pointer; font: inherit; font-size: 16px; font-weight: 800; letter-spacing: .05em;
   text-transform: uppercase; color: var(--acento); background: var(--superficie-media);
   border: 2px solid var(--acento-claro); border-radius: var(--radio-grande); transition: background .15s, color .15s, border-color .15s;
 }
