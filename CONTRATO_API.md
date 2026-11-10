@@ -265,6 +265,30 @@ la ficha.
                   "bultosVendidos": 4, "bultosDevueltos": 1, "porcentaje": 20.0 }] }   // con devoluciones en `mes`
 ```
 
+### `GET /api/clientes/{idCliente}/movimientos?mes=&unidad=&foco=`
+
+La historia del mes de un cliente, comprobante por comprobante (Cesar, 10/11/2026: la ventanita al pasar el mouse en
+Devoluciones). `mes`: por defecto el en curso. `unidad` y `foco` filtran las líneas como en `/api/devoluciones` (foco,
+solo admin); la categoría `abc` es del cliente y no cambia nada acá.
+
+```jsonc
+{ "idCliente": 967, "razonSocial": "POLIRUBRO LAS MARÍAS 46", "mes": "2026-11-01",
+  "movimientos": [                                        // por fecha y número, del más viejo al más nuevo
+    { "fecha": "2026-11-03", "tipo": "factura" | "notaCredito", "comprobante": "A 0001-00001234",
+      "vendedor": "ALEJANDRO LIZARRAGA" | null,           // el del comprobante (null: ver abajo)
+      "entregados": 2.5, "devueltos": 1,
+      "lineas": [{ "idArticulo": 201, "descripcion": "TAPAS DE EMPANADA FREIR X12", "unidadNegocio": "TAPAS" | null,
+                   "entregados": 2.5, "devueltos": 1 }] }] }   // por unidad y descripción
+```
+
+- Comprobantes y bultos con la regla de Devoluciones: FACTURA y FACTURA CIERRE CONSIG. no anuladas y NOTA DE CREDITO
+  (la FACTURA PRESUPUESTO no va). Factura: `entregados` = sus líneas positivas, `devueltos` = las negativas. Nota de
+  crédito: `entregados` 0, `devueltos` = lo acreditado. Del mes: Σ `entregados` − Σ `devueltos` = `bultosVendidos` del
+  cliente en `/api/devoluciones` y Σ `devueltos` = `bultosDevueltos`. Sin importes.
+- Gobernanza como la ficha: el operario que no ve bultos → 403. Operario y supervisor, solo un mes en que el cliente
+  era de su cartera (si no, 404 «No existe el cliente o no tenés acceso.», registrado), y `vendedor` en null si el
+  comprobante es de un vendedor que no es suyo. Mes futuro o fuera de su ventana → 400 en `errors.mes`.
+
 ### `GET /api/ruta-hoy?vendedor=&fecha=`
 
 Los clientes del día de visita de `fecha` (por defecto hoy). `vendedor` como en `/cobertura`: el operario, siempre él;
@@ -610,6 +634,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   cobertura por grupo en `/api/volumen`. Sin cambios en la base. Sale en la 1.3.
 - 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
 - 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
+- 10/11: **`/api/clientes/{id}/movimientos`**: los comprobantes del mes de un cliente (la ventanita de Devoluciones).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

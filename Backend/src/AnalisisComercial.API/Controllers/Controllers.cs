@@ -57,6 +57,11 @@ public class ClientesController(IClienteService clientes, IRutaHoyService rutaHo
         [FromQuery] DateOnly? mes, CancellationToken ct)
         => clientes.DevolucionesAsync(idCliente, mesDesde, mesHasta, mes, ct);
 
+    [HttpGet("api/clientes/{idCliente:int}/movimientos")]
+    public Task<MovimientosClienteDto> MovimientosCliente(int idCliente, [FromQuery] DateOnly? mes, [FromQuery] string? unidad,
+        [FromQuery] int? foco, CancellationToken ct)
+        => clientes.MovimientosAsync(idCliente, mes, unidad, foco, ct);
+
     [HttpGet("api/ruta-hoy")]
     public Task<IReadOnlyList<ClienteRutaHoyDto>> RutaHoy([FromQuery] int? vendedor, [FromQuery] DateOnly? fecha, CancellationToken ct)
         => rutaHoy.ClientesDelDiaAsync(vendedor, fecha, ct);

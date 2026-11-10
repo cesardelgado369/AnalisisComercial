@@ -248,6 +248,79 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
         await lectura.RegistrarAsync("ficha-devoluciones", $"cliente={idCliente};mes={elegido:yyyy-MM-dd}", ct);
         return new DevolucionesClienteDto(meses, kpis, elegido, articulos);
     }
+
+    /// <summary>
+    /// Los comprobantes del cliente en el mes, del más viejo al más nuevo, con la regla de bultos de Devoluciones
+    /// (<see cref="Volumen.Repartir"/>). Operario y supervisor: solo un mes en que el cliente era de su cartera (si no,
+    /// 404 registrado) y nunca el nombre de un vendedor que no es suyo.
+    /// </summary>
+    public async Task<MovimientosClienteDto> MovimientosAsync(int idCliente, DateOnly? mes, string? unidad, int? foco,
+        CancellationToken ct = default)
+    {
+        await lectura.ExigirBultosAsync(ct);
+        var m = Calendario.Mes(mes ?? lectura.MesEnCurso);
+        if (m > lectura.MesEnCurso)
+            throw new ValidacionException("mes", "No puede ser posterior al mes en curso.");
+        if (m < await lectura.PrimerMesVisibleAsync(ct))
+            throw new ValidacionException("mes", "Ese mes está fuera de los que podés ver.");
+        var (cliente, propios) = await lectura.ClienteVisibleAsync(idCliente, "ficha-movimientos", ct);
+        if (propios is not null && !propios.Contains(m))
+        {
+            await lectura.RegistrarAsync("ficha-movimientos", $"cliente={idCliente};mes={m:yyyy-MM-dd}", ct, denegado: true);
+            throw new NoEncontradoException("No existe el cliente o no tenés acceso.");
+        }
+        var filtro = await lectura.ArticulosAsync(unidad, foco, ct);
+        var a = await lectura.AlcanceAsync(ct);
+
+        var regla = lectura.Op.Regla();
+        var tipos = regla.TiposFactura.Concat(regla.TiposCredito).ToList();
+        var fin = Calendario.FinDeMes(m);
+        var q = db.VentaLineas.AsNoTracking()
+            .Where(l => l.IdCliente == idCliente && !l.Anulado && l.Fecha >= m && l.Fecha <= fin && tipos.Contains(l.TipoDocumento));
+        if (filtro?.Unidad is { Length: > 0 } u)
+            q = q.Where(l => db.Articulos.Any(x => x.IdArticulo == l.IdArticulo && x.UnidadNegocio == u));
+        if (filtro?.Foco is { } idFoco)
+            q = q.Where(l => db.FocoArticulos.Any(x => x.IdFoco == idFoco && x.IdArticulo == l.IdArticulo));
+        var lineas = await q.ToListAsync(ct);
+
+        var datos = await Detalle.ArticulosAsync(db, lineas.Select(l => l.IdArticulo), ct);
+        var vendedores = await lectura.VendedoresAsync(ct);
+        var negativasSonDevolucion = lectura.Op.NegativasSonDevolucion;
+        var movimientos = lineas
+            .GroupBy(l => (l.IdEmpresa, l.IdDocumento, l.Letra, l.Serie, l.NroDoc))
+            .Select(g =>
+            {
+                var primera = g.First();
+                var esFactura = regla.EsFactura(primera.TipoDocumento);
+                var detalle = g.GroupBy(l => l.IdArticulo)
+                    .Select(x =>
+                    {
+                        var positivas = x.Sum(l => l.CantidadTotal > 0 ? l.CantidadTotal : 0m);
+                        var negativas = x.Sum(l => l.CantidadTotal < 0 ? -l.CantidadTotal : 0m);
+                        var (entregado, devuelto) = esFactura
+                            ? Volumen.Repartir(positivas, negativas, 0, negativasSonDevolucion)
+                            : Volumen.Repartir(0, 0, positivas + negativas, negativasSonDevolucion);
+                        return new LineaMovimientoDto(x.Key, Detalle.Descripcion(datos, x.Key), datos.GetValueOrDefault(x.Key)?.UnidadNegocio,
+                            Volumen.Redondear(entregado), Volumen.Redondear(devuelto));
+                    })
+                    .Where(x => x.Entregados != 0 || x.Devueltos != 0)
+                    .OrderBy(x => x.UnidadNegocio ?? "\uffff").ThenBy(x => x.Descripcion)
+                    .ToList();
+                var suyo = a.EsAdmin || a.Vendedores.Contains(primera.IdVendedor);
+                return (Orden: (primera.Fecha, primera.NroDoc), Dto: new MovimientoDto(primera.Fecha,
+                    esFactura ? TipoMovimiento.Factura : TipoMovimiento.NotaCredito,
+                    $"{primera.Letra} {primera.Serie:0000}-{primera.NroDoc:00000000}",
+                    suyo ? vendedores.GetValueOrDefault(primera.IdVendedor)?.Nombre : null,
+                    Volumen.Redondear(detalle.Sum(x => x.Entregados)), Volumen.Redondear(detalle.Sum(x => x.Devueltos)), detalle));
+            })
+            .Where(x => x.Dto.Lineas.Count > 0)
+            .OrderBy(x => x.Orden)
+            .Select(x => x.Dto)
+            .ToList();
+
+        await lectura.RegistrarAsync("ficha-movimientos", $"cliente={idCliente};mes={m:yyyy-MM-dd};unidad={unidad};foco={foco}", ct);
+        return new MovimientosClienteDto(cliente.IdCliente, cliente.RazonSocial, m, movimientos);
+    }
 }
 
 public class RutaHoyService(ComercialDbContext db, Lectura lectura) : IRutaHoyService

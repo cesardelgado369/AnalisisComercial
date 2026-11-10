@@ -160,7 +160,29 @@ public interface IClienteService
     /// <param name="mes">El mes del detalle por artículo; por defecto, mesHasta.</param>
     Task<DevolucionesClienteDto> DevolucionesAsync(int idCliente, DateOnly? mesDesde, DateOnly? mesHasta, DateOnly? mes,
         CancellationToken ct = default);
+
+    /// <summary>Los comprobantes del cliente en el mes, en orden (la ventanita de Devoluciones).</summary>
+    Task<MovimientosClienteDto> MovimientosAsync(int idCliente, DateOnly? mes, string? unidad, int? foco,
+        CancellationToken ct = default);
 }
+
+// ---- Movimientos de un cliente (Cesar, 10/11/2026: la historia del mes en Devoluciones) -------------------------
+
+public enum TipoMovimiento
+{
+    Factura,
+    NotaCredito,
+}
+
+/// <param name="Entregados">Lo que se entregó en el comprobante (las líneas positivas de una factura).</param>
+/// <param name="Devueltos">Lo que volvió: las líneas negativas de una factura o lo acreditado en una nota de crédito.</param>
+public record LineaMovimientoDto(int IdArticulo, string Descripcion, string? UnidadNegocio, decimal Entregados, decimal Devueltos);
+
+/// <param name="Vendedor">El del comprobante; null si no se sabe o (operario y supervisor) si no es uno de los suyos.</param>
+public record MovimientoDto(DateOnly Fecha, TipoMovimiento Tipo, string Comprobante, string? Vendedor, decimal Entregados,
+    decimal Devueltos, IReadOnlyList<LineaMovimientoDto> Lineas);
+
+public record MovimientosClienteDto(int IdCliente, string RazonSocial, DateOnly Mes, IReadOnlyList<MovimientoDto> Movimientos);
 
 // ---- Volumen (en bultos) ---------------------------------------------------------------------------------------
 

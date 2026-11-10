@@ -226,6 +226,31 @@ public class FaseDosTests(Entorno e)
     }
 
     [Fact]
+    public async Task Movimientos_del_cliente_en_el_mes()
+    {
+        // 101 en septiembre: factura 2 (15/09, 2 bultos), nota de crédito 7 (20/09, 1) y factura 8 (28/09, 3).
+        var sep = await e.Admin().JsonAsync("/api/clientes/101/movimientos?mes=2026-09-01");
+        var movs = sep["movimientos"]!.AsArray();
+        Assert.Equal(["2026-09-15", "2026-09-20", "2026-09-28"], movs.Select(x => (string?)x!["fecha"]));
+        Assert.Equal(["factura", "notaCredito", "factura"], movs.Select(x => (string?)x!["tipo"]));
+        Assert.Equal((0m, 1m), ((decimal)movs[1]!["entregados"]!, (decimal)movs[1]!["devueltos"]!));
+        Assert.Equal("A 0001-00000007", (string?)movs[1]!["comprobante"]);
+        Assert.Equal("VENDEDOR UNO", (string?)movs[0]!["vendedor"]);
+        Assert.Equal("TALLARIN 500G", (string?)movs[0]!["lineas"]![0]!["descripcion"]);
+
+        // Octubre: una sola factura con una línea de 2 y otra de −1 (retirado en la misma factura).
+        var oct = (await e.Admin().JsonAsync("/api/clientes/101/movimientos"))["movimientos"]!.AsArray().Single()!;
+        Assert.Equal((2m, 1m), ((decimal)oct["entregados"]!, (decimal)oct["devueltos"]!));
+
+        // El operario de 101 (VENDEDOR UNO) lo ve; el supervisor (VENDEDOR DOS) no, salvo el mes en que 102 era suyo.
+        await e.Operario().JsonAsync("/api/clientes/101/movimientos?mes=2026-09-01");
+        await e.Supervisor().JsonAsync("/api/clientes/101/movimientos?mes=2026-09-01", HttpStatusCode.NotFound);
+        await e.Supervisor().JsonAsync("/api/clientes/102/movimientos?mes=2026-09-01");
+        await e.Supervisor().JsonAsync("/api/clientes/102/movimientos?mes=2026-10-01", HttpStatusCode.NotFound);
+        Assert.NotNull((await e.Admin().JsonAsync("/api/clientes/101/movimientos?mes=2026-12-01", HttpStatusCode.BadRequest))["errors"]!["mes"]);
+    }
+
+    [Fact]
     public async Task Volumen_con_comparativa_parcial_o_acumulada()
     {
         static string? Tipo(JsonNode v) => (string?)v["comparacion"]!["tipo"];
