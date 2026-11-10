@@ -34,12 +34,12 @@ export function VentanaCliente(props: {
   // Mes a mes, los cuatro meses que se ven hasta el de la ventanita (la ficha: todos los productos)
   const meses = ventanaDe(mes)
   const rango = `mesDesde=${meses[0]}&mesHasta=${mes}`
-  // El mes del graficito que se está mirando (al pasar el mouse por su barra); de entrada, el de la ventanita
-  const [elegido, setElegido] = useState(mes)
+  // El mes del graficito que se está mirando (al pasar el mouse por su barra): su globito
+  const [elegido, setElegido] = useState<string | null>(null)
   const ficha = useConsulta<FichaMeses>(serie === 'volumen' ? `/clientes/${idCliente}?${rango}` : null, 'No pudimos leer sus meses.')
   // La pestaña Devoluciones de la ficha trae el detalle por artículo de un mes: el elegido
   const fichaDev = useConsulta<FichaDevolucionesMeses>(
-    serie === 'devueltos' ? `/clientes/${idCliente}/devoluciones?${rango}&mes=${elegido}` : null,
+    serie === 'devueltos' ? `/clientes/${idCliente}/devoluciones?${rango}&mes=${elegido ?? mes}` : null,
     'No pudimos leer sus meses.',
   )
   const enCursoIso = `${hoyIso().slice(0, 8)}01`
@@ -100,17 +100,17 @@ export function VentanaCliente(props: {
       ) : (
         <>
           {barras && barras.length > 1 && (
-            <>
-              <BarritasMes
-                titulo={serie === 'volumen' ? 'Bultos por mes' : 'Devolvió por mes'}
-                datos={barras}
-                elegido={elegido}
-                onElegir={setElegido}
-              />
-              <p className="barritas-detalle">
-                {serie === 'volumen' ? <DetalleVolumen ficha={ficha.datos} mes={elegido} /> : <DetalleDevuelto ficha={fichaDev.datos} mes={elegido} />}
-              </p>
-            </>
+            <BarritasMes
+              titulo={serie === 'volumen' ? 'Bultos por mes' : 'Devolvió por mes'}
+              datos={barras}
+              elegido={elegido}
+              onElegir={setElegido}
+              // El mes en palabras, en el globito de su barra (Cesar, 10/11)
+              detalle={
+                elegido &&
+                (serie === 'volumen' ? <DetalleVolumen ficha={ficha.datos} mes={elegido} /> : <DetalleDevuelto ficha={fichaDev.datos} mes={elegido} />)
+              }
+            />
           )}
           <div className="ventana-columnas" aria-hidden>
             <span>Se entregó</span>

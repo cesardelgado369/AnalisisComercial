@@ -94,11 +94,11 @@
 .cob-tabla.con-ventana tbody tr:not(.enfocada) { opacity: .55; }
 .cob-tabla tbody tr.enfocada, .cob-tabla tbody tr.enfocada:hover { background: #eff6ff; box-shadow: inset 4px 0 0 #1d4ed8; }
 /* El graficito de barras de arriba (components/BarritasMes): un mes por barra, en azul (Cesar, 10/11) */
-.barritas { margin: 0; padding: 10px 14px 4px; }
+.barritas { margin: 0; padding: 10px 14px 8px; border-bottom: 1px solid #f1f5f9; }
 .barritas-titulo { margin-bottom: 4px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #6b7280; }
 .barritas-columnas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; height: 76px; }
 .barrita {
-  display: grid; grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 2px; padding: 2px 0;
+  position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; justify-items: center; gap: 2px; padding: 2px 0;
   cursor: pointer; font: inherit; background: none; border: 0; border-radius: 6px;
 }
 .barrita:focus-visible { outline: 2px solid var(--azul); outline-offset: 1px; }
@@ -109,6 +109,16 @@
 .barrita.en-curso .barrita-barra { background: var(--azul-claro); }
 .barrita-mes { font-size: 10px; font-weight: 600; color: #6b7280; }
 .barrita.en-curso .barrita-mes { font-style: italic; }
-/* Debajo del graficito, el mes elegido en palabras */
-.barritas-detalle { margin: 0; padding: 4px 14px 10px; font-size: 12px; line-height: 1.4; color: #374151; border-bottom: 1px solid #f1f5f9; }
-.barritas-detalle strong { color: #111827; }
+/* El globito del mes que se mira, debajo de su barra: negro con letra blanca */
+.barrita-globo {
+  position: absolute; z-index: 2; top: calc(100% + 4px); left: 50%; width: 240px; padding: 8px 10px; transform: translateX(-50%);
+  font-size: 11px; font-weight: 500; line-height: 1.4; text-align: left; color: #e5e7eb; background: #111827;
+  border-radius: 8px; box-shadow: 0 8px 20px -10px rgba(15, 23, 42, .5); pointer-events: none; animation: barrita-globo .12s ease-out;
+}
+.barrita-globo strong { color: #fff; }
+.barrita:first-child .barrita-globo { left: 0; transform: none; }
+.barrita:last-child .barrita-globo { left: auto; right: 0; transform: none; }
+@keyframes barrita-globo {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
