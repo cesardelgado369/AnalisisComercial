@@ -197,6 +197,8 @@ public class FaseDosTests(Entorno e)
         var oct = (await e.Operario().JsonAsync("/api/devoluciones"))["clientes"]!.AsArray().Single()!;
         Assert.Equal((101, 1m, 1m, 50.0m), ((int)oct["idCliente"]!, (decimal)oct["bultosVendidos"]!, (decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
         Assert.Equal(["124 - PASTAS FRESCAS"], oct["unidadesDevueltas"]!.AsArray().Select(u => (string?)u));
+        var devuelto = oct["articulosDevueltos"]!.AsArray().Single()!;
+        Assert.Equal((900, "TALLARIN 500G"), ((int)devuelto["idArticulo"]!, (string?)devuelto["descripcion"]));
 
         // Toda la empresa (sin la casa) en septiembre: 101 y 102 → 6 vendidos, 1 devuelto.
         var admin = (await e.Admin().JsonAsync("/api/devoluciones?mesHasta=2026-09-01"))["kpis"]!.AsArray()[^1]!;

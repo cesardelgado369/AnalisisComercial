@@ -125,6 +125,14 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
             .OrderByDescending(g => g.Sum(b => b.Devuelto)).ThenBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => g.Key!)
             .ToList();
+        // Cesar, 10/11: mejor el ícono de cada producto que el rubro. Empates: por descripción.
+        IReadOnlyList<ArticuloDevueltoDto> Devueltos(int idCliente) => delMes.Where(b => b.IdCliente == idCliente && b.Devuelto > 0)
+            .GroupBy(b => b.IdArticulo)
+            .Select(g => (Dto: new ArticuloDevueltoDto(g.Key, Detalle.Descripcion(datos, g.Key), datos.GetValueOrDefault(g.Key)?.UnidadNegocio),
+                Devuelto: g.Sum(b => b.Devuelto)))
+            .OrderByDescending(x => x.Devuelto).ThenBy(x => x.Dto.Descripcion, StringComparer.Ordinal)
+            .Select(x => x.Dto)
+            .ToList();
         var clientes = delMes.GroupBy(b => b.IdCliente)
             .Select(g => (Id: g.Key, Vendidos: Volumen.Redondear(g.Sum(b => b.Netos)), Devueltos: Volumen.Redondear(g.Sum(b => b.Devuelto))))
             .Where(x => x.Devueltos > 0)
@@ -133,7 +141,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
                 var k = cartera[x.Id];
                 return new ClienteDevolucionDto(x.Id, nombres.GetValueOrDefault(x.Id) ?? $"Cliente {x.Id}",
                     rutas.GetValueOrDefault(k.IdRuta), k.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                    k.IdPersonal, x.Vendidos, x.Devueltos, Volumen.PorcentajeDevolucion(x.Vendidos, x.Devueltos), Unidades(x.Id),
+                    k.IdPersonal, x.Vendidos, x.Devueltos, Volumen.PorcentajeDevolucion(x.Vendidos, x.Devueltos), Unidades(x.Id), Devueltos(x.Id),
                     abc is null ? null : GrupoAbc.De(abc, x.Id));
             })
             .OrderByDescending(x => x.Porcentaje ?? decimal.MaxValue).ThenByDescending(x => x.BultosDevueltos).ThenBy(x => x.IdCliente)
