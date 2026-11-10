@@ -288,7 +288,7 @@ orden de visita de la ruta en Chess.
 - ⚠️ Pendiente de confirmar con los datos: que `cantidadesTotal` venga en bultos y no en unidades, y si la FACTURA
   PRESUPUESTO suma volumen. Si cambia, cambian los números, no la forma.
 
-### `GET /api/volumen?vendedor=&dia=&unidad=&foco=&abc=&busqueda=&chip=&mes=` · todos los roles
+### `GET /api/volumen?vendedor=&dia=&unidad=&foco=&abc=&busqueda=&chip=&mes=&comparacion=` · todos los roles
 
 Cuántos bultos lleva cada cliente en el mes contra una base. `vendedor`, `dia`, `unidad` y `busqueda` como en
 `/api/cobertura` (la unidad y el foco filtran los artículos que suman). `mes`: por defecto el mes en curso; el primer mes con
@@ -316,7 +316,12 @@ datos (2026-07-01) no tiene base → 400 (`errors.mes`).
   - operario → `mesAnteriorCompleto`: el mes anterior entero, como meta («llevás 820 de los 1.000 bultos de
     septiembre, 82%»). `baseHasta` = el último día del mes anterior.
   - admin y supervisor → `mismoDiaHabil`: el mes anterior hasta su día hábil número `diaHabil`; `baseHasta` = ese día.
-  - Si `mes` ya cerró, todos comparan el mes entero contra el anterior entero (`tipo` = `mesAnteriorCompleto`).
+  - **`comparacion`** (Cesar, 10/11: la Comparativa de la pantalla), solo admin y supervisor: `parcial` (por defecto)
+    = `mismoDiaHabil`; `acumulado` = `mesAnteriorCompleto`, el mes anterior entero con `bultosEsperado` al ritmo,
+    como el operario. Sin distinguir mayúsculas. Otro valor → 400 en `errors.comparacion`. El operario lo puede
+    mandar, pero se ignora. Los chips y el porcentaje de cada cliente salen contra la base elegida.
+  - Si `mes` ya cerró, todos comparan el mes entero contra el anterior entero (`tipo` = `mesAnteriorCompleto`), con
+    cualquier `comparacion`.
 - **Día hábil**: lunes a sábado, sin feriados nacionales ni el 24/9 (Batalla de Tucumán, feriado provincial). La
   lista vive en la configuración (`Comercial:Feriados`). `diaHabil` = días hábiles del 1 a `corteAl`;
   `diasHabilesMes` = los de todo el mes.
@@ -604,6 +609,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: **clientes A, B y C**, solo para el Admin: `abc` en los clientes de Cobertura, Volumen y la ficha, y la
   cobertura por grupo en `/api/volumen`. Sin cambios en la base. Sale en la 1.3.
 - 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
+- 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

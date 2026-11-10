@@ -165,8 +165,11 @@ public interface IClienteService
 // ---- Volumen (en bultos) ---------------------------------------------------------------------------------------
 
 /// <param name="Mes">Por defecto, el mes en curso.</param>
+/// <param name="Comparacion">Admin y supervisor: "parcial" (el mes anterior al mismo día hábil, por defecto) o
+/// "acumulado" (el mes anterior entero, al ritmo). El operario compara siempre contra el mes entero.</param>
 public record FiltroVolumen(int? Vendedor = null, int? Dia = null, string? Unidad = null, string? Busqueda = null,
-    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null, int? Foco = null, string? Abc = null);
+    ChipVolumen Chip = ChipVolumen.Todos, DateOnly? Mes = null, int? Foco = null, string? Abc = null,
+    string? Comparacion = null);
 
 public record ChipsVolumenDto(int Todos, int SinCompraAun, int Nuevos, int Bajaron, int Subieron);
 

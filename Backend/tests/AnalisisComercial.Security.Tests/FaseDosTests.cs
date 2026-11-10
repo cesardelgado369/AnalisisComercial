@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 
@@ -223,5 +223,25 @@ public class FaseDosTests(Entorno e)
         Assert.Equal((1m, 50.0m), ((decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
         await e.Operario().JsonAsync("/api/clientes/101/devoluciones?mesHasta=2026-09-01&mes=2026-10-01", HttpStatusCode.BadRequest);
         Assert.True(await e.ConBaseAsync(db => db.AccesoLogs.AnyAsync(l => l.Pantalla == "ficha-devoluciones" && !l.Denegado)));
+    }
+
+    [Fact]
+    public async Task Volumen_con_comparativa_parcial_o_acumulada()
+    {
+        static string? Tipo(JsonNode v) => (string?)v["comparacion"]!["tipo"];
+        static string? BaseHasta(JsonNode v) => (string?)v["comparacion"]!["baseHasta"];
+
+        // Admin y supervisor: parcial por defecto; acumulado = septiembre entero, con el esperado al ritmo.
+        var parcial = await e.Supervisor().JsonAsync("/api/volumen");
+        Assert.Equal("mismoDiaHabil", Tipo(parcial));
+        Assert.Equal("mismoDiaHabil", Tipo(await e.Admin().JsonAsync("/api/volumen?comparacion=parcial")));
+        var acumulado = await e.Admin().JsonAsync("/api/volumen?comparacion=Acumulado");
+        Assert.Equal(("mesAnteriorCompleto", "2026-09-30"), (Tipo(acumulado), BaseHasta(acumulado)));
+        Assert.Equal("mesAnteriorCompleto", Tipo(await e.Supervisor().JsonAsync("/api/volumen?comparacion=acumulado")));
+
+        // El operario, siempre contra el mes entero: el parámetro se ignora.
+        Assert.Equal("mesAnteriorCompleto", Tipo(await e.Operario().JsonAsync("/api/volumen?comparacion=parcial")));
+
+        Assert.NotNull((await e.Admin().JsonAsync("/api/volumen?comparacion=semanal", HttpStatusCode.BadRequest))["errors"]!["comparacion"]);
     }
 }

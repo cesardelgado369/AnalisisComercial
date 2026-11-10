@@ -17,8 +17,16 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         if (f.Dia is { } d && !DiasSemana.EsValido(d))
             throw new ValidacionException("dia", "Día inválido (2 lunes … 7 sábado).");
         await lectura.ExigirBultosAsync(ct);
+        // La comparativa de la pantalla (Cesar, 10/11/2026): mes parcial (al mismo día hábil) o acumulado (el mes entero).
+        TipoComparacion? elegida = f.Comparacion?.Trim().ToLowerInvariant() switch
+        {
+            null or "" => null,
+            "parcial" => TipoComparacion.MismoDiaHabil,
+            "acumulado" => TipoComparacion.MesAnteriorCompleto,
+            _ => throw new ValidacionException("comparacion", "La comparativa es parcial o acumulado."),
+        };
         var mirada = await lectura.MiradaAsync(f.Vendedor, "volumen", ct);
-        var c = await lectura.ComparacionAsync(f.Mes, ct);
+        var c = await lectura.ComparacionAsync(f.Mes, ct, elegida);
         var a = await lectura.AlcanceAsync(ct);
         var grupo = await lectura.FiltroAbcAsync(f.Abc, c.Mes, ct);
 
@@ -79,7 +87,7 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
             lista = lista.Where(x => x.IdCliente.ToString(CultureInfo.InvariantCulture) == b || Texto.Normalizar(x.RazonSocial).Contains(b));
 
         await lectura.RegistrarAsync("volumen",
-            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};abc={f.Abc};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
+            $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};abc={f.Abc};comparacion={f.Comparacion};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
         return new VolumenDto(mirada.Titulo, c, total, chips, Detalle.PorRazonSocial(lista, x => x.RazonSocial, x => x.IdCliente), grupos);
     }
 }

@@ -390,9 +390,10 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
 
     /// <summary>
     /// La comparación de volumen del mes según el rol (Cesar, 29/10/2026): el operario contra el mes anterior entero;
-    /// admin y supervisor contra el mismo día hábil. El primer mes con datos no tiene base → 400.
+    /// admin y supervisor contra el mismo día hábil, o contra el mes entero si lo eligen (<paramref name="elegida"/>,
+    /// Cesar, 10/11/2026). El primer mes con datos no tiene base → 400.
     /// </summary>
-    public async Task<Comparacion> ComparacionAsync(DateOnly? mes, CancellationToken ct)
+    public async Task<Comparacion> ComparacionAsync(DateOnly? mes, CancellationToken ct, TipoComparacion? elegida = null)
     {
         var a = await AlcanceAsync(ct);
         var m = Calendario.Mes(mes ?? MesEnCurso);
@@ -402,7 +403,7 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
             throw new ValidacionException("mes", $"No hay ventas antes de {Op.PrimerMes:MM/yyyy} para comparar: el primer mes es {Op.PrimerMes.AddMonths(1):MM/yyyy}.");
         if (await PrimerMesVisibleAsync(ct) is var p && m < p)
             throw new ValidacionException("mes", AntesDe(p));
-        var tipo = a.Rol == RolApp.Operario ? TipoComparacion.MesAnteriorCompleto : TipoComparacion.MismoDiaHabil;
+        var tipo = a.Rol == RolApp.Operario ? TipoComparacion.MesAnteriorCompleto : elegida ?? TipoComparacion.MismoDiaHabil;
         return Volumen.Comparar(m, tipo, await UltimoDiaCompletoAsync(ct), Op.DiasFeriados());
     }
 

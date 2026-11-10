@@ -73,8 +73,9 @@ public class BultosController(IVolumenService volumen, IDevolucionesService devo
     [HttpGet("api/volumen")]
     public Task<VolumenDto> Volumen([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
         [FromQuery] string? busqueda, [FromQuery] ChipVolumen? chip, [FromQuery] DateOnly? mes, [FromQuery] int? foco,
-        [FromQuery] string? abc, CancellationToken ct)
-        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes, foco, abc), ct);
+        [FromQuery] string? abc, [FromQuery] string? comparacion, CancellationToken ct)
+        => volumen.ObtenerAsync(new FiltroVolumen(vendedor, dia, unidad, busqueda, chip ?? ChipVolumen.Todos, mes, foco, abc,
+            comparacion), ct);
 
     [HttpGet("api/devoluciones")]
     public Task<DevolucionesDto> Devoluciones([FromQuery] int? vendedor, [FromQuery] int? dia, [FromQuery] string? unidad,
