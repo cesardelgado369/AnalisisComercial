@@ -559,8 +559,9 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   «Copiar los del mes anterior» = un POST por foco (con su medida y su meta).
   - `medida` (los objetivos de Checho: «CCC MANTECA», «VOL TAPAS»): `"ccc"` (por defecto) = qué parte de la cartera lo
     compró; `"vol"` = los bultos contra el mes anterior al mismo día hábil.
-  - `meta`: opcional (null = sin meta), siempre un porcentaje con hasta un decimal. ccc: de la cartera, 1–100. vol:
-    contra el mes anterior, 1–999 (100 = igualarlo, 110 = crecer 10 %).
+  - `meta`, con hasta un decimal (Cesar, 10/11): ccc → opcional (null = sin meta), qué parte de la cartera tiene que
+    comprarlo, 1–100 %. vol → **obligatoria**, los **bultos objetivo del mes**, más de 0 y hasta 1.000.000; sin ella,
+    400 «Poné la cantidad de bultos del objetivo.».
 - `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza todo). 404 si no existe.
 - `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe.
 - 400: `errors.mes` (obligatorio, día 1, desde el primer mes con datos hasta el mes que viene, para dejarlo armado),
@@ -583,7 +584,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
               "tipo": "mismoDiaHabil" | "mesAnteriorCompleto" } | null,   // la comparación de los vol (abajo)
   "focos": [{ "idFoco": 2, "nombre": "Ravioles", "medida": "ccc", "meta": 80 | null,
     "total": { "clientesConCompra": 120, "clientesCartera": 246, "porcentaje": 48.8, "porcentajeAnterior": 51.2 | null,
-               "bultosActual": null, "bultosBase": null },
+               "bultosActual": null, "bultosBase": null, "porcentajeMeta": null },   // porcentajeMeta: solo vol
     "vendedores": [{ "idPersonal": 2, "nombre": "FRANCO BAIGORRIA", "clientesConCompra": 30, "clientesCartera": 60,
                      "porcentaje": 50.0, "porcentajeAnterior": 47.1 | null, "bultosActual": null, "bultosBase": null }] }] }
 // focos y vendedores por nombre
@@ -591,7 +592,9 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 
   - **vol**: `bultosActual` y `bultosBase` = los bultos netos de la cartera (la del total o la del vendedor) con la
     regla de `/api/volumen?foco=` mirada por el admin; `porcentaje` = actual ÷ base × 100 con un decimal, null si la
-    base es 0; `porcentajeAnterior` null; `clientesConCompra` y `clientesCartera` vienen igual. `volumen` es la
+    base es 0; `porcentajeAnterior` null; `clientesConCompra` y `clientesCartera` vienen igual. En `total`,
+    `porcentajeMeta` = `bultosActual` ÷ `meta` (los bultos objetivo) × 100, un decimal: el avance hacia el objetivo
+    (los vendedores no lo traen: la meta es del foco entero). `volumen` es la
     `comparacion` de `/api/volumen` del admin: mismo día hábil en el mes en curso, mes anterior completo en uno
     cerrado; null en el primer mes con datos (y ahí los vol traen porcentaje y bultos en null).
   - **ccc**: lo que sigue; `bultosActual` y `bultosBase` en null.
@@ -651,6 +654,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 10/11: la `meta` de un foco vol pasa a ser los **bultos objetivo** (obligatoria) y el total trae `porcentajeMeta`.
+  Se rehízo otra vez la migración `FocosDelMes` (Meta decimal(9,1); sin publicar).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

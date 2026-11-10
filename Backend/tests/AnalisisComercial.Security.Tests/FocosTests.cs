@@ -138,18 +138,20 @@ public class FocosTests(Entorno e)
             // Un foco vol: los bultos de la cartera de octubre contra septiembre al mismo día hábil (antes del 28/09).
             // Octubre: 101 lleva 1 (2 − 1 retirado en la misma factura). Base: 101 lleva 1 (2 − 1 de la nota de
             // crédito) y 102, 2.
-            await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Vol tallarín", idsArticulo = new[] { 900 }, medida = "vol", meta = 110 });
+            await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Vol tallarín", idsArticulo = new[] { 900 }, medida = "vol", meta = 4 });
             oct = await admin.JsonAsync("/api/admin/focos/analisis");
             Assert.Equal("2026-10-25", (string?)oct["volumen"]!["corteAl"]);
             var vol = oct["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Vol tallarín")!;
             Assert.Equal("vol", (string?)vol["medida"]);
-            Assert.Equal(110m, (decimal)vol["meta"]!);
+            Assert.Equal(4m, (decimal)vol["meta"]!);
+            Assert.Equal(25.0m, (decimal)vol["total"]!["porcentajeMeta"]!);   // 1 de los 4 bultos objetivo
             Assert.Equal(1m, (decimal)vol["total"]!["bultosActual"]!);
             Assert.Equal(3m, (decimal)vol["total"]!["bultosBase"]!);
             Assert.Equal(33.3m, (decimal)vol["total"]!["porcentaje"]!);
             Assert.Null(vol["total"]!["porcentajeAnterior"]);
             var porNombre = vol["vendedores"]!.AsArray().ToDictionary(x => (string)x!["nombre"]!);
             Assert.Equal(33.3m, (decimal)porNombre["VENDEDOR UNO"]!["porcentaje"]!);
+            Assert.False(porNombre["VENDEDOR UNO"]!.AsObject().ContainsKey("porcentajeMeta"));   // la meta es del foco entero
             Assert.Null(porNombre["VENDEDOR DOS"]!["porcentaje"]);   // base 0
             // El ccc sigue sin bultos.
             Assert.Equal("ccc", (string?)oct["focos"]!.AsArray().Single(x => (string?)x!["nombre"] == "Tallarín")!["medida"]);
@@ -199,10 +201,12 @@ public class FocosTests(Entorno e)
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "preventa" }, "medida");
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, meta = 0 }, "meta");
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "ccc", meta = 101 }, "meta");
-            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol", meta = 1000 }, "meta");
-            var conMeta = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Tapas", idsArticulo = new[] { 900 }, medida = "vol", meta = 150 });
+            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol" }, "meta");
+            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol", meta = 1_000_001 }, "meta");
+            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol", meta = 2.25 }, "meta");
+            var conMeta = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Tapas", idsArticulo = new[] { 900 }, medida = "vol", meta = 25000.5 });
             Assert.Equal("vol", (string?)conMeta["medida"]);
-            Assert.Equal(150m, (decimal)conMeta["meta"]!);
+            Assert.Equal(25000.5m, (decimal)conMeta["meta"]!);
             var sinMedida = (await admin.JsonAsync("/api/admin/focos")).AsArray().First(x => (string?)x!["nombre"] == "Pastas")!;
             Assert.Equal("ccc", (string?)sinMedida["medida"]);   // por defecto
             Assert.Null(sinMedida["meta"]);

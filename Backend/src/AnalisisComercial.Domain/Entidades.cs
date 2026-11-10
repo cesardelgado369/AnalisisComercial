@@ -194,7 +194,10 @@ public class Foco
     public DateOnly Mes { get; set; }
     public string Nombre { get; set; } = "";
     public MedidaFoco Medida { get; set; }
-    /// <summary>Porcentaje: de la cartera (ccc, 1–100) o contra el mes anterior al mismo día hábil (vol, 1–999). null = sin meta.</summary>
+    /// <summary>
+    /// ccc: qué parte de la cartera tiene que comprarlo, en porcentaje (1–100), opcional. vol: los bultos objetivo del mes,
+    /// obligatoria (Cesar, 10/11/2026).
+    /// </summary>
     public decimal? Meta { get; set; }
     public string ActualizadoPor { get; set; } = "";
     public DateTimeOffset Actualizado { get; set; }

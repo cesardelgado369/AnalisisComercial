@@ -95,8 +95,9 @@ public record GuardarFocoDto(DateOnly? Mes, string? Nombre, IReadOnlyList<int>? 
 /// <param name="PorcentajeAnterior">CCC del mismo foco en el mes anterior; null sin mes anterior con datos o sin cartera.
 /// Solo en ccc.</param>
 /// <param name="BultosActual">Solo en vol.</param>
+/// <param name="PorcentajeMeta">vol, en el total: bultosActual ÷ meta (los bultos objetivo) × 100.</param>
 public record CccFocoDto(int ClientesConCompra, int ClientesCartera, decimal? Porcentaje, decimal? PorcentajeAnterior,
-    decimal? BultosActual = null, decimal? BultosBase = null);
+    decimal? BultosActual = null, decimal? BultosBase = null, decimal? PorcentajeMeta = null);
 
 public record CccVendedorFocoDto(int IdPersonal, string Nombre, int ClientesConCompra, int ClientesCartera, decimal? Porcentaje,
     decimal? PorcentajeAnterior, decimal? BultosActual = null, decimal? BultosBase = null);

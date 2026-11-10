@@ -330,8 +330,8 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .HasColumnType("date");
 
                     b.Property<decimal?>("Meta")
-                        .HasPrecision(5, 1)
-                        .HasColumnType("decimal(5,1)");
+                        .HasPrecision(9, 1)
+                        .HasColumnType("decimal(9,1)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()

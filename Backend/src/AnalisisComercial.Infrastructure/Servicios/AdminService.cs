@@ -400,7 +400,11 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
                 })
                 .OrderBy(v => v.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
                 .ToList();
-            resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, foco.Medida, foco.Meta, Medir(_ => true), porVendedor));
+            // vol: el avance hacia los bultos objetivo, solo en el total (la meta es del foco entero).
+            var total = Medir(_ => true);
+            if (esVol && foco.Meta is { } metaBultos && total.BultosActual is { } bultos)
+                total = total with { PorcentajeMeta = Volumen.Porcentaje(bultos, metaBultos) };
+            resultado.Add(new AnalisisFocoDto(foco.IdFoco, foco.Nombre, foco.Medida, foco.Meta, total, porVendedor));
         }
         await alcance.RegistrarAsync("admin-focos-analisis", $"mes={m:yyyy-MM-dd};comparacion={comparacion};abc={abc}", denegado: false, ct);
         var volumen = comparacionVol is { } k ? new VolumenFocosDto(k.CorteAl, k.BaseHasta, k.DiaHabil, k.DiasHabilesMes, k.Tipo) : null;
@@ -424,6 +428,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .ToHashSet();
     }
 
+    private const decimal MetaMaximaBultos = 1_000_000m;
+
     private async Task AplicarAsync(Foco foco, GuardarFocoDto dto, Alcance admin, CancellationToken ct)
     {
         // Desde el primer mes con datos hasta el que viene (para dejarlo armado).
@@ -442,11 +448,14 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             "vol" => MedidaFoco.Vol,
             _ => throw new ValidacionException("medida", "Elegí qué se mide: ccc (clientes) o vol (bultos)."),
         };
-        var tope = medida == MedidaFoco.Ccc ? 100 : 999;
-        if (dto.Meta is { } meta && (meta < 1 || meta > tope || decimal.Round(meta, 1) != meta))
+        // ccc: porcentaje de la cartera, opcional. vol: los bultos objetivo del mes, obligatoria (Cesar, 10/11/2026).
+        if (medida == MedidaFoco.Vol && dto.Meta is null)
+            throw new ValidacionException("meta", "Poné la cantidad de bultos del objetivo.");
+        if (dto.Meta is { } meta && (decimal.Round(meta, 1) != meta
+                                     || (medida == MedidaFoco.Ccc ? meta < 1 || meta > 100 : meta <= 0 || meta > MetaMaximaBultos)))
             throw new ValidacionException("meta", medida == MedidaFoco.Ccc
-                ? "La meta es qué parte de la cartera: de 1 a 100 %."
-                : "La meta es contra el mes anterior: de 1 a 999 % (100 = igualarlo).");
+                ? "La meta es qué parte de la cartera: de 1 a 100 %, con un decimal como mucho."
+                : $"La meta son los bultos del mes: más de 0 y hasta {MetaMaximaBultos:N0}, con un decimal como mucho.");
         var ids = (dto.IdsArticulo ?? []).Distinct().ToList();
         if (ids.Count is < 1 or > 50)
             throw new ValidacionException("idsArticulo", "Elegí entre 1 y 50 artículos.");
