@@ -10,13 +10,26 @@ export const ARTICULOS: string[][] = [
   ['EMPANADAS DE CARNE X12', 'HAMBURGUESAS CASERAS X4', 'LASAGNA BOLOÑESA 1KG', 'MILANESAS DE SOJA X6'],
   ['PAN RALLADO 1KG', 'PAN RALLADO 500G', 'REBOZADOR 500G'],
   ['CAPELETTINIS DE POLLO 500G', 'FIDEOS CINTA 500G', 'ÑOQUIS DE PAPA 500G', 'RAVIOLES DE RICOTA 500G', 'SORRENTINOS JAMÓN Y QUESO 500G', 'TALLARIN AL HUEVO 500G', 'TALLARIN DE ESPINACA 500G'],
-  ['DULCE DE LECHE 400G', 'QUESO RALLADO 150G', 'SALSA FILETTO 340G'],
+  ['DULCE DE LECHE 200G', 'DULCE DE LECHE 380G', 'MANTECA MADOMI X100G', 'MANTECA MADOMI X200G', 'MASA PARA TACOS', 'PIONONO', 'QUESO RALLADO 150G', 'SALSA FILETTO 340G'],
   ['TAPAS DE EMPANADA COPETIN X24', 'TAPAS DE EMPANADA FREIR X12', 'TAPAS DE EMPANADA HORNO X12', 'TAPAS DE PASCUALINA X2'],
 ]
-export const idArticulo = (u: number, i: number) => 100 + u * 20 + i
+/**
+ * Los de los objetivos de Checho van con su código real de Chess (Cesar, 10/11), así los focos de prueba son los de
+ * verdad; el resto, con uno inventado.
+ */
+const CODIGOS_CHESS: Record<string, number> = {
+  'DULCE DE LECHE 200G': 6000,
+  'DULCE DE LECHE 380G': 6001,
+  'MANTECA MADOMI X100G': 6002,
+  'MANTECA MADOMI X200G': 6003,
+  PIONONO: 6004,
+  'MASA PARA TACOS': 19,
+}
+export const idArticulo = (u: number, i: number) => CODIGOS_CHESS[ARTICULOS[u][i]] ?? 100 + u * 20 + i
+const porCodigo = new Map(ARTICULOS.flatMap((lista, u) => lista.map((_, i) => [idArticulo(u, i), { u, i }] as const)))
 export const articuloDe = (id: number) => {
-  const u = Math.floor((id - 100) / 20)
-  return { idArticulo: id, descripcion: ARTICULOS[u][(id - 100) % 20], unidadNegocio: UNIDADES[u] }
+  const { u, i } = porCodigo.get(id)!
+  return { idArticulo: id, descripcion: ARTICULOS[u][i], unidadNegocio: UNIDADES[u] }
 }
 
 /** Qué artículos de la unidad `u` compró el cliente en el mes `m` (sus preferidos, casi siempre). */

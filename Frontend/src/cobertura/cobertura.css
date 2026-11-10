@@ -1,7 +1,8 @@
 /* ---- Cobertura de clientes: la estructura de la web actual con la estética violeta de la app */
 .cob { max-width: 1120px; gap: 16px; }
 
-/* Filtros: tres desplegables en fila (en el celular, uno debajo del otro y sin el nombre a la vista) */
+/* Filtros: tres desplegables en fila, cada uno con su título en una banda (en el celular, uno debajo del otro y sin el
+   título a la vista: el valor elegido ya dice qué filtra) */
 .cob-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cob-filtros.sin-vendedor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 /* El dueño, con focos en el mes: uno más */
@@ -27,19 +28,30 @@
 .cob-vol.sube .icono { color: var(--compro); }
 .cob-vol.baja .icono { color: var(--rojo); }
 .cob-vol.cero { color: var(--texto-3); font-weight: 600; }
-.cob-filtro { gap: 6px; }
+/* Cada filtro es una cajita: el título en una banda violeta clara, centrado (Cesar, 10/11: que tenga un título con un
+   fondo), y el desplegable abajo, dentro del mismo borde */
+.cob-filtro {
+  gap: 0; min-width: 0; overflow: hidden; background: var(--superficie);
+  border: 1px solid var(--borde-fuerte); border-radius: var(--radio-grande); transition: border-color .15s, box-shadow .15s;
+}
+.cob-filtro:hover { border-color: var(--acento-claro); }
+.cob-filtro:focus-within { border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124, 58, 237, .16); }
+.cob-filtro-nombre {
+  padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--titulo-chico); background: var(--superficie-media);
+}
 .cob-filtro select {
   height: 44px; padding: 0 40px 0 14px; font-size: 14px; font-weight: 600; color: var(--texto); cursor: pointer;
-  appearance: none; -webkit-appearance: none; border-color: var(--borde-fuerte); border-radius: var(--radio-grande);
-  background: var(--superficie) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237c3aed' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 20px;
-  transition: border-color .15s, box-shadow .15s;
+  appearance: none; -webkit-appearance: none; border: 0; border-radius: 0;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%237c3aed' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 20px;
 }
-.cob-filtro select:hover { border-color: var(--acento-claro); }
-/* El dueño parado en un mes pasado: que se note en todas las secciones */
-.cob-filtro-pasado select { border-color: var(--acento); background-color: var(--superficie-baja); color: var(--acento); }
-/* Un foco elegido recorta mucho los números: que se note cuál está puesto */
-.cob-filtro-activo select { border-color: var(--acento); color: var(--acento); }
-.cob-filtro select:focus-visible { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px rgba(124, 58, 237, .16); }
+.cob-filtro select:focus-visible { outline: none; }
+/* El dueño parado en un mes pasado, o un foco elegido (recorta mucho los números): la banda en violeta lleno, para
+   que se note cuál está puesto */
+.cob-filtro-pasado, .cob-filtro-activo { border-color: var(--acento); }
+.cob-filtro-pasado .cob-filtro-nombre, .cob-filtro-activo .cob-filtro-nombre { color: #fff; background: var(--acento); }
+.cob-filtro-pasado select, .cob-filtro-activo select { color: var(--acento); }
+.cob-filtro-pasado select { background-color: var(--superficie-baja); }
 .cob-filtro-con-aviso { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .cob-filtro-aviso { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 12px; font-weight: 600; color: var(--texto); }
 .cob-filtro-aviso .icono { color: var(--rojo); }

@@ -31,7 +31,8 @@ export function vendedoresVisibles(rol: RolPrueba, idsOperario: number[] = [1]) 
 /** Como las manda Chess (sin el «124 - » de la web vieja), confirmadas por el backend el 26/10. */
 export const UNIDADES = ['ATM', 'COMIDAS CONGELADAS', 'PAN RALLADO1', 'PASTAS FRESCAS', 'SIN UNIDAD DE NEGOCIO', 'TAPAS']
 /** Cuánto pesa cada unidad en las compras (las pastas frescas y las tapas son lo que más sale). */
-const PESO_UNIDAD = [0.35, 0.3, 0.2, 0.9, 0.05, 0.7]
+// Sin unidad de negocio (dulce de leche, manteca, tacos, pionono…) sube para que los focos de Checho tengan compras
+const PESO_UNIDAD = [0.35, 0.3, 0.2, 0.9, 0.55, 0.7]
 const PASTAS_FRESCAS = 3
 
 /**

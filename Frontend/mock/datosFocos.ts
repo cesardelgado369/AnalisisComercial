@@ -55,6 +55,7 @@ function division(descripcion: string) {
   if (/RAVIOLES/.test(descripcion)) return 'RAVIOLES'
   if (/^TAPAS/.test(descripcion)) return 'TAPAS'
   if (/DULCE DE LECHE/.test(descripcion)) return 'DULCE DE LECHE'
+  if (/TACOS/.test(descripcion)) return 'TACOS'
   if (/PAN RALLADO|REBOZADOR/.test(descripcion)) return 'PAN RALLADO'
   return null
 }
@@ -63,14 +64,19 @@ const hace = (dias: number) => new Date(Date.now() - dias * 86_400_000).toISOStr
 const MES = mesDe(hoyArgentina())
 const ANTERIOR = sumarMeses(MES, -1)
 const DOS_ANTES = sumarMeses(MES, -2)
-const DULCE = [id('DULCE DE LECHE 400G')]
+const DULCE = [6000, 6001]
+const MANTECA = [6002, 6003]
+const TACOS = [19]
+const PIONONO = [6004]
 const RAVIOLES = [id('ATM RAVIOLES DE VERDURA 1KG'), id('RAVIOLES DE RICOTA 500G')]
-const TAPAS = [id('TAPAS DE EMPANADA COPETIN X24'), id('TAPAS DE EMPANADA FREIR X12'), id('TAPAS DE EMPANADA HORNO X12')]
+/** VOL Tapas: toda la DIVISION TAPAS (de empanada y de pascualina). */
+const TAPAS = ARTICULOS.flatMap((lista, u) => lista.flatMap((d, i) => (division(d) === 'TAPAS' ? [idArticulo(u, i)] : [])))
 const PAN = [id('PAN RALLADO 1KG'), id('PAN RALLADO 500G')]
 
 /**
- * El mes en curso como los objetivos de Checho de noviembre (CCC Dulce de leche con meta, CCC Ravioles, VOL Tapas con
- * meta), el anterior con dos (Ravioles se repite) y uno más atrás; el que viene, vacío.
+ * El mes en curso con los objetivos de Checho de noviembre (Cesar, 10/11): VOL Tapas y CCC Manteca, Dulce de leche,
+ * Masa para tacos y Pionono, con los códigos de Chess y sin meta (PREVENTA queda afuera hasta que Checho diga qué
+ * mide). El anterior con dos y uno más atrás; el que viene, vacío.
  */
 let siguiente = 1
 const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number, medida: Medida = 'ccc', meta: number | null = null): FocoMock => ({
@@ -84,9 +90,11 @@ const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number,
   actualizado: hace(dias),
 })
 const focos: FocoMock[] = [
-  nuevo(MES, 'Dulce de leche', DULCE, 2, 'ccc', 25),
-  nuevo(MES, 'Ravioles', RAVIOLES, 2),
-  nuevo(MES, 'Tapas', TAPAS, 4, 'vol', 110),
+  nuevo(MES, 'Tapas', TAPAS, 4, 'vol'),
+  nuevo(MES, 'Manteca', MANTECA, 4),
+  nuevo(MES, 'Dulce de leche', DULCE, 4),
+  nuevo(MES, 'Masa para tacos', TACOS, 4),
+  nuevo(MES, 'Pionono', PIONONO, 4),
   nuevo(ANTERIOR, 'Ravioles', RAVIOLES, 33),
   nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol'),
   nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
