@@ -124,6 +124,7 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
         var rutas = await db.Rutas.AsNoTracking().ToDictionaryAsync(r => r.IdRuta, r => r.Nombre, ct);
         var vendedores = await lectura.VendedoresAsync(ct);
         var datos = await Detalle.ArticulosAsync(db, delMes.Select(b => b.IdArticulo), ct);
+        var abc = await lectura.AbcAsync(mes, ct);
         // Los íconos debajo del devuelto (Cesar, 10/11/2026): las unidades que devolvió, de la que más a la que menos.
         IReadOnlyList<string> Unidades(int idCliente) => delMes.Where(b => b.IdCliente == idCliente && b.Devuelto > 0)
             .GroupBy(b => datos.GetValueOrDefault(b.IdArticulo)?.UnidadNegocio)
@@ -139,7 +140,8 @@ public class DevolucionesService(ComercialDbContext db, Lectura lectura) : IDevo
                 var k = cartera[x.Id];
                 return new ClienteDevolucionDto(x.Id, nombres.GetValueOrDefault(x.Id) ?? $"Cliente {x.Id}",
                     rutas.GetValueOrDefault(k.IdRuta), k.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                    k.IdPersonal, x.Vendidos, x.Devueltos, Volumen.PorcentajeDevolucion(x.Vendidos, x.Devueltos), Unidades(x.Id));
+                    k.IdPersonal, x.Vendidos, x.Devueltos, Volumen.PorcentajeDevolucion(x.Vendidos, x.Devueltos), Unidades(x.Id),
+                    abc is null ? null : GrupoAbc.De(abc, x.Id));
             })
             .OrderByDescending(x => x.Porcentaje ?? decimal.MaxValue).ThenByDescending(x => x.BultosDevueltos).ThenBy(x => x.IdCliente)
             .ToList();

@@ -380,8 +380,8 @@ mirar filtros, y cambia de un mes al otro.
   noviembre: agosto, septiembre y octubre; recortados al primer mes con datos). Los excluidos no entran.
 - De mayor a menor, acumulando el % del total: **A** hasta el 80 %, **B** hasta el 95 %, **C** el resto, los que no
   compraron y los de neto ≤ 0. El que cruza un corte queda en el grupo donde empieza. Empates: por `idCliente`.
-- Viaja como `abc` en los clientes de `/api/cobertura` (en mesHasta), de `/api/volumen` (en `mes`) y en la ficha (en
-  mesHasta), y como el bloque `abc` de `/api/volumen`. **Operario y supervisor no la ven nunca**: el campo no está (no
+- Viaja como `abc` en los clientes de `/api/cobertura` (en mesHasta), de `/api/volumen` (en `mes`), de
+  `/api/devoluciones` (en mesHasta) y en la ficha (en mesHasta), y como el bloque `abc` de `/api/volumen`. **Operario y supervisor no la ven nunca**: el campo no está (no
   viene en null). En el primer mes con datos (07/2026) no hay base y tampoco viaja.
 - Filtro **`abc=A|B|C`** en Cobertura, Volumen y Devoluciones (ver `/api/cobertura`).
 
@@ -397,7 +397,8 @@ Parámetros como en `/api/cobertura`.
   "mes": "2026-10-01",                                    // = mesHasta: el mes de `clientes` y `articulos`
   "clientes": [{ "idCliente": 59003, "razonSocial": "GP BRIGIDO", "ruta": "…" | null, "vendedor": "…" | null,
                  "idPersonal": 2 | null, "bultosVendidos": 20, "bultosDevueltos": 5, "porcentaje": 20.0,
-                 "unidadesDevueltas": ["TAPAS", "PASTAS FRESCAS"] }],   // las que devolvió, de la que más a la que menos
+                 "unidadesDevueltas": ["TAPAS", "PASTAS FRESCAS"],   // las que devolvió, de la que más a la que menos
+                 "abc": "A" | "B" | "C" }],                // solo admin, en mesHasta
   "articulos": [{ "idArticulo": 101, "descripcion": "…", "unidadNegocio": "PASTAS FRESCAS",
                   "bultosVendidos": 300, "bultosDevueltos": 25, "porcentaje": 7.7 }] }
 ```
@@ -636,7 +637,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: filtro **`abc`** (categoría de cliente, solo Admin) en Cobertura, Volumen y Devoluciones.
 - 10/11: **`comparacion=parcial|acumulado`** en `/api/volumen` para admin y supervisor (la Comparativa).
 - 10/11: **`/api/clientes/{id}/movimientos`**: los comprobantes del mes de un cliente (la ventanita de Devoluciones).
-- 10/11: `unidadesDevueltas` en los clientes de `/api/devoluciones` (los íconos debajo del devuelto).
+- 10/11: `unidadesDevueltas` y `abc` en los clientes de `/api/devoluciones`.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

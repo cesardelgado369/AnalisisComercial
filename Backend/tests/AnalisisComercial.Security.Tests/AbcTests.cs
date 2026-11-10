@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Text.Json.Nodes;
 
 namespace AnalisisComercial.Security.Tests;
@@ -26,6 +26,7 @@ public class AbcTests(Entorno e)
         // Volumen de octubre, todos los vendedores: 101 y 102 (A, compró 101), 201 (B) y 501 (C).
         var volumen = await admin.JsonAsync("/api/volumen");
         Assert.Equal("C", Abc(volumen["clientes"]!, 501));
+        Assert.Equal("A", Abc((await admin.JsonAsync("/api/devoluciones"))["clientes"]!, 101));
         var grupos = volumen["abc"]!.AsArray();
         Assert.Equal(["A", "B", "C"], grupos.Select(g => (string?)g!["grupo"]));
         Assert.Equal((2, 1, 50.0m), ((int)grupos[0]!["clientes"]!, (int)grupos[0]!["conCompra"]!, (decimal)grupos[0]!["porcentaje"]!));
@@ -72,6 +73,8 @@ public class AbcTests(Entorno e)
             var volumen = await quien.JsonAsync("/api/volumen");
             Assert.False(volumen.AsObject().ContainsKey("abc"));
             Assert.All(volumen["clientes"]!.AsArray(), c => Assert.False(c!.AsObject().ContainsKey("abc")));
+            var devoluciones = await quien.JsonAsync("/api/devoluciones?mesHasta=2026-09-01");
+            Assert.All(devoluciones["clientes"]!.AsArray(), c => Assert.False(c!.AsObject().ContainsKey("abc")));
         }
         Assert.False((await e.Operario().JsonAsync("/api/clientes/101")).AsObject().ContainsKey("abc"));
     }
