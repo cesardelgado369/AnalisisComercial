@@ -297,12 +297,13 @@
 .foco-tipos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; width: 100%; }
 .foco-tipo-opcion {
   min-height: 64px; cursor: pointer; font: inherit; font-size: 22px; font-weight: 900; letter-spacing: .06em;
-  text-transform: uppercase; color: var(--acento); background: var(--superficie);
+  text-transform: uppercase; color: var(--acento); background: var(--superficie-media);
   border: 2px solid var(--acento-claro); border-radius: var(--radio-grande); transition: background .15s, color .15s, border-color .15s;
 }
-.foco-tipo-opcion:hover { border-color: var(--acento); background: var(--superficie-baja); }
+.foco-tipo-opcion:hover { border-color: var(--acento); }
 .foco-tipo-opcion:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; }
-.foco-tipo-opcion[aria-checked="true"] { color: #fff; background: var(--acento); border-color: var(--acento); box-shadow: 0 8px 20px -10px rgba(124, 58, 237, .7); }
+/* El elegido, relleno; sin sombra, para que los dos se vean del mismo tamaño (Cesar, 10/11) */
+.foco-tipo-opcion[aria-checked="true"] { color: #fff; background: var(--acento); border-color: var(--acento); }
 .foco-campo, .foco-fila .foco-meta-campo { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .foco-fila .foco-meta-entrada { align-self: center; }
 /* Los títulos del modal del foco: bandas negras, grandes y centradas, con letra blanca (Cesar, 10/11) */
