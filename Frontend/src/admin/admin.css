@@ -305,12 +305,12 @@
 .foco-tipo-opcion[aria-checked="true"] { color: #fff; background: var(--acento); border-color: var(--acento); box-shadow: 0 8px 20px -10px rgba(124, 58, 237, .7); }
 .foco-campo, .foco-fila .foco-meta-campo { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .foco-fila .foco-meta-entrada { align-self: center; }
-/* Los títulos del modal del foco: bandas violetas, grandes y centradas, con letra blanca (Cesar, 10/11) */
+/* Los títulos del modal del foco: bandas negras, grandes y centradas, con letra blanca (Cesar, 10/11) */
 .foco-titulo {
   display: block; align-self: stretch; margin: 0; padding: 9px 14px; font-size: 15px; font-weight: 800; letter-spacing: .04em;
-  text-transform: uppercase; text-align: center; color: #fff; background: var(--acento); border-radius: var(--radio);
+  text-transform: uppercase; text-align: center; color: #fff; background: var(--piedra); border-radius: var(--radio);
 }
-.foco-titulo-opcional { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: #e0d4ff; }
+.foco-titulo-opcional { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--acento-claro); }
 #form-foco { gap: 22px; }
 #form-foco > label, .foco-meta-campo { gap: 10px; }
 .foco-articulos > .foco-titulo { margin-bottom: 4px; }
