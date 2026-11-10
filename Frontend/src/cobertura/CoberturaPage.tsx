@@ -5,6 +5,7 @@ import { useConsulta } from '../api/useConsulta'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { Chips, SinClientes } from '../comercial/lista'
 import { useVistaFocos } from '../comercial/mesReferencia'
+import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { Segmentado } from '../components/Segmentado'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
@@ -98,12 +99,13 @@ export function CoberturaPage() {
       <BarraFiltros filtros={filtros} />
 
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
+        <TituloTarjeta titulo={titulo} />
         {vigentes ? (
-          <ResumenCobertura titulo={titulo} subtitulo={filtros.subtitulo(vigentes.chips.todos)} kpis={vigentes.kpis} ayuda={filtros.ayuda} />
+          // Sin el «715 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando
+          <ResumenCobertura kpis={vigentes.kpis} ayuda={filtros.ayuda} />
         ) : errores.length === 0 ? (
           <header className="cob-resumen">
             <div className="cob-resumen-textos">
-              <span className="esqueleto esqueleto-titulo" />
               <span className="esqueleto esqueleto-linea" />
             </div>
           </header>

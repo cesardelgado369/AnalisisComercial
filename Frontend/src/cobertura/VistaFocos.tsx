@@ -5,6 +5,7 @@ import { api } from '../api/client'
 import type { ClienteCobertura, Cobertura, EstadoMes, Foco, Volumen } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import type { Filtros } from '../comercial/filtros'
+import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { CabeceraOrden, FilaCliente, SinClientes, TarjetaCliente, useAbrirFicha } from '../comercial/lista'
 import { rutaFocos } from '../comercial/mesReferencia'
 import { ErrorCarga } from '../components/ErrorCarga'
@@ -13,7 +14,7 @@ import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nom
 import { useMedia } from '../utils/useMedia'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
-import { nombrePropio, sumarMes } from './estados'
+import { sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
 
 /**
@@ -106,12 +107,13 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
 
   return (
     <div className={consulta.cargando && consulta.datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={consulta.cargando}>
+      <TituloTarjeta titulo={titulo} />
       {lista && armado ? (
         <header className="cob-resumen">
           <div className="cob-resumen-textos">
-            <h1>{nombrePropio(titulo)}</h1>
+            {/* Solo el mes y hasta cuándo hay ventas (Cesar, 10/11: sin «702 clientes, todos los días…») */}
             <p>
-              {filtros.subtitulo(armado.cartera, false)} · {nombreMesTitulo(mes)}
+              {nombreMesTitulo(mes)}
               {armado.corteAl ? ` al ${formatoFechaCorta(armado.corteAl)}` : ''}
             </p>
           </div>
@@ -148,7 +150,6 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       ) : lista?.length !== 0 && !consulta.errores.length && !focos.errores.length ? (
         <header className="cob-resumen">
           <div className="cob-resumen-textos">
-            <span className="esqueleto esqueleto-titulo" />
             <span className="esqueleto esqueleto-linea" />
           </div>
         </header>

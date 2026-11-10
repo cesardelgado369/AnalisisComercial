@@ -209,15 +209,10 @@
 .foco-contenedores { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 16px; align-items: start; }
 .foco-contenedor { display: flex; flex-direction: column; gap: 10px; padding: 18px 20px; }
 .foco-contenedor-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-/* Qué tipo de métrica es el objetivo (Cesar, 05/11): lo primero que se lee */
-.foco-tipo {
-  display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; font-size: 12px; font-weight: 800;
-  letter-spacing: .02em; border-radius: 999px;
-}
-.foco-tipo.ccc { color: #fff; background: var(--acento); }
-.foco-tipo.vol { color: var(--acento); background: var(--superficie); border: 1.5px solid var(--acento); }
+/* El título como lo escribe Checho, CCC - Dulce de leche: el tipo de métrica en violeta, lo primero que se lee */
+.foco-tipo-texto { color: var(--acento); }
 .foco-editar { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; font-size: 13px; font-weight: 700; color: var(--acento); }
-.foco-contenedor-nombre { margin: 0; font-size: 20px; line-height: 1.2; }
+.foco-contenedor-nombre { display: flex; align-items: center; flex-wrap: wrap; gap: 0 6px; margin: 0; font-size: 20px; line-height: 1.2; }
 .foco-contenedor-mide { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0; font-size: 13px; color: var(--texto-2); }
 .foco-meta {
   display: inline-flex; align-items: center; padding: 1px 8px; font-size: 12px; font-weight: 700; color: var(--texto);
@@ -228,7 +223,6 @@
   padding: 3px 10px; font-size: 12px; font-weight: 600; color: var(--texto);
   background: var(--superficie-baja); border: 1px solid var(--superficie-media); border-radius: 999px;
 }
-.foco-tarjeta-pie { margin: 2px 0 0; font-size: 12px; color: var(--texto-3); }
 
 /* Cómo viene: el total con su barra y una barra por vendedor */
 .foco-medicion-resultado { display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--superficie-media); }
@@ -246,7 +240,7 @@
 .foco-barra-meta { position: absolute; top: -4px; height: 16px; margin-left: -1px; border-left: 2px dashed var(--texto-2); }
 .foco-analisis-vendedores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .foco-vendedor {
-  display: grid; grid-template-columns: minmax(110px, 150px) minmax(60px, 1fr) 124px 64px; align-items: center; gap: 12px;
+  display: grid; grid-template-columns: minmax(110px, 150px) minmax(60px, 1fr) 124px 92px; align-items: center; gap: 12px;
   min-height: 44px; padding: 4px 8px; margin: 0 -8px; border-radius: var(--radio); color: var(--texto); text-decoration: none;
 }
 .foco-vendedor:hover { background: var(--superficie-baja); }

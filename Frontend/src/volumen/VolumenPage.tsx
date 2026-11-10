@@ -3,6 +3,7 @@ import type { ChipVolumen, ClienteVolumen, Volumen } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { BuscadorCobertura } from '../cobertura/BuscadorCobertura'
 import { PRIMER_MES } from '../cobertura/estados'
+import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { CabeceraOrden, Chips, FilaCliente, SinClientes, TarjetaCliente, porNombre, useAbrirFicha } from '../comercial/lista'
 import { Ayuda } from '../components/Ayuda'
@@ -71,10 +72,10 @@ export function VolumenPage() {
       <BarraFiltros filtros={filtros} conMes={false} />
 
       <div className={cargando && datos ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'} aria-busy={cargando}>
+        <TituloTarjeta titulo={titulo} />
         <header className="cob-resumen vol-resumen">
+          {/* Sin el «702 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando */}
           <div className="cob-resumen-textos">
-            {/* Sin el «702 clientes, todos los días…» (Cesar, 10/11): los filtros ya dicen qué se está mirando */}
-            <h1>{titulo}</h1>
             {opcionesMes.length > 1 && (
               <label className="vol-mes">
                 <span className="sr-solo">Mes</span>

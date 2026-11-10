@@ -3,7 +3,7 @@ import type { AnalisisFocos as Analisis, CoberturaFoco, FocoAnalizado, VolumenFo
 import { useConsulta } from '../api/useConsulta'
 import { useMesReferencia } from '../comercial/mesReferencia'
 import { nombrePropio } from '../cobertura/estados'
-import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes } from '../utils/formato'
+import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesCorto } from '../utils/formato'
 
 /**
  * Un número del análisis, igual para las dos medidas: el porcentaje, su detalle, dónde va la rayita del mes anterior y
@@ -37,8 +37,11 @@ const deVol = (c: VolumenFoco): Medicion => ({
   unidadDif: '%',
 })
 
-/** «▲ 3 pts» o «▼ 12 %»: con flecha y texto (el color solo acompaña). */
-function Diferencia({ m, contra }: { m: Medicion; contra: string }) {
+/**
+ * «↑ +6 vs oct.» (CCC, en puntos) o «↓ -12% vs oct.» (VOL): con flecha y texto, el color solo acompaña. Cesar no
+ * entendía «pts» (10/11): el globito y el lector de pantalla lo dicen con todas las letras.
+ */
+function Diferencia({ m, contra, corto }: { m: Medicion; contra: string; corto: string }) {
   if (m.dif === null)
     return (
       <span className="foco-dif sin" title={`Sin datos de ${contra}`}>
@@ -47,12 +50,19 @@ function Diferencia({ m, contra }: { m: Medicion; contra: string }) {
     )
   const d = m.dif
   const clase = d > 0 ? 'foco-dif sube' : d < 0 ? 'foco-dif baja' : 'foco-dif igual'
+  const explicacion =
+    m.unidadDif === 'pts'
+      ? `En ${contra} era ${formatoPorcentaje(m.antes ?? 0)}: ${Math.abs(d)} ${Math.abs(d) === 1 ? 'punto' : 'puntos'} ${d < 0 ? 'menos' : 'más'}.`
+      : `Vendió el ${formatoPorcentaje(100 + d)} de lo de ${contra}.`
   return (
-    <span className={clase} title={`Contra ${contra}`}>
+    <span className={clase} title={explicacion}>
       <span className="icono icono-chico" aria-hidden>{d > 0 ? 'arrow_upward' : d < 0 ? 'arrow_downward' : 'remove'}</span>
-      {d > 0 ? '+' : ''}
-      {d} {m.unidadDif}
-      <span className="sr-solo"> contra {contra}</span>
+      <span aria-hidden>
+        {d > 0 ? '+' : ''}
+        {d}
+        {m.unidadDif === '%' ? '%' : ''} vs {corto}
+      </span>
+      <span className="sr-solo">{explicacion}</span>
     </span>
   )
 }
@@ -85,6 +95,7 @@ export function useAnalisisFocos(mes: string | null) {
   const consulta = useConsulta<Analisis>(mes && `/admin/focos/analisis?mes=${mes}`, 'No pudimos armar cómo vienen los focos.')
   const a = consulta.datos?.mes === mes ? consulta.datos : null
   const anterior = a ? nombreMes(a.mesAnterior) : ''
+  const anteriorCorto = a ? `${nombreMesCorto(a.mesAnterior)}.` : ''
   return {
     ...consulta,
     a,
@@ -92,6 +103,7 @@ export function useAnalisisFocos(mes: string | null) {
       enCurso: a.mesEnCurso,
       mes: a.mes,
       anterior,
+      anteriorCorto,
       corteAl: a.corteAl,
       ccc: a.anteriorAl ? `${anterior} al ${formatoFechaCorta(a.anteriorAl)}` : anterior,
       vol: a.mesEnCurso && a.volumen?.baseHasta ? `${anterior} al ${formatoFechaCorta(a.volumen.baseHasta)} (mismo día hábil)` : anterior,
@@ -141,7 +153,7 @@ export function MedicionFoco({ f, ctx }: { f: FocoAnalizado; ctx: ContextoAnalis
           {total.detalle}
           {f.medida === 'ccc' && ctx.corteAl ? ` al ${formatoFechaCorta(ctx.corteAl)}` : ''}
         </span>
-        <Diferencia m={total} contra={contra} />
+        <Diferencia m={total} contra={contra} corto={ctx.anteriorCorto} />
         {f.meta !== null && <span className="sr-solo">{textoMeta(total, f.meta)}</span>}
       </div>
       <Barra m={total} meta={f.meta} escala={escala} />
@@ -161,7 +173,7 @@ export function MedicionFoco({ f, ctx }: { f: FocoAnalizado; ctx: ContextoAnalis
                 <strong>{v.m.valor === null ? '—' : formatoPorcentaje(v.m.valor)}</strong>
                 <span className="foco-analisis-detalle">{v.m.detalle}</span>
               </span>
-              <Diferencia m={v.m} contra={contra} />
+              <Diferencia m={v.m} contra={contra} corto={ctx.anteriorCorto} />
               {f.meta !== null && <span className="sr-solo">{textoMeta(v.m, f.meta)}</span>}
             </Link>
           </li>

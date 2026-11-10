@@ -1,5 +1,6 @@
 import type { Devoluciones } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
+import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { BarraFiltros, useFiltrosComerciales } from '../comercial/filtros'
 import { FilaCliente, NombreArticulo, TarjetaCliente, useAbrirFicha } from '../comercial/lista'
 import { Ayuda } from '../components/Ayuda'
@@ -51,9 +52,9 @@ export function DevolucionesPage() {
       <BarraFiltros filtros={filtros} />
 
       <div className={resumen.cargando || detalle.cargando ? 'cob-tarjeta-principal recargando' : 'cob-tarjeta-principal'}>
+        <TituloTarjeta titulo={titulo} />
         <header className="cob-resumen">
           <div className="cob-resumen-textos ayuda-ancla">
-            <h1>{titulo}</h1>
             <p>
               Bultos devueltos sobre lo facturado (vendidos + devueltos), por mes.
               {filtros.ayuda && kpiElegido && (

@@ -9,9 +9,11 @@ import { useMesReferencia } from '../comercial/mesReferencia'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { mesesDisponibles, nombrePropio, sumarMes } from '../cobertura/estados'
-import { cantidad, fechaUtc, formatoPorcentaje, haceCuanto, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { Parrafo } from '../comercial/ayuda'
+import { Ayuda } from '../components/Ayuda'
+import { cantidad, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
-import { MEDIDAS } from './medidas'
+import { ETIQUETA_MEDIDA } from './medidas'
 import { ModalFoco } from './ModalFoco'
 import './admin.css'
 
@@ -159,27 +161,43 @@ export function FocosPage() {
         ) : (
           <div className="foco-contenedores">
             {estos.map((f) => {
-              const medida = MEDIDAS.find((m) => m.valor === f.medida)!
               const analizado = analisis.a?.focos.find((x) => x.idFoco === f.idFoco)
               return (
                 <article key={f.idFoco} className="tarjeta foco-contenedor" aria-labelledby={`foco-${f.idFoco}`}>
-                  <header className="foco-contenedor-cabecera">
-                    <span className={`foco-tipo ${f.medida}`}>{medida.texto}</span>
+                  {/* Simple, como lo escribe Checho (Cesar, 10/11): CCC - Dulce de leche; qué mide va en el globito */}
+                  <header className="foco-contenedor-cabecera ayuda-ancla">
+                    <h3 id={`foco-${f.idFoco}`} className="foco-contenedor-nombre">
+                      <span className="foco-tipo-texto">{ETIQUETA_MEDIDA[f.medida]}</span> - {f.nombre}
+                      <Ayuda etiqueta={`Qué mide ${ETIQUETA_MEDIDA[f.medida]} ${f.nombre}`}>
+                        {f.medida === 'vol' ? (
+                          <Parrafo titulo="VOL, volumen en bultos:">
+                            los bultos de estos artículos contra {ctx?.vol ?? `${nombreMes(anterior)} al mismo día hábil`}.
+                            100 % es vender lo mismo que entonces.
+                          </Parrafo>
+                        ) : (
+                          <Parrafo titulo="CCC, clientes que compraron:">
+                            qué parte de la cartera de cada vendedor compró alguno de estos artículos en el mes.
+                          </Parrafo>
+                        )}
+                        <Parrafo titulo="La flecha:">
+                          cuánto subió o bajó contra {nombreMes(anterior)} al mismo día
+                          {f.medida === 'vol' ? ' hábil (en %).' : ' (en puntos: +6 es 6 puntos más que entonces).'}
+                        </Parrafo>
+                      </Ayuda>
+                    </h3>
                     <button type="button" className="btn-texto foco-editar" onClick={() => setModal({ foco: f })}>
                       <span className="icono icono-chico" aria-hidden>edit</span>
                       Editar<span className="sr-solo"> {f.nombre}</span>
                     </button>
                   </header>
-                  <h3 id={`foco-${f.idFoco}`} className="foco-contenedor-nombre">{f.nombre}</h3>
-                  <p className="foco-contenedor-mide">
-                    {f.medida === 'vol' && ctx ? `Los bultos del foco contra ${ctx.vol}.` : medida.ayuda}
-                    {f.meta !== null && (
+                  {f.meta !== null && (
+                    <p className="foco-contenedor-mide">
                       <strong className="foco-meta">
                         Meta {formatoPorcentaje(f.meta)}
                         {f.medida === 'vol' ? ` de ${nombreMes(anterior)}` : ' de los clientes'}
                       </strong>
-                    )}
-                  </p>
+                    </p>
+                  )}
                   <div className="foco-tarjeta-articulos" aria-label="Artículos">
                     {f.articulos.map((a) => (
                       <span key={a.idArticulo} className="foco-tarjeta-articulo">{nombrePropio(a.descripcion)}</span>
@@ -190,9 +208,6 @@ export function FocosPage() {
                   ) : mes !== proximo && !analisis.errores.length ? (
                     <LoadingDefault texto="Armando cómo viene…" />
                   ) : null}
-                  <p className="foco-tarjeta-pie">
-                    {cantidad(f.articulos.length, 'artículo')} · {f.actualizadoPor} · {haceCuanto(fechaUtc(f.actualizado))}
-                  </p>
                 </article>
               )
             })}

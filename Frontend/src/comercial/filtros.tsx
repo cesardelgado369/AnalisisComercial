@@ -6,7 +6,7 @@ import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
 import { cantidad, nombreMes, nombreMesTitulo } from '../utils/formato'
 import type { ContextoAyuda } from './ayuda'
-import { IconoCaja, IconoCalendario, IconoFoco, IconoVendedor } from './IconosFiltro'
+import { IconoCalendario, IconoFoco, IconoPaquete, IconoVendedor } from './IconosFiltro'
 import { useMesReferencia, useVistaFocos, type MesReferencia } from './mesReferencia'
 
 /** Un valor de la URL, si es uno de los válidos; si no (o si no está), el de siempre. */
@@ -102,7 +102,7 @@ export function useFiltrosComerciales() {
     [
       cantidad(clientes, 'cliente'),
       dia !== null ? DIAS_VISITA.find((d) => d.codigo === dia)!.nombre.toLowerCase() : 'todos los días',
-      unidad ? unidadEnFrase(unidad) : 'todas las unidades',
+      unidad ? unidadEnFrase(unidad) : 'todos los tipos de producto',
       ...(focoElegido && conFoco ? [`foco ${focoElegido.nombre}`] : []),
     ].join(', ')
 
@@ -146,7 +146,7 @@ export type Filtros = ReturnType<typeof useFiltrosComerciales>
  */
 export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filtros: Filtros; conMes?: boolean; sinFoco?: boolean }) {
   const { sesion, cambiar, esOperario, eligeVendedor, vendedor, dia, unidad, focos, foco } = filtros
-  const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer las unidades de negocio.')
+  const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer los tipos de producto.')
   // El foco, solo si el mes tiene alguno (si la lista no llegó, no se muestra: es un filtro de más). En la vista por
   // focos de Cobertura (`sinFoco`) tampoco: ahí están todos, uno por columna
   const conFoco = !sinFoco && !!focos.datos?.length
@@ -174,9 +174,10 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
       </label>
       <div className="cob-filtro-con-aviso">
         <label className="cob-filtro">
-          <Titulo icono={<IconoCaja />}>Unidad de negocio</Titulo>
+          {/* Para Chess es la unidad de negocio; en pantalla, tipo de producto (Cesar, 10/11) */}
+          <Titulo icono={<IconoPaquete />}>Tipo de producto</Titulo>
           <select value={unidad ?? ''} onChange={(e) => cambiar('unidad', e.target.value || null)}>
-            <option value="">Todas las unidades</option>
+            <option value="">Todos los tipos</option>
             {/* Si la URL trae una unidad que todavía no llegó en la lista, igual se muestra elegida */}
             {unidad && !unidades.datos?.includes(unidad) && <option value={unidad}>{nombreUnidad(unidad)}</option>}
             {unidades.datos?.map((u) => (
@@ -187,7 +188,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
         {unidades.errores.length > 0 && (
           <p className="cob-filtro-aviso" role="alert">
             <span className="icono icono-chico" aria-hidden>error</span>
-            No pudimos cargar las unidades.
+            No pudimos cargar los tipos de producto.
             <button type="button" className="btn-texto enlace" onClick={unidades.recargar}>Probá de nuevo</button>
           </p>
         )}

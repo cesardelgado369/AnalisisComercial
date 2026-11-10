@@ -2,22 +2,17 @@ import type { KpiMes } from '../api/types'
 import { conUnidad, FACTURAS_QUE_CUENTAN, Parrafo, ParrafoCartera, ParrafoEnCurso, type ContextoAyuda } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
 import { formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
-import { nombrePropio } from './estados'
 
 /**
- * Cabecera de la tarjeta de Cobertura, como la web actual: a la izquierda el vendedor elegido y el resumen de la
- * cartera; a la derecha un indicador por mes (porcentaje, mes, «162 de 246» y la barra). El mes en curso va atenuado y
+ * Cabecera de la tarjeta de Cobertura: un indicador por mes, repartidos a lo ancho (el vendedor elegido va en la banda
+ * de arriba, comercial/TituloTarjeta) (porcentaje, mes, «162 de 246» y la barra). El mes en curso va atenuado y
  * con «al 22/10»: no se compara de igual a igual con los meses cerrados. Con `ayuda` (el dueño), al lado del «162 de
  * 246» va un ícono que explica cómo se contó ese mes.
  */
-export function ResumenCobertura(props: { titulo: string; subtitulo: string; kpis: KpiMes[]; ayuda?: ContextoAyuda | null }) {
-  const { titulo, subtitulo, kpis, ayuda } = props
+export function ResumenCobertura(props: { kpis: KpiMes[]; ayuda?: ContextoAyuda | null }) {
+  const { kpis, ayuda } = props
   return (
-    <header className="cob-resumen">
-      <div className="cob-resumen-textos">
-        <h1>{nombrePropio(titulo)}</h1>
-        <p>{subtitulo}</p>
-      </div>
+    <header className="cob-resumen solo-kpis">
       <ul className="cob-kpis" aria-label="Cobertura por mes">
         {kpis.map((k) => {
           const pct = formatoPorcentaje(k.porcentaje)

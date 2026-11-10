@@ -86,7 +86,15 @@
   padding: 20px 24px; border-bottom: 1px solid var(--borde);
 }
 .cob-resumen-textos { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.cob-resumen-textos h1 { font-size: 26px; line-height: 32px; font-weight: 800; }
+/* El título de la tarjeta (el vendedor o Todos los vendedores, comercial/TituloTarjeta): una banda negra de punta a
+   punta y centrada, como los títulos de los filtros (Cesar, 10/11) */
+.cob-titulo {
+  display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0; padding: 10px 24px;
+  font-size: 15px; line-height: 22px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; text-align: center;
+  color: #fff; background: var(--piedra); border-radius: 15px 15px 0 0;
+}
+/* Cobertura: sin textos a la izquierda, los indicadores se reparten a lo ancho */
+.cob-resumen.solo-kpis .cob-kpis { flex: 1; justify-content: space-around; }
 .cob-resumen-textos p { color: var(--texto-2); }
 
 .cob-kpis { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px 28px; flex-wrap: wrap; }
@@ -242,7 +250,7 @@
   .cob-filtro-mes { display: flex; }
   .cob-filtro-nombre { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .cob-resumen, .cob-barra { padding: 16px; }
-  .cob-resumen-textos h1 { font-size: 22px; line-height: 28px; }
+  .cob-titulo { padding: 10px 16px; font-size: 13px; line-height: 20px; }
   /* Indicadores en una grilla de 2 × 2 */
   .cob-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .cob-kpi { min-width: 0; }
