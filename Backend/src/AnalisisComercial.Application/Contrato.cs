@@ -1,4 +1,5 @@
-﻿using AnalisisComercial.Domain;
+﻿using System.Text.Json.Serialization;
+using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Application;
 
@@ -52,8 +53,10 @@ public record KpiMesDto(DateOnly Mes, int ClientesConCompra, int ClientesCartera
     DateOnly? CorteAl);
 
 /// <param name="IdPersonal">El vendedor de la cartera de mesHasta (null = ruta sin vendedor). Para colorear el mapa.</param>
+/// <param name="Abc">Su grupo ABC en mesHasta (<see cref="GrupoAbc"/>). Solo el Admin: para el resto no viaja.</param>
 public record ClienteCoberturaDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
-    decimal? Lat, decimal? Lng, IReadOnlyList<EstadoMes> Meses, bool DejoDeComprar);
+    decimal? Lat, decimal? Lng, IReadOnlyList<EstadoMes> Meses, bool DejoDeComprar,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
 
 public record ChipsDto(int Todos, int CompraronMesActual, int SinCompraMesActual, int DejaronDeComprar);
 
@@ -120,10 +123,12 @@ public record ArticuloMesDto(int IdArticulo, string Descripcion, string? UnidadN
     IReadOnlyList<decimal?> Bultos);
 
 /// <param name="EnCartera">Si este mes está en la cartera de quien mira (admin: en alguna).</param>
+/// <param name="Abc">Su grupo ABC en mesHasta. Solo el Admin: para el resto no viaja.</param>
 public record FichaClienteDto(int IdCliente, string RazonSocial, bool EnCartera, string? Ruta, string? Vendedor, string DiasVisita,
     string? Direccion, decimal? Lat, decimal? Lng, DateOnly? UltimaCompra, int? DiasSinComprar,
     IReadOnlyList<DateOnly> Meses, IReadOnlyList<EstadoMes> Estados, IReadOnlyList<decimal?> Bultos,
-    IReadOnlyList<ArticuloMesDto> Articulos);
+    IReadOnlyList<ArticuloMesDto> Articulos,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
 
 public record TotalVolumenDto(decimal? BultosActual, decimal? BultosBase, decimal? BultosEsperado, decimal? Porcentaje);
 
@@ -164,11 +169,21 @@ public record FiltroVolumen(int? Vendedor = null, int? Dia = null, string? Unida
 public record ChipsVolumenDto(int Todos, int SinCompraAun, int Nuevos, int Bajaron, int Subieron);
 
 /// <param name="BultosBase">null = el cliente no era de la cartera de quien mira en el mes base («nuevo en tu cartera»).</param>
+/// <param name="Abc">Su grupo ABC en el mes. Solo el Admin: para el resto no viaja.</param>
 public record ClienteVolumenDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
-    decimal BultosActual, decimal? BultosBase, decimal? Porcentaje);
+    decimal BultosActual, decimal? BultosBase, decimal? Porcentaje,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
 
+/// <summary>
+/// Cuántos clientes de un grupo ABC hay en la cartera (con los filtros) y cuántos compraron en el mes, con la regla de
+/// Cobertura.
+/// </summary>
+public record GrupoAbcDto(string Grupo, int Clientes, int ConCompra, decimal Porcentaje);
+
+/// <param name="Abc">A, B y C, en ese orden. Solo el Admin, y solo si el mes tiene base: si no, no viaja.</param>
 public record VolumenDto(string Titulo, Comparacion Comparacion, TotalVolumenDto Total, ChipsVolumenDto Chips,
-    IReadOnlyList<ClienteVolumenDto> Clientes);
+    IReadOnlyList<ClienteVolumenDto> Clientes,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<GrupoAbcDto>? Abc = null);
 
 public interface IVolumenService
 {

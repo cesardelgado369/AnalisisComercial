@@ -305,6 +305,35 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
     }
 
     /// <summary>
+    /// Los grupos ABC de <paramref name="mes"/> (<see cref="GrupoAbc"/>): cliente → A o B; el que no está es C. Solo el
+    /// Admin la ve (Cesar, 10/11/2026): para el resto, y en un mes sin base, null. Los excluidos no entran en el cálculo.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<int, string>?> AbcAsync(DateOnly mes, CancellationToken ct)
+    {
+        if (!(await AlcanceAsync(ct)).EsAdmin || GrupoAbc.Base(mes, Op.PrimerMes) is not { Count: > 0 } meses)
+            return null;
+        var regla = Op.Regla();
+        var tipos = regla.TiposFactura.Concat(regla.TiposCredito).ToList();
+        var desde = meses[0];
+        var hasta = Calendario.FinDeMes(meses[^1]);
+        // Netos = lo facturado menos lo acreditado (Volumen.Repartir da lo mismo de las dos maneras).
+        var filas = await db.VentaLineas.AsNoTracking()
+            .Where(l => !l.Anulado && l.Fecha >= desde && l.Fecha <= hasta && tipos.Contains(l.TipoDocumento))
+            .Where(l => !db.Exclusiones.Any(e => e.IdCliente == l.IdCliente))
+            .GroupBy(l => new { l.IdCliente, l.TipoDocumento })
+            .Select(g => new
+            {
+                g.Key.IdCliente, g.Key.TipoDocumento,
+                Cantidad = g.Sum(l => l.CantidadTotal),
+                Absoluta = g.Sum(l => l.CantidadTotal < 0 ? -l.CantidadTotal : l.CantidadTotal),
+            })
+            .ToListAsync(ct);
+        var netos = filas.GroupBy(f => f.IdCliente).ToDictionary(g => g.Key,
+            g => g.Sum(f => regla.EsFactura(f.TipoDocumento) ? f.Cantidad : regla.EsCredito(f.TipoDocumento) ? -f.Absoluta : 0m));
+        return GrupoAbc.Clasificar(netos);
+    }
+
+    /// <summary>
     /// El último día con las ventas completas: hasta dónde llegó la última lectura de ventas, sin el día en que se leyó
     /// (la sincronización corre a las 05:00 y ese día recién empieza).
     /// </summary>

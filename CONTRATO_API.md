@@ -163,7 +163,8 @@ Todos los parámetros son opcionales.
                  "idPersonal": 2 | null,                    // el vendedor (de la cartera de mesHasta), para colorear el mapa
                  "lat": -26.8123 | null, "lng": -65.2101 | null,   // null si Chess no tiene la ubicación
                  "meses": ["compro", "compro", "noCompro", "sinCompraAun"],   // uno por cada mes de `meses`
-                 "dejoDeComprar": false }] }
+                 "dejoDeComprar": false,
+                 "abc": "A" | "B" | "C" }] }   // solo admin, en mesHasta (ver Clientes A, B y C); al resto no le viaja
 ```
 
 - **Cartera de cada mes** = los clientes que ese mes estaban en las rutas de los vendedores mirados, menos los
@@ -203,6 +204,7 @@ Ficha del cliente («CCC x bulto»). 404 si no existe o, para operario y supervi
 
 ```jsonc
 { "idCliente": 59003, "razonSocial": "GP BRIGIDO",
+  "abc": "A" | "B" | "C",                                 // solo admin, en mesHasta; al resto no le viaja
   "enCartera": true,                                      // está en la cartera de quien mira este mes (admin: en alguna)
   "ruta": "ELENA WHITE" | null, "vendedor": "FRANCO BAIGORRIA" | null,   // null: sin ruta o sin vendedor (solo admin)
   "diasVisita": "Lunes y jueves",                         // "Sin día de visita" si la ruta no tiene
@@ -297,7 +299,10 @@ datos (2026-07-01) no tiene base → 400 (`errors.mes`).
   "chips": { "todos": 246, "sinCompraAun": 40, "nuevos": 6, "bajaron": 80, "subieron": 120 },
   "clientes": [{ "idCliente": 59003, "razonSocial": "GP BRIGIDO", "ruta": "ELENA WHITE" | null,
                  "vendedor": "FRANCO BAIGORRIA" | null, "idPersonal": 2 | null,
-                 "bultosActual": 12, "bultosBase": 15 | null, "porcentaje": 80.0 | null }] }
+                 "bultosActual": 12, "bultosBase": 15 | null, "porcentaje": 80.0 | null,
+                 "abc": "A" | "B" | "C" }],               // solo admin
+  "abc": [{ "grupo": "A", "clientes": 207, "conCompra": 170, "porcentaje": 82.1 },   // solo admin: A, B y C
+          { "grupo": "B", … }, { "grupo": "C", … }] }
 ```
 
 - **Clientes** = la cartera de `mes` (como Cobertura), por razón social. `bultosActual` = del 1 del mes a `corteAl`.
@@ -326,6 +331,23 @@ datos (2026-07-01) no tiene base → 400 (`errors.mes`).
   | `nuevos` | compró y `bultosBase` es null |
   | `bajaron` | compró menos que su esperado (la base al mismo día hábil, o el ritmo del mes anterior para el operario) |
   | `subieron` | compró su esperado o más |
+
+- **`abc`** (solo admin): cuántos clientes de cada grupo hay en la cartera de `mes` con los filtros (vendedor, día,
+  unidad, foco; no `busqueda` ni `chip`) y cuántos compraron en el mes, con la regla de «compró» de Cobertura (en el
+  mes en curso, las ventas cargadas, como el KPI de Cobertura). `porcentaje` = `conCompra / clientes` × 100, un
+  decimal (0 si el grupo no tiene clientes). Siempre los tres grupos, en orden.
+
+### Clientes A, B y C · solo admin
+
+Cesar, 10/11/2026, como el Grupo ABC de De Ruta. Es del cliente, no del vendedor: la misma para toda la base, sin
+mirar filtros, y cambia de un mes al otro.
+- Bultos netos de cada cliente (la regla de Volumen) en los **3 meses cerrados anteriores** al que se mira (en
+  noviembre: agosto, septiembre y octubre; recortados al primer mes con datos). Los excluidos no entran.
+- De mayor a menor, acumulando el % del total: **A** hasta el 80 %, **B** hasta el 95 %, **C** el resto, los que no
+  compraron y los de neto ≤ 0. El que cruza un corte queda en el grupo donde empieza. Empates: por `idCliente`.
+- Viaja como `abc` en los clientes de `/api/cobertura` (en mesHasta), de `/api/volumen` (en `mes`) y en la ficha (en
+  mesHasta), y como el bloque `abc` de `/api/volumen`. **Operario y supervisor no la ven nunca**: el campo no está (no
+  viene en null). En el primer mes con datos (07/2026) no hay base y tampoco viaja.
 
 ### `GET /api/devoluciones?vendedor=&dia=&unidad=&foco=&mesDesde=&mesHasta=` · todos los roles
 
@@ -572,6 +594,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   `FocosDelMes` en vez de sumar otra. Sale en la 1.3.
 - 05/11: cada foco dice qué mide (`medida`: ccc o vol) y su `meta` opcional; el análisis trae los vol con bultos y el
   bloque `volumen`. Otra vez dentro de la migración `FocosDelMes` (sin publicar).
+- 10/11: **clientes A, B y C**, solo para el Admin: `abc` en los clientes de Cobertura, Volumen y la ficha, y la
+  cobertura por grupo en `/api/volumen`. Sin cambios en la base. Sale en la 1.3.
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,
   chatbot solo lectura, freno de 240 pedidos por minuto (429), el acceso se enlaza al guardarlo y no al entrar, espera
   de 10 minutos entre «Actualizar ahora», y el registro guarda canal y empresa (también los rechazos de autorización).

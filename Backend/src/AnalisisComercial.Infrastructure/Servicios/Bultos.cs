@@ -35,13 +35,14 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         var nombres = await Detalle.NombresAsync(db, ids, ct);
         var rutas = await db.Rutas.AsNoTracking().ToDictionaryAsync(r => r.IdRuta, r => r.Nombre, ct);
         var vendedores = await lectura.VendedoresAsync(ct);
+        var abc = await lectura.AbcAsync(c.Mes, ct);
         var filas = cartera.Values.Select(k =>
         {
             var act = Volumen.Redondear(sumaActual.GetValueOrDefault(k.IdCliente));
             decimal? bas = conBase is null || conBase.Contains(k.IdCliente) ? Volumen.Redondear(sumaBase.GetValueOrDefault(k.IdCliente)) : null;
             var dto = new ClienteVolumenDto(k.IdCliente, nombres.GetValueOrDefault(k.IdCliente) ?? $"Cliente {k.IdCliente}",
                 rutas.GetValueOrDefault(k.IdRuta), k.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                k.IdPersonal, act, bas, Volumen.Porcentaje(act, bas));
+                k.IdPersonal, act, bas, Volumen.Porcentaje(act, bas), abc is null ? null : GrupoAbc.De(abc, k.IdCliente));
             return (Dto: dto, Chip: Volumen.Chip(act, bas, Volumen.Esperado(c, bas)));
         }).ToList();
 
@@ -56,13 +57,26 @@ public class VolumenService(ComercialDbContext db, Lectura lectura) : IVolumenSe
         var chips = new ChipsVolumenDto(filas.Count, Cuantos(ChipVolumen.SinCompraAun), Cuantos(ChipVolumen.Nuevos),
             Cuantos(ChipVolumen.Bajaron), Cuantos(ChipVolumen.Subieron));
 
+        // Cobertura por grupo ABC (solo el Admin): sobre toda la cartera con los filtros, sin la búsqueda ni el chip.
+        List<GrupoAbcDto>? grupos = null;
+        if (abc is not null)
+        {
+            var compras = await lectura.ComprasAsync([c.Mes], articulos, ct);
+            grupos = GrupoAbc.Grupos.Select(g =>
+            {
+                var delGrupo = filas.Where(x => x.Dto.Abc == g).ToList();
+                var conCompra = delGrupo.Count(x => compras.Contains((x.Dto.IdCliente, c.Mes)));
+                return new GrupoAbcDto(g, delGrupo.Count, conCompra, Cobertura.Porcentaje(conCompra, delGrupo.Count));
+            }).ToList();
+        }
+
         var lista = filas.Where(x => f.Chip == ChipVolumen.Todos || x.Chip == f.Chip).Select(x => x.Dto);
         if (Texto.Normalizar(f.Busqueda) is { Length: > 0 } b)
             lista = lista.Where(x => x.IdCliente.ToString(CultureInfo.InvariantCulture) == b || Texto.Normalizar(x.RazonSocial).Contains(b));
 
         await lectura.RegistrarAsync("volumen",
             $"vendedor={f.Vendedor};dia={f.Dia};unidad={f.Unidad};foco={f.Foco};chip={f.Chip};mes={c.Mes:yyyy-MM-dd}", ct);
-        return new VolumenDto(mirada.Titulo, c, total, chips, Detalle.PorRazonSocial(lista, x => x.RazonSocial, x => x.IdCliente));
+        return new VolumenDto(mirada.Titulo, c, total, chips, Detalle.PorRazonSocial(lista, x => x.RazonSocial, x => x.IdCliente), grupos);
     }
 }
 

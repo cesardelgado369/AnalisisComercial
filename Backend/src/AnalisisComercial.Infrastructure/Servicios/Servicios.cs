@@ -67,6 +67,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
         var ventasHasta = await lectura.VentasHastaAsync(ct);
         var rutas = await db.Rutas.AsNoTracking().ToDictionaryAsync(r => r.IdRuta, r => r.Nombre, ct);
         var vendedores = await lectura.VendedoresAsync(ct);
+        var abc = await lectura.AbcAsync(mesRef, ct);
 
         var ids = carteras[mesRef].Keys.ToList();
         var clientes = await db.Clientes.AsNoTracking().Where(c => ids.Contains(c.IdCliente))
@@ -80,7 +81,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
             var cli = clientes.GetValueOrDefault(c.IdCliente);
             return new ClienteCoberturaDto(c.IdCliente, cli?.RazonSocial ?? $"Cliente {c.IdCliente}",
                 rutas.GetValueOrDefault(c.IdRuta), c.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                c.IdPersonal, cli?.Lat, cli?.Lng, estados, dejo);
+                c.IdPersonal, cli?.Lat, cli?.Lng, estados, dejo, abc is null ? null : GrupoAbc.De(abc, c.IdCliente));
         }).ToList();
 
         var compraron = filas.Count(x => compras.Contains((x.IdCliente, mesRef)));
@@ -185,11 +186,12 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
         var vendedor = (propios is null ? ruta?.IdPersonal : idPersonal) is { } idp ? vendedores.GetValueOrDefault(idp)?.Nombre : null;
 
         var ultima = (await lectura.UltimasComprasAsync([idCliente], ct)).TryGetValue(idCliente, out var u) ? u : (DateOnly?)null;
+        var abc = await lectura.AbcAsync(hasta, ct);
         await lectura.RegistrarAsync("ficha", $"cliente={idCliente}", ct);
         return new FichaClienteDto(cliente.IdCliente, cliente.RazonSocial, enCartera, ruta?.Nombre, vendedor,
             DiasSemana.Describir(ruta?.DiasVisita), Lectura.Direccion(cliente), cliente.Lat, cliente.Lng,
             ultima, ultima is { } fu ? lectura.Hoy.DayNumber - fu.DayNumber : null, meses, estados,
-            meses.Select(m => Bultos(m)).ToList(), articulos);
+            meses.Select(m => Bultos(m)).ToList(), articulos, abc is null ? null : GrupoAbc.De(abc, idCliente));
     }
 
     public async Task<VolumenClienteDto> VolumenAsync(int idCliente, DateOnly? mes, CancellationToken ct = default)
