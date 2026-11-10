@@ -153,7 +153,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
     <div className={['cob-filtros', !eligeVendedor && 'sin-vendedor', conFoco && 'con-foco'].filter(Boolean).join(' ')}>
       {eligeVendedor && (
         <label className="cob-filtro">
-          <span className="cob-filtro-nombre">Vendedor</span>
+          <Titulo icono="person">Vendedor</Titulo>
           <select value={vendedor ?? ''} onChange={(e) => cambiar('vendedor', e.target.value || null)}>
             <option value="">{esOperario ? 'Todos mis vendedores' : 'Todos los vendedores'}</option>
             {sesion.vendedores.map((v) => (
@@ -163,7 +163,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
         </label>
       )}
       <label className="cob-filtro">
-        <span className="cob-filtro-nombre">Día de visita</span>
+        <Titulo icono="calendar_view_week">Día de visita</Titulo>
         <select value={dia ?? ''} onChange={(e) => cambiar('dia', e.target.value || null)}>
           <option value="">Todos los días</option>
           {DIAS_VISITA.map((d) => (
@@ -173,7 +173,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
       </label>
       <div className="cob-filtro-con-aviso">
         <label className="cob-filtro">
-          <span className="cob-filtro-nombre">Unidad de negocio</span>
+          <Titulo icono="inventory_2">Unidad de negocio</Titulo>
           <select value={unidad ?? ''} onChange={(e) => cambiar('unidad', e.target.value || null)}>
             <option value="">Todas las unidades</option>
             {/* Si la URL trae una unidad que todavía no llegó en la lista, igual se muestra elegida */}
@@ -192,8 +192,8 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
         )}
       </div>
       {conFoco && (
-        <label className={foco === null ? 'cob-filtro' : 'cob-filtro cob-filtro-activo'}>
-          <span className="cob-filtro-nombre">Foco del mes</span>
+        <label className={foco === null ? 'cob-filtro cob-filtro-foco' : 'cob-filtro cob-filtro-foco cob-filtro-activo'}>
+          <Titulo icono="track_changes">Foco del mes</Titulo>
           <select value={foco ?? ''} onChange={(e) => cambiar('foco', e.target.value || null)}>
             <option value="">Todos los productos</option>
             {focos.datos!.map((f) => (
@@ -204,6 +204,16 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
       )}
       {conMes && filtros.referencia.puedeElegir && <SelectorMes referencia={filtros.referencia} />}
     </div>
+  )
+}
+
+/** El título de un filtro, con su ícono, en la banda negra de arriba del desplegable (Cesar, 10/11). */
+function Titulo({ icono, children }: { icono: string; children: string }) {
+  return (
+    <span className="cob-filtro-nombre">
+      <span className="icono icono-chico" aria-hidden>{icono}</span>
+      {children}
+    </span>
   )
 }
 
@@ -219,7 +229,7 @@ function SelectorMes({ referencia }: { referencia: MesReferencia }) {
   return (
     <div className="cob-filtro-mes">
       <label className={enCurso ? 'cob-filtro' : 'cob-filtro cob-filtro-pasado'}>
-        <span className="cob-filtro-nombre">Mes</span>
+        <Titulo icono="calendar_month">Mes</Titulo>
         <select value={enCurso ? '' : mes} onChange={(e) => elegir(e.target.value || null)}>
           {[...opciones].reverse().map((m) => (
             <option key={m} value={m === ultimo ? '' : m}>
