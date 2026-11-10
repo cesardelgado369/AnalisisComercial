@@ -294,7 +294,14 @@
 /* El modal simple: tipo de métrica y meta en una fila, el tilde de los artículos elegidos */
 .foco-fila { display: flex; align-items: flex-start; gap: 16px 28px; flex-wrap: wrap; }
 .foco-campo { display: flex; flex-direction: column; gap: 4px; }
-.foco-campo-titulo { font-size: 12px; font-weight: 600; color: var(--texto-2); }
+/* Los títulos del modal del foco, con la importancia que tienen (Cesar, 10/11: estaban chiquitos) */
+.foco-titulo { font-size: 16px; font-weight: 800; letter-spacing: -.01em; color: var(--texto); }
+.foco-titulo-opcional { font-size: 13px; font-weight: 600; color: var(--texto-2); }
+#form-foco { gap: 22px; }
+#form-foco > label, .foco-meta-campo { gap: 8px; }
+.foco-articulos legend.foco-titulo { margin-bottom: 8px; font-size: 16px; font-weight: 800; color: var(--texto); }
+.foco-elegidos-titulo { font-size: 14px; }
+#form-foco input[type="text"] { height: 44px; font-size: 15px; }
 .foco-campo .segmentado button { min-height: 40px; padding: 0 18px; }
 .foco-elegidos-ninguno { font-size: 13px; color: var(--texto-2); }
 .foco-check {

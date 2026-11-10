@@ -168,7 +168,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
       {/* Simple (Cesar, 10/11): nombre, tipo de métrica con su meta, y los artículos; sin textos de ayuda */}
       <form id="form-foco" className="adm-form" onSubmit={(e) => void guardar(e)} noValidate autoComplete="off">
         <label>
-          Nombre del foco
+          <span className="foco-titulo">Nombre del foco</span>
           <input
             type="text"
             value={nombre}
@@ -187,7 +187,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
 
         <div className="foco-fila">
           <div className="foco-campo">
-            <span className="foco-campo-titulo">Tipo de métrica</span>
+            <span className="foco-titulo">Tipo de métrica</span>
             <Segmentado
               etiqueta="Tipo de métrica"
               valor={medida}
@@ -204,7 +204,10 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
             />
           </div>
           <label className="foco-meta-campo">
-            {medida === 'vol' ? 'Cantidad de bultos' : 'Meta (opcional)'}
+            <span className="foco-titulo">
+              {medida === 'vol' ? 'Cantidad de bultos' : 'Meta'}
+              {medida === 'ccc' && <span className="foco-titulo-opcional"> (opcional)</span>}
+            </span>
             <span className="foco-meta-entrada">
               <input
                 type="text"
@@ -225,7 +228,7 @@ export function ModalFoco(props: { foco: Foco | null; mes: string; onCerrar: () 
         </div>
 
         <fieldset className="foco-articulos" aria-invalid={!!errores.idsArticulo}>
-          <legend>Seleccionar artículos</legend>
+          <legend className="foco-titulo">Seleccionar artículos</legend>
 
           <div className="foco-elegidos" aria-live="polite" data-campo="articulos">
             <span className="foco-elegidos-titulo">Artículos seleccionados:</span>
