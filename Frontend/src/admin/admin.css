@@ -387,4 +387,5 @@
   /* Cada vendedor en dos renglones: nombre y números arriba, la barra abajo */
   .foco-vendedor { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px; }
   .foco-vendedor .foco-barra { grid-column: 1 / -1; grid-row: 2; }
+  .foco-vendedor .foco-analisis-detalle { display: none; }
 }

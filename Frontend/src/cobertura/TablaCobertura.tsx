@@ -3,6 +3,7 @@ import type { ClienteCobertura } from '../api/types'
 import { CabeceraOrden, FilaCliente, TarjetaCliente, porNombre, useAbrirFicha } from '../comercial/lista'
 import { nombreMes, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
+import { TarjetasPorTandas } from '../comercial/Tandas'
 import { CeldaEstado } from './CeldaEstado'
 
 export type Orden = 'codigo' | 'codigo-desc' | 'nombre' | 'nombre-desc'
@@ -42,8 +43,8 @@ export const TablaCobertura = memo(function TablaCobertura({ clientes, meses, or
 
   if (angosto) {
     return (
-      <ul className="cob-tarjetas">
-        {lista.map((c) => (
+      <TarjetasPorTandas items={lista}>
+        {(c) => (
           <TarjetaCliente
             key={c.idCliente}
             cliente={c}
@@ -61,8 +62,8 @@ export const TablaCobertura = memo(function TablaCobertura({ clientes, meses, or
               ))}
             </span>
           </TarjetaCliente>
-        ))}
-      </ul>
+        )}
+      </TarjetasPorTandas>
     )
   }
 

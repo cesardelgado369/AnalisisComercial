@@ -53,7 +53,12 @@
 .cob-tarjetas .vol-avance { margin-top: 6px; }
 
 @media (max-width: 767px) {
-  .vol-total { min-width: 0; max-width: none; width: 100%; }
+  .vol-total { flex: none; min-width: 0; max-width: none; width: 100%; }
   .vol-total-numero > strong { font-size: 34px; line-height: 40px; }
-  .vol-abc { max-width: none; width: 100%; }
+  .vol-abc { flex: none; max-width: none; width: 100%; }
+  /* Comparativa: el nombre arriba y la cápsula a todo el ancho (no se sale de la tarjeta) */
+  .vol-comparativa { flex-wrap: wrap; width: 100%; }
+  .vol-comparativa-nombre { flex-basis: 100%; }
+  .vol-comparativa .segmentado { flex: 1 1 0; min-width: 0; }
+  .vol-comparativa .segmentado button { flex: 1 1 0; min-height: 40px; }
 }

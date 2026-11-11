@@ -12,6 +12,7 @@ import { Segmentado } from '../components/Segmentado'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { formatoBultos, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
+import { TarjetasPorTandas } from '../comercial/Tandas'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import { Avance, TotalComparado } from './Avance'
 import { textosComparacion as textos } from './comparacion'
@@ -237,8 +238,8 @@ const TablaVolumen = memo(function TablaVolumen(props: PropsTabla) {
 
   if (angosto) {
     return (
-      <ul className="cob-tarjetas">
-        {lista.map((c) => (
+      <TarjetasPorTandas items={lista}>
+        {(c) => (
           <TarjetaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
             <span className="vol-tarjeta-numeros">
               <strong>{formatoBultos(c.bultosActual)}</strong> bultos
@@ -247,8 +248,8 @@ const TablaVolumen = memo(function TablaVolumen(props: PropsTabla) {
             <Avance porcentaje={c.porcentaje} referencia={referencia} />
             <ProductosCliente articulos={c.articulos} verbo="Compró" />
           </TarjetaCliente>
-        ))}
-      </ul>
+        )}
+      </TarjetasPorTandas>
     )
   }
 

@@ -8,6 +8,7 @@ import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { formatoBultos, formatoFechaCorta, formatoPorcentajeDecimal as pct, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
+import { TarjetasPorTandas } from '../comercial/Tandas'
 import { useRecordarAltura } from '../utils/useRecordarAltura'
 import '../cobertura/cobertura.css'
 import { ExplicacionDevoluciones } from './ExplicacionDevoluciones'
@@ -119,16 +120,16 @@ export function DevolucionesPage() {
               {d.clientes.length === 0 ? (
                 <p className="vacio">Ningún cliente devolvió en {nombreDelMes}.</p>
               ) : angosto ? (
-                <ul className="cob-tarjetas">
-                  {d.clientes.map((c) => (
+                <TarjetasPorTandas items={d.clientes}>
+                  {(c) => (
                     <TarjetaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
                       <span className="dev-tarjeta-numeros">
                         <strong>{pct(c.porcentaje)}</strong> · devolvió {formatoBultos(c.bultosDevueltos)} de {formatoBultos(c.bultosVendidos + c.bultosDevueltos)} bultos
                       </span>
                       <ProductosCliente articulos={c.articulosDevueltos} verbo="Devolvió" />
                     </TarjetaCliente>
-                  ))}
-                </ul>
+                  )}
+                </TarjetasPorTandas>
               ) : (
                 <div className="cob-tabla-scroll">
                   <table className={ventanita.abierta ? 'cob-tabla dev-tabla con-ventana' : 'cob-tabla dev-tabla'}>

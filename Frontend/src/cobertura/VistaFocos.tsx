@@ -12,6 +12,7 @@ import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesCorto, nombreMesTitulo } from '../utils/formato'
 import { useMedia } from '../utils/useMedia'
+import { TarjetasPorTandas } from '../comercial/Tandas'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
 import { sumarMes } from './estados'
@@ -252,8 +253,8 @@ const TablaFocos = memo(function TablaFocos(props: {
 
   if (angosto) {
     return (
-      <ul className="cob-tarjetas">
-        {lista.map((c) => (
+      <TarjetasPorTandas items={lista}>
+        {(c) => (
           <TarjetaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
             <span className="cob-tarjeta-meses cob-tarjeta-focos">
               {focos.map((f, i) => (
@@ -264,8 +265,8 @@ const TablaFocos = memo(function TablaFocos(props: {
               ))}
             </span>
           </TarjetaCliente>
-        ))}
-      </ul>
+        )}
+      </TarjetasPorTandas>
     )
   }
 
