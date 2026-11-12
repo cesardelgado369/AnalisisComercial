@@ -44,6 +44,13 @@ meta, análisis por vendedor con Comparativa y categoría), clientes A, B y C co
 `AccesoLogCanalEmpresa` y `FocosDelMes` (solo agregan). Los bultos en la ficha del vendedor quedan como estaban.
 Verificado: `/api/sesion` 401, la página 200, los tres contenedores en `1.3.0`, `X-Robots-Tag: noindex`.
 
+**Versión `1.4.0`, publicada el 12/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`, con su habilitación; imágenes desde `git archive` del tag `v1.4.0` = `298833c`; backup antes:
+`AnalisisComercial_20261112_1744.bak.gz`). La vista Focos de Cobertura para vendedores y supervisores, cada uno sobre
+su cartera (`/api/cobertura/focos` y `foco=` abiertos; la administración, el análisis y `abc` siguen siendo del Admin),
+y en el celular los clientes de a 25. Sin migraciones. Verificado: `/api/sesion` 401, la página 200, los tres
+contenedores en `1.4.0`, la API sin errores al arrancar, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
