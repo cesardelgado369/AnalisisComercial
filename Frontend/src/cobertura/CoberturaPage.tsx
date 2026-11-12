@@ -35,17 +35,17 @@ const ORDENES: Orden[] = ['codigo', 'codigo-desc', 'nombre', 'nombre-desc']
  *   muestran. El orden de la tabla es lo único que se resuelve en el navegador.
  * - El operario de un solo vendedor no ve el filtro de vendedor (la API lo deja fijo en él); la lista sale de
  *   `/api/sesion`. Los filtros son los de `useFiltrosComerciales`, los mismos de Volumen y Devoluciones.
- * - El dueño tiene una tercera vista, **Focos** (`?vista=focos`, Cesar 05/11; también con «Focos» junto al mes de la
- *   cabecera): una columna por foco del mes en lugar de los meses (VistaFocos).
+ * - Una tercera vista, **Focos** (`?vista=focos`, Cesar 05/11; el dueño también la abre con «Focos» junto al mes):
+ *   una columna por foco del mes en lugar de los meses (VistaFocos). Desde el 11/11 la ven también los vendedores,
+ *   cada uno con sus clientes (pedido de Checho).
  */
 export function CoberturaPage() {
   const filtros = useFiltrosComerciales()
   const { sesion, params, cambiar, buscar, elegirChip, verTodos, busqueda, conVendedor, titulo, mesRef, ventana } = filtros
   const chip = deLista<ChipCobertura>(params.get('chip'), CHIPS, 'todos')
   const orden = deLista<Orden>(params.get('orden'), ORDENES, 'codigo')
-  const esAdmin = sesion.rol === 'admin'
   const vistaUrl = params.get('vista')
-  const vista: 'tabla' | 'mapa' | 'focos' = vistaUrl === 'mapa' ? 'mapa' : vistaUrl === 'focos' && esAdmin ? 'focos' : 'tabla'
+  const vista: 'tabla' | 'mapa' | 'focos' = vistaUrl === 'mapa' ? 'mapa' : vistaUrl === 'focos' ? 'focos' : 'tabla'
   const vistaFocos = useVistaFocos()
   const navegar = useNavigate()
   // Los cuatro meses en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el
@@ -80,7 +80,7 @@ export function CoberturaPage() {
       opciones={[
         { valor: 'tabla', texto: 'Tabla' },
         { valor: 'mapa', texto: 'Mapa' },
-        ...(esAdmin ? [{ valor: 'focos' as const, texto: 'Focos' }] : []),
+        { valor: 'focos', texto: 'Focos' },
       ]}
       onCambio={(v) => (v === 'focos' ? navegar(vistaFocos.destino) : cambiar('vista', v === 'mapa' ? 'mapa' : null))}
     />

@@ -76,8 +76,8 @@ const PAN = [id('PAN RALLADO 1KG'), id('PAN RALLADO 500G')]
 
 /**
  * El mes en curso con los objetivos de Checho de noviembre (Cesar, 10/11): VOL Tapas y CCC Manteca, Dulce de leche,
- * Masa para tacos y Pionono, con los códigos de Chess y sin meta (PREVENTA queda afuera hasta que Checho diga qué
- * mide). El anterior con dos y uno más atrás; el que viene, vacío.
+ * Masa para tacos y Pionono, con los códigos de Chess (PREVENTA queda afuera hasta que Checho diga qué mide). Las de
+ * Checho no tienen meta; acá Manteca y Dulce de leche llevan una para ver la meta en la vista Focos (cumplida y no). El anterior con dos y uno más atrás; el que viene, vacío.
  */
 let siguiente = 1
 const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number, medida: Medida = 'ccc', meta: number | null = null): FocoMock => ({
@@ -92,8 +92,8 @@ const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number,
 })
 const focos: FocoMock[] = [
   nuevo(MES, 'Tapas', TAPAS, 4, 'vol', 1500),
-  nuevo(MES, 'Manteca', MANTECA, 4),
-  nuevo(MES, 'Dulce de leche', DULCE, 4),
+  nuevo(MES, 'Manteca', MANTECA, 4, 'ccc', 5),
+  nuevo(MES, 'Dulce de leche', DULCE, 4, 'ccc', 25),
   nuevo(MES, 'Masa para tacos', TACOS, 4),
   nuevo(MES, 'Pionono', PIONONO, 4),
   nuevo(ANTERIOR, 'Ravioles', RAVIOLES, 33),

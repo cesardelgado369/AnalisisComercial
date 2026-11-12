@@ -21,11 +21,24 @@ import { ordenar, type Orden } from './TablaCobertura'
 /** Lo de un cliente en un foco: CCC, si compró (el estado de Cobertura); VOL, sus bultos contra el mes anterior. */
 type Celda = { medida: 'ccc'; estado: EstadoMes } | { medida: 'vol'; bultosActual: number; bultosBase: number | null } | null
 type FilaFocos = Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | 'vendedor' | 'abc'> & { celdas: Celda[] }
-/** Lo de arriba de cada foco: el porcentaje, su detalle y el ancho de la barra. */
-type Indicador = { valor: number | null; detalle: string }
+/** Cómo va la meta de un CCC: cumplida, o cuántos clientes faltan (en un mes cerrado, si no se llegó). */
+type EstadoMeta = { meta: number; cumplida: boolean; texto: string }
+/** Lo de arriba de cada foco: el porcentaje, su detalle, el ancho de la barra y, si el CCC tiene meta, cómo va. */
+type Indicador = { valor: number | null; detalle: string; meta: EstadoMeta | null }
 
 /**
- * La vista por focos de Cobertura (Cesar, 05/11; solo el dueño): los clientes con una columna por foco del mes en lugar
+ * La meta de un CCC es el porcentaje de la cartera que tiene que comprar (Checho). Para el vendedor se dice en clientes,
+ * no en puntos (Cesar, 10/11: «no sé qué significa eso de pp»): la cartera por la meta, redondeado para arriba.
+ */
+function metaCcc(meta: number, conCompra: number, cartera: number, enCurso: boolean): EstadoMeta {
+  const faltan = Math.ceil((meta * cartera) / 100) - conCompra
+  if (faltan <= 0) return { meta, cumplida: true, texto: 'cumplida' }
+  return { meta, cumplida: false, texto: enCurso ? (faltan === 1 ? 'falta 1 cliente' : `faltan ${formatoEntero(faltan)} clientes`) : 'no se cumplió' }
+}
+
+/**
+ * La vista por focos de Cobertura (Cesar, 05/11; los vendedores desde el 11/11, con sus clientes): los clientes con una
+ * columna por foco del mes en lugar
  * de los meses, y arriba el número de cada foco. Los CCC dicen si el cliente compró algún artículo del foco
  * (`GET /api/cobertura?foco=` de un solo mes); los VOL, cuántos bultos lleva contra el mes anterior al mismo día hábil
  * (`GET /api/volumen?foco=`). Los números los arma la API, acá solo se ponen lado a lado. Los filtros de vendedor, día,
@@ -33,8 +46,14 @@ type Indicador = { valor: number | null; detalle: string }
  */
 export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden; onOrden: (o: Orden) => void; selectorVista: ReactNode }) {
   const { filtros, mes, orden, onOrden, selectorVista } = props
-  const { focos, busqueda, buscar, verTodos, titulo, conVendedor } = filtros
-  const lista = focos.datos
+  const { focos, busqueda, buscar, verTodos, titulo, conVendedor, sesion } = filtros
+  // Sin bultos (el vendedor, `veBultos` en false): los VOL se miran como los CCC, si cada cliente compró o no algún
+  // artículo del foco, sin bultos ni su meta (que es de bultos). Tampoco va la etiqueta CCC o VOL
+  const conBultos = sesion.veBultos
+  const lista = useMemo(
+    () => (conBultos || !focos.datos ? focos.datos : focos.datos.map((f): Foco => (f.medida === 'vol' ? { ...f, medida: 'ccc', meta: null } : f))),
+    [focos.datos, conBultos],
+  )
 
   const rutas = useMemo(() => {
     if (!lista?.length) return null
@@ -83,12 +102,20 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       const c = deCcc(i)
       if (c) {
         const k = c.kpis[c.kpis.length - 1]
-        return { valor: k.porcentaje, detalle: `${formatoEntero(k.clientesConCompra)} de ${formatoEntero(k.clientesCartera)}` }
+        const meta = lista[i].meta
+        return {
+          valor: k.porcentaje,
+          detalle: `${formatoEntero(k.clientesConCompra)} de ${formatoEntero(k.clientesCartera)}`,
+          // Sin compras ni cartera (el mes sin datos) no hay meta que medir
+          meta: meta !== null && k.porcentaje !== null ? metaCcc(meta, k.clientesConCompra, k.clientesCartera, k.mesEnCurso) : null,
+        }
       }
+      // En los VOL la meta es de bultos del foco entero, no de la cartera que se mira: acá no se muestra
       const t = deVol(i)!.total
       return {
         valor: t.porcentaje,
         detalle: t.bultosBase === null ? `${formatoBultos(t.bultosActual ?? 0)} bultos` : `${formatoBultos(t.bultosActual ?? 0)} de ${formatoBultos(t.bultosBase)} bultos`,
+        meta: null,
       }
     })
     const cartera = 'chips' in primera ? primera.chips.todos : 0
@@ -119,9 +146,19 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                 <li key={f.idFoco} className="cob-kpi cob-kpi-foco">
                   <span className="cob-kpi-valor">{pct}</span>
                   <span className="cob-kpi-mes">
-                    <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span> {f.nombre}
+                    {conBultos && <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span>} {f.nombre}
                   </span>
                   <span className="cob-kpi-detalle">{k.detalle}</span>
+                  {k.meta && (
+                    // En dos renglones, para que entre en el teléfono más chico (A03): la meta y cómo va
+                    <span className={k.meta.cumplida ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
+                      <span className="cob-kpi-meta-valor">
+                        <span className="icono icono-chico" aria-hidden>{k.meta.cumplida ? 'check_circle' : 'flag'}</span>
+                        Meta {formatoEntero(k.meta.meta)} %
+                      </span>
+                      <span className="cob-kpi-meta-estado">{k.meta.texto}</span>
+                    </span>
+                  )}
                   <span
                     className="cob-kpi-barra"
                     role="progressbar"
@@ -135,6 +172,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     }
                   >
                     <span style={{ width: `${Math.min(100, Math.max(0, k.valor ?? 0))}%` }} />
+                    {k.meta && <span className="cob-kpi-barra-meta" style={{ left: `${Math.min(100, k.meta.meta)}%` }} aria-hidden />}
                   </span>
                 </li>
               )
@@ -162,7 +200,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
           <div className="cob-estado">
             <span className="icono cob-estado-icono" aria-hidden>filter_alt</span>
             <p>{nombreMesTitulo(mes)} todavía no tiene focos.</p>
-            <Link className="btn" to={rutaFocos(mes)}>Armar los focos de {nombreMes(mes)}</Link>
+            {sesion.rol === 'admin' && <Link className="btn" to={rutaFocos(mes)}>Armar los focos de {nombreMes(mes)}</Link>}
           </div>
         ) : consulta.errores.length > 0 ? (
           <ErrorCarga errores={consulta.errores} onReintentar={consulta.recargar} acento />
@@ -177,7 +215,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                 {formatoEntero(armado.filas.length)} de {formatoEntero(armado.cartera)} clientes
               </p>
             )}
-            <TablaFocos filas={armado.filas} focos={lista} mes={mes} orden={orden} onOrden={onOrden} conVendedor={conVendedor} />
+            <TablaFocos filas={armado.filas} focos={lista} mes={mes} orden={orden} onOrden={onOrden} conVendedor={conVendedor} conMedida={conBultos} />
           </>
         )}
       </div>
@@ -245,8 +283,10 @@ const TablaFocos = memo(function TablaFocos(props: {
   orden: Orden
   onOrden: (o: Orden) => void
   conVendedor: boolean
+  /** La etiqueta CCC o VOL de cada foco (no para quien no ve bultos). */
+  conMedida: boolean
 }) {
-  const { filas, focos, mes, orden, onOrden, conVendedor } = props
+  const { filas, focos, mes, orden, onOrden, conVendedor, conMedida } = props
   const angosto = useMedia('(max-width: 767px)')
   const ficha = useAbrirFicha('Cobertura')
   const lista = useMemo(() => ordenar(filas, orden), [filas, orden])
@@ -256,11 +296,11 @@ const TablaFocos = memo(function TablaFocos(props: {
       <TarjetasPorTandas items={lista}>
         {(c) => (
           <TarjetaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
-            <span className="cob-tarjeta-meses cob-tarjeta-focos">
+            <span className="cob-tarjeta-focos">
               {focos.map((f, i) => (
-                <span key={f.idFoco} className="cob-tarjeta-mes">
-                  <span className="cob-tarjeta-inicial cob-tarjeta-foco" aria-hidden>{f.nombre}</span>
+                <span key={f.idFoco} className="cob-tarjeta-foco-item">
                   <Marca c={c.celdas[i]} foco={f} mes={mes} />
+                  <span className="cob-tarjeta-foco" aria-hidden>{f.nombre}</span>
                 </span>
               ))}
             </span>
@@ -279,7 +319,7 @@ const TablaFocos = memo(function TablaFocos(props: {
             <CabeceraOrden campo="nombre" texto="Razón social" orden={orden} onOrden={onOrden} />
             {focos.map((f) => (
               <th key={f.idFoco} className="cob-col-mes cob-col-foco">
-                <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span> {f.nombre}
+                {conMedida && <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span>} {f.nombre}
               </th>
             ))}
           </tr>

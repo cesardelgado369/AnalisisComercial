@@ -24,10 +24,11 @@ export function useFiltrosComerciales() {
   const referencia = useMesReferencia()
   const [params, setParams] = useSearchParams()
   const esAdmin = sesion.rol === 'admin'
-  // Los focos del mes en el que está parada la app (Checho, 03/11; de cada mes desde el 05/11), solo para el dueño:
-  // los empleados no los ven (Cesar, 05/11; la API les da 403). Sin ninguno, el filtro no se muestra
+  // Los focos del mes en el que está parada la app (Checho, 03/11; de cada mes desde el 05/11). Desde el 11/11 los ven
+  // también los vendedores, en la vista Focos de Cobertura (pedido de Checho); el filtro Foco del mes de la barra sigue
+  // siendo solo del dueño
   const focos = useConsulta<Foco[]>(
-    !esAdmin ? null : referencia.enCurso ? '/cobertura/focos' : `/cobertura/focos?mes=${referencia.mes}`,
+    referencia.enCurso ? '/cobertura/focos' : `/cobertura/focos?mes=${referencia.mes}`,
     'No se pudieron leer los focos del mes.',
   )
   const esOperario = sesion.rol === 'operario'
@@ -154,7 +155,7 @@ export function BarraFiltros({ filtros, conMes = true, sinFoco = false }: { filt
   const unidades = useConsulta<string[]>('/cobertura/unidades', 'No se pudieron leer los tipos de producto.')
   // El foco, solo si el mes tiene alguno (si la lista no llegó, no se muestra: es un filtro de más). En la vista por
   // focos de Cobertura (`sinFoco`) tampoco: ahí están todos, uno por columna
-  const conFoco = !sinFoco && !!focos.datos?.length
+  const conFoco = !sinFoco && sesion.rol === 'admin' && !!focos.datos?.length
   // La categoría de cliente, solo el dueño
   const conCategoria = sesion.rol === 'admin'
   const columnas = Number(eligeVendedor) + 2 + Number(conCategoria) + Number(conFoco)

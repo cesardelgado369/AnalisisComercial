@@ -16,8 +16,20 @@
 .cob-col-foco { width: 110px; line-height: 1.25; }
 .cob-referencias { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; margin: 0 0 0 auto; font-size: 13px; font-weight: 600; color: var(--texto-2); }
 .cob-referencia { display: inline-flex; align-items: center; gap: 6px; }
-.cob-tarjeta-focos { flex-wrap: wrap; gap: 8px 14px; }
-.cob-tarjeta-foco { max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* En el celular (A03 a iPhone, 11/11): dos columnas, la marca y el nombre entero del foco al lado */
+.cob-tarjeta-focos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 8px; }
+.cob-tarjeta-foco-item { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.cob-tarjeta-foco-item > :first-child { flex-shrink: 0; }
+.cob-tarjeta-foco { min-width: 0; font-size: 13px; font-weight: 600; line-height: 1.2; color: var(--texto-2); overflow-wrap: anywhere; }
+.cob-tarjetas li.dejo .cob-tarjeta-foco { color: var(--texto-2); }
+/* La meta de un CCC: cumplida en verde; si no, cuántos clientes faltan. La rayita en la barra marca dónde está */
+.cob-kpi-meta { display: flex; flex-direction: column; align-items: inherit; margin-top: 2px; font-size: 12px; line-height: 1.25; color: var(--texto-2); }
+.cob-kpi-meta-valor { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: var(--texto); }
+.cob-kpi-meta-valor .icono { font-size: 15px; color: var(--acento); }
+.cob-kpi-meta-estado { font-weight: 600; }
+.cob-kpi-meta.cumplida .cob-kpi-meta-estado, .cob-kpi-meta.cumplida .icono { color: var(--ok); font-weight: 700; }
+.cob-kpi-foco .cob-kpi-barra { position: relative; }
+.cob-kpi-barra-meta { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--texto); border-radius: 1px; }
 .cob-kpi-foco .foco-medida, .cob-col-foco .foco-medida { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: 800; color: var(--acento); background: var(--superficie-media); border-radius: 4px; vertical-align: 1px; }
 /* Una celda VOL: los bultos del mes y la flecha contra el mes anterior al mismo día hábil */
 .cob-vol { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 28px; height: 28px; font-size: 14px; font-weight: 700; color: var(--texto); font-variant-numeric: tabular-nums; }

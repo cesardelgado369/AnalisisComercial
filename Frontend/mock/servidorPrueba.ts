@@ -109,9 +109,7 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
   const rol = rolDe(email)
   if (!rol) return responder(res, 403, { status: 403, title: 'Todavía no tenés acceso a Análisis Comercial. Pedíselo al administrador.' })
   try {
-    // Los focos son solo del dueño (Cesar, 05/11): la lista y el filtro `foco=` dan 403 a los empleados
-    if (rol !== 'admin' && (ruta === '/api/cobertura/focos' || p.has('foco')))
-      return responder(res, 403, { status: 403, title: 'Los focos del mes son solo para administradores.' })
+    // Los focos: desde el 11/11 los ven también los vendedores (pedido de Checho), cada uno con su cartera
     // La categoría A, B o C, también solo del dueño (Cesar, 10/11)
     if (rol !== 'admin' && p.has('abc'))
       return responder(res, 403, { status: 403, title: 'La categoría de clientes es solo para administradores.' })
