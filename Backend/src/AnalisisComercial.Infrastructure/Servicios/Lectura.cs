@@ -22,12 +22,13 @@ public sealed record Mirada(IReadOnlySet<int> Vendedores, bool SinVendedor, stri
 }
 
 /// <summary>
-/// Los bultos de un cliente × artículo × mes: lo entregado y lo devuelto (<see cref="Volumen.Repartir"/>). Netos = los
-/// vendidos (facturas menos notas de crédito).
+/// Los bultos de un cliente × artículo × mes (<see cref="Volumen.Repartir"/>): lo entregado, lo devuelto (los cambios) y
+/// lo rechazado (las notas de crédito: volvió sin entregarse). Netos = los vendidos (facturas menos notas de crédito).
 /// </summary>
-public sealed record BultosMes(int IdCliente, int IdArticulo, DateOnly Mes, decimal Entregado, decimal Devuelto)
+public sealed record BultosMes(int IdCliente, int IdArticulo, DateOnly Mes, decimal Entregado, decimal Devuelto,
+    decimal Rechazado = 0)
 {
-    public decimal Netos => Entregado - Devuelto;
+    public decimal Netos => Entregado - Devuelto - Rechazado;
 }
 
 /// <summary>
@@ -325,9 +326,9 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
             .Select(g =>
             {
                 var facturas = g.Where(x => regla.EsFactura(x.TipoDocumento)).ToList();
-                var (entregado, devuelto) = Volumen.Repartir(facturas.Sum(x => x.Positivas), facturas.Sum(x => x.Negativas),
+                var (entregado, devuelto, rechazado) = Volumen.Repartir(facturas.Sum(x => x.Positivas), facturas.Sum(x => x.Negativas),
                     g.Where(x => regla.EsCredito(x.TipoDocumento)).Sum(x => x.Positivas + x.Negativas), negativasSonDevolucion);
-                return new BultosMes(g.Key.IdCliente, g.Key.IdArticulo, g.Key.Mes, entregado, devuelto);
+                return new BultosMes(g.Key.IdCliente, g.Key.IdArticulo, g.Key.Mes, entregado, devuelto, rechazado);
             })
             .ToList();
     }

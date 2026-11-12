@@ -184,25 +184,24 @@ public class FaseDosTests(Entorno e)
         var d = await e.Operario().JsonAsync("/api/devoluciones?mesHasta=2026-09-01");
         Assert.Equal("2026-09-01", (string?)d["mes"]);
         var sep = d["kpis"]!.AsArray()[^1]!;
-        // 101 en septiembre: 5 facturados, 1 de nota de crédito → 1 / 5 = 20 %. El operario no recibe los bultos totales.
-        Assert.Equal(20.0m, (decimal)sep["porcentaje"]!);
+        // 101 en septiembre: 5 facturados y 1 de nota de crédito. La nota de crédito no es devolución (volvió sin
+        // entregarse): 4 netos, 0 cambios → 0 %. El operario no recibe los bultos totales.
+        Assert.Equal(0.0m, (decimal)sep["porcentaje"]!);
         Assert.Null(sep["bultosVendidos"]);
         Assert.Null(d["kpis"]!.AsArray()[0]!["porcentaje"]);   // julio: nada facturado
-        var cli = d["clientes"]!.AsArray().Single()!;
-        Assert.Equal((101, "VENDEDOR UNO", 20.0m), ((int)cli["idCliente"]!, (string?)cli["vendedor"], (decimal)cli["porcentaje"]!));
-        Assert.Null(d["articulos"]!.AsArray().Single()!["bultosDevueltos"]);
-        Assert.Equal(1m, (decimal)cli["bultosDevueltos"]!);   // por cliente, sí
+        Assert.Empty(d["clientes"]!.AsArray());
+        Assert.Empty(d["articulos"]!.AsArray());
 
-        // Octubre: lo que retiró en la misma factura es devolución. Entregó 2, retiró 1 → 1 vendido, 1 / 2 = 50 %.
+        // Octubre: lo que le cambió en la misma factura es devolución. Entregó 2, cambió 1 → 1 neto, 1 / 1 = 100 %.
         var oct = (await e.Operario().JsonAsync("/api/devoluciones"))["clientes"]!.AsArray().Single()!;
-        Assert.Equal((101, 1m, 1m, 50.0m), ((int)oct["idCliente"]!, (decimal)oct["bultosVendidos"]!, (decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
+        Assert.Equal((101, 1m, 1m, 100.0m), ((int)oct["idCliente"]!, (decimal)oct["bultosVendidos"]!, (decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
         Assert.Equal(["124 - PASTAS FRESCAS"], oct["unidadesDevueltas"]!.AsArray().Select(u => (string?)u));
         var devuelto = oct["articulosDevueltos"]!.AsArray().Single()!;
         Assert.Equal((900, "TALLARIN 500G"), ((int)devuelto["idArticulo"]!, (string?)devuelto["descripcion"]));
 
-        // Toda la empresa (sin la casa) en septiembre: 101 y 102 → 6 vendidos, 1 devuelto.
+        // Toda la empresa (sin la casa) en septiembre: 101 y 102 → 6 netos, sin cambios.
         var admin = (await e.Admin().JsonAsync("/api/devoluciones?mesHasta=2026-09-01"))["kpis"]!.AsArray()[^1]!;
-        Assert.Equal((6m, 1m, 14.3m), ((decimal)admin["bultosVendidos"]!, (decimal)admin["bultosDevueltos"]!, (decimal)admin["porcentaje"]!));
+        Assert.Equal((6m, 0m, 0.0m), ((decimal)admin["bultosVendidos"]!, (decimal)admin["bultosDevueltos"]!, (decimal)admin["porcentaje"]!));
 
         // DOS en septiembre: 102 y 201, sin devoluciones.
         var dos = await e.Supervisor().JsonAsync("/api/devoluciones?mesHasta=2026-09-01");
@@ -218,12 +217,12 @@ public class FaseDosTests(Entorno e)
         var kpis = f["kpis"]!.AsArray();
         Assert.Null(kpis[0]!["bultosVendidos"]);   // julio: 101 no estaba en su cartera
         Assert.Equal(0m, (decimal)kpis[1]!["bultosVendidos"]!);
-        Assert.Equal(20.0m, (decimal)kpis[2]!["porcentaje"]!);
+        Assert.Equal(0.0m, (decimal)kpis[2]!["porcentaje"]!);   // septiembre: solo una nota de crédito, sin cambios
         Assert.Equal("2026-09-01", (string?)f["mes"]);
-        Assert.Equal(900, (int)f["articulos"]!.AsArray().Single()!["idArticulo"]!);
+        Assert.Empty(f["articulos"]!.AsArray());
 
         var oct = (await e.Operario().JsonAsync("/api/clientes/101/devoluciones?mes=2026-10-01"))["articulos"]!.AsArray().Single()!;
-        Assert.Equal((1m, 50.0m), ((decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
+        Assert.Equal((1m, 100.0m), ((decimal)oct["bultosDevueltos"]!, (decimal)oct["porcentaje"]!));
         await e.Operario().JsonAsync("/api/clientes/101/devoluciones?mesHasta=2026-09-01&mes=2026-10-01", HttpStatusCode.BadRequest);
         Assert.True(await e.ConBaseAsync(db => db.AccesoLogs.AnyAsync(l => l.Pantalla == "ficha-devoluciones" && !l.Denegado)));
     }
@@ -236,14 +235,15 @@ public class FaseDosTests(Entorno e)
         var movs = sep["movimientos"]!.AsArray();
         Assert.Equal(["2026-09-15", "2026-09-20", "2026-09-28"], movs.Select(x => (string?)x!["fecha"]));
         Assert.Equal(["factura", "notaCredito", "factura"], movs.Select(x => (string?)x!["tipo"]));
-        Assert.Equal((0m, 1m), ((decimal)movs[1]!["entregados"]!, (decimal)movs[1]!["devueltos"]!));
+        // La nota de crédito: volvió sin entregarse, no es un cambio.
+        Assert.Equal((0m, 0m, 1m), ((decimal)movs[1]!["entregados"]!, (decimal)movs[1]!["devueltos"]!, (decimal)movs[1]!["rechazados"]!));
         Assert.Equal("A 0001-00000007", (string?)movs[1]!["comprobante"]);
         Assert.Equal("VENDEDOR UNO", (string?)movs[0]!["vendedor"]);
         Assert.Equal("TALLARIN 500G", (string?)movs[0]!["lineas"]![0]!["descripcion"]);
 
         // Octubre: una sola factura con una línea de 2 y otra de −1 (retirado en la misma factura).
         var oct = (await e.Admin().JsonAsync("/api/clientes/101/movimientos"))["movimientos"]!.AsArray().Single()!;
-        Assert.Equal((2m, 1m), ((decimal)oct["entregados"]!, (decimal)oct["devueltos"]!));
+        Assert.Equal((2m, 1m, 0m), ((decimal)oct["entregados"]!, (decimal)oct["devueltos"]!, (decimal)oct["rechazados"]!));
 
         // El operario de 101 (VENDEDOR UNO) lo ve; el supervisor (VENDEDOR DOS) no, salvo el mes en que 102 era suyo.
         await e.Operario().JsonAsync("/api/clientes/101/movimientos?mes=2026-09-01");

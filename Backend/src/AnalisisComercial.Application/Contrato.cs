@@ -179,12 +179,14 @@ public enum TipoMovimiento
 }
 
 /// <param name="Entregados">Lo que se entregó en el comprobante (las líneas positivas de una factura).</param>
-/// <param name="Devueltos">Lo que volvió: las líneas negativas de una factura o lo acreditado en una nota de crédito.</param>
-public record LineaMovimientoDto(int IdArticulo, string Descripcion, string? UnidadNegocio, decimal Entregados, decimal Devueltos);
+/// <param name="Devueltos">Los cambios: las líneas negativas de una factura.</param>
+/// <param name="Rechazados">Lo de una nota de crédito: volvió a la fábrica sin entregarse (no es devolución).</param>
+public record LineaMovimientoDto(int IdArticulo, string Descripcion, string? UnidadNegocio, decimal Entregados, decimal Devueltos,
+    decimal Rechazados);
 
 /// <param name="Vendedor">El del comprobante; null si no se sabe o (operario y supervisor) si no es uno de los suyos.</param>
 public record MovimientoDto(DateOnly Fecha, TipoMovimiento Tipo, string Comprobante, string? Vendedor, decimal Entregados,
-    decimal Devueltos, IReadOnlyList<LineaMovimientoDto> Lineas);
+    decimal Devueltos, decimal Rechazados, IReadOnlyList<LineaMovimientoDto> Lineas);
 
 public record MovimientosClienteDto(int IdCliente, string RazonSocial, DateOnly Mes, IReadOnlyList<MovimientoDto> Movimientos);
 

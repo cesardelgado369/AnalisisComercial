@@ -302,13 +302,13 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
                     {
                         var positivas = x.Sum(l => l.CantidadTotal > 0 ? l.CantidadTotal : 0m);
                         var negativas = x.Sum(l => l.CantidadTotal < 0 ? -l.CantidadTotal : 0m);
-                        var (entregado, devuelto) = esFactura
+                        var (entregado, devuelto, rechazado) = esFactura
                             ? Volumen.Repartir(positivas, negativas, 0, negativasSonDevolucion)
                             : Volumen.Repartir(0, 0, positivas + negativas, negativasSonDevolucion);
                         return new LineaMovimientoDto(x.Key, Detalle.Descripcion(datos, x.Key), datos.GetValueOrDefault(x.Key)?.UnidadNegocio,
-                            Volumen.Redondear(entregado), Volumen.Redondear(devuelto));
+                            Volumen.Redondear(entregado), Volumen.Redondear(devuelto), Volumen.Redondear(rechazado));
                     })
-                    .Where(x => x.Entregados != 0 || x.Devueltos != 0)
+                    .Where(x => x.Entregados != 0 || x.Devueltos != 0 || x.Rechazados != 0)
                     .OrderBy(x => x.UnidadNegocio ?? "\uffff").ThenBy(x => x.Descripcion)
                     .ToList();
                 var suyo = a.EsAdmin || a.Vendedores.Contains(primera.IdVendedor);
@@ -316,7 +316,8 @@ public class ClienteService(ComercialDbContext db, Lectura lectura) : IClienteSe
                     esFactura ? TipoMovimiento.Factura : TipoMovimiento.NotaCredito,
                     $"{primera.Letra} {primera.Serie:0000}-{primera.NroDoc:00000000}",
                     suyo ? vendedores.GetValueOrDefault(primera.IdVendedor)?.Nombre : null,
-                    Volumen.Redondear(detalle.Sum(x => x.Entregados)), Volumen.Redondear(detalle.Sum(x => x.Devueltos)), detalle));
+                    Volumen.Redondear(detalle.Sum(x => x.Entregados)), Volumen.Redondear(detalle.Sum(x => x.Devueltos)),
+                    Volumen.Redondear(detalle.Sum(x => x.Rechazados)), detalle));
             })
             .Where(x => x.Dto.Lineas.Count > 0)
             .OrderBy(x => x.Orden)

@@ -1,4 +1,4 @@
-namespace AnalisisComercial.Domain;
+﻿namespace AnalisisComercial.Domain;
 
 /// <summary>Contra qué se compara el volumen de un mes (decisión de Cesar, 29/10/2026). Es parte del contrato.</summary>
 public enum TipoComparacion
@@ -70,24 +70,26 @@ public static class Volumen
             : ChipVolumen.Subieron;
 
     /// <summary>
-    /// Qué es devolución (29/10/2026): las notas de crédito y, si <paramref name="negativasSonDevolucion"/>, las líneas
-    /// con cantidad negativa dentro de las facturas (la mercadería que el vendedor retira en la misma factura: entre 1.400
-    /// y 2.200 líneas por mes, contra unas 250 de notas de crédito). Si no, esas líneas solo restan de lo entregado. Los
-    /// netos (entregado − devuelto) dan lo mismo de las dos maneras: cambia el porcentaje de devolución, no el volumen.
+    /// Qué es devolución (12/11/2026, cruzado con el Pivot de octubre del dueño, que da igual al bulto): los
+    /// <b>cambios</b>, las líneas con cantidad negativa dentro de las facturas (la mercadería que el vendedor le cambia
+    /// al cliente). Las notas de crédito <b>no</b> son devolución: son mercadería que vuelve a la fábrica sin entregarse
+    /// (Chess las marca como rechazo); restan de los netos, pero van aparte. Si no <paramref name="negativasSonDevolucion"/>,
+    /// las líneas negativas solo restan de lo entregado. Los netos (entregado − devuelto − rechazado) dan lo mismo
+    /// siempre.
     /// </summary>
     /// <param name="positivas">Las cantidades positivas de las facturas.</param>
     /// <param name="negativas">Las negativas de las facturas, en valor absoluto.</param>
     /// <param name="acreditado">Las de las notas de crédito, en valor absoluto.</param>
-    public static (decimal Entregado, decimal Devuelto) Repartir(decimal positivas, decimal negativas, decimal acreditado,
-        bool negativasSonDevolucion)
-        => negativasSonDevolucion ? (positivas, negativas + acreditado) : (positivas - negativas, acreditado);
+    public static (decimal Entregado, decimal Devuelto, decimal Rechazado) Repartir(decimal positivas, decimal negativas,
+        decimal acreditado, bool negativasSonDevolucion)
+        => negativasSonDevolucion ? (positivas, negativas, acreditado) : (positivas - negativas, 0, acreditado);
 
     /// <summary>
-    /// La fórmula de la nota de devoluciones: devueltos / (vendidos + devueltos) × 100, un decimal. Con vendidos netos,
-    /// el divisor es lo entregado. null si no se entregó nada.
+    /// El porcentaje de devolución como lo mira el dueño (su Pivot, 12/11/2026): cambios / bultos netos × 100, un
+    /// decimal. null si no hay bultos netos.
     /// </summary>
     public static decimal? PorcentajeDevolucion(decimal vendidos, decimal devueltos)
-        => vendidos + devueltos is > 0 and var t ? Math.Round(100m * devueltos / t, 1, MidpointRounding.AwayFromZero) : null;
+        => vendidos > 0 ? Math.Round(100m * devueltos / vendidos, 1, MidpointRounding.AwayFromZero) : null;
 
     public static decimal Redondear(decimal bultos) => Math.Round(bultos, 2, MidpointRounding.AwayFromZero);
 }

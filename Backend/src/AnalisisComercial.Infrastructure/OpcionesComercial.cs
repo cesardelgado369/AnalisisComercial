@@ -50,8 +50,8 @@ public class OpcionesComercial
     public int DiasSugerirRevisar { get; set; } = 60;
 
     /// <summary>
-    /// Si las líneas con cantidad negativa dentro de las facturas (mercadería que el vendedor retira) cuentan como
-    /// devolución. Si no, solo restan de lo entregado. Ver <see cref="Volumen.Repartir"/>.
+    /// Si las líneas con cantidad negativa dentro de las facturas (los cambios: mercadería que el vendedor le cambia al
+    /// cliente) cuentan como devolución. Si no, solo restan de lo entregado. Ver <see cref="Volumen.Repartir"/>.
     /// </summary>
     public bool NegativasSonDevolucion { get; set; } = true;
 

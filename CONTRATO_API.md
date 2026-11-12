@@ -278,15 +278,16 @@ solo admin); la categoría `abc` es del cliente y no cambia nada acá.
   "movimientos": [                                        // por fecha y número, del más viejo al más nuevo
     { "fecha": "2026-11-03", "tipo": "factura" | "notaCredito", "comprobante": "A 0001-00001234",
       "vendedor": "ALEJANDRO LIZARRAGA" | null,           // el del comprobante (null: ver abajo)
-      "entregados": 2.5, "devueltos": 1,
+      "entregados": 2.5, "devueltos": 1, "rechazados": 0,
       "lineas": [{ "idArticulo": 201, "descripcion": "TAPAS DE EMPANADA FREIR X12", "unidadNegocio": "TAPAS" | null,
-                   "entregados": 2.5, "devueltos": 1 }] }] }   // por unidad y descripción
+                   "entregados": 2.5, "devueltos": 1, "rechazados": 0 }] }] }   // por unidad y descripción
 ```
 
 - Comprobantes y bultos con la regla de Devoluciones: FACTURA y FACTURA CIERRE CONSIG. no anuladas y NOTA DE CREDITO
-  (la FACTURA PRESUPUESTO no va). Factura: `entregados` = sus líneas positivas, `devueltos` = las negativas. Nota de
-  crédito: `entregados` 0, `devueltos` = lo acreditado. Del mes: Σ `entregados` − Σ `devueltos` = `bultosVendidos` del
-  cliente en `/api/devoluciones` y Σ `devueltos` = `bultosDevueltos`. Sin importes.
+  (la FACTURA PRESUPUESTO no va). Factura: `entregados` = sus líneas positivas, `devueltos` = las negativas (los
+  cambios). Nota de crédito: `entregados` y `devueltos` 0, `rechazados` = lo acreditado (volvió a la fábrica sin
+  entregarse; desde el 12/11 no es devolución). Del mes: Σ `entregados` − Σ `devueltos` − Σ `rechazados` =
+  `bultosVendidos` del cliente en `/api/devoluciones` y Σ `devueltos` = `bultosDevueltos`. Sin importes.
 - Gobernanza como la ficha: el operario que no ve bultos → 403. Operario y supervisor, solo un mes en que el cliente
   era de su cartera (si no, 404 «No existe el cliente o no tenés acceso.», registrado), y `vendedor` en null si el
   comprobante es de un vendedor que no es suyo. Mes futuro o fuera de su ventana → 400 en `errors.mes`.
@@ -411,21 +412,22 @@ Parámetros como en `/api/cobertura`.
 ```
 
 - KPI de cada mes con la cartera de ese mes (como Cobertura).
-- `clientes`: los de la cartera de `mes` con alguna devolución ese mes, de mayor a menor porcentaje (primero los de
-  porcentaje null: devolvieron sin que se les facturara nada ese mes).
-- `articulos`: los que tuvieron devoluciones en `mes` dentro de esa cartera, de más a menos bultos devueltos.
-- **Fórmula** (la de la nota): `porcentaje = devueltos / (vendidos + devueltos)` × 100, un decimal; null si los dos
-  son 0.
-- **Qué es devolución** (29/10, con los datos de julio a octubre; la confirma Cesar con Madomi):
-  - las **líneas con cantidad negativa dentro de las FACTURA**: la mercadería que el vendedor retira en la misma
-    factura (el front sospecha que son sobre todo pizzas). Son entre 1.449 y 2.156 líneas por mes, el 8–11 % de las
-    líneas de factura;
-  - más las **NOTA DE CREDITO** (unas 250 líneas por mes; 1,4–4,4 % de lo facturado).
-  - El «rechazo» de Chess (`cantidadesRechazo`) es lo mismo que la nota de crédito (da igual todos los meses): no se
-    suma aparte. DEVOLUCION PRESUPUESTO (casi nada) va con la FACTURA PRESUPUESTO, que todavía no suma.
-  - `bultosVendidos` = los netos de Volumen (lo entregado menos lo devuelto), así `vendidos + devueltos` = lo
-    entregado. Que las líneas negativas cuenten como devolución no cambia el volumen, solo el porcentaje; se apaga con
-    `Comercial:NegativasSonDevolucion = false`.
+- `clientes`: los de la cartera de `mes` con algún cambio ese mes, de mayor a menor porcentaje (primero los de
+  porcentaje null: cambiaron sin bultos netos ese mes).
+- `articulos`: los que tuvieron cambios en `mes` dentro de esa cartera, de más a menos bultos devueltos.
+- **Qué es devolución** (12/11/2026: igual al Pivot de octubre del dueño, bulto por bulto, en los 5 vendedores y en
+  cada unidad de negocio): **los cambios**, las **líneas con cantidad negativa dentro de las FACTURA** (la mercadería
+  que el vendedor le cambia al cliente en la misma factura; el «Cant Total Bultos Cambios» del dueño).
+  - Las **NOTA DE CREDITO no son devolución**: es mercadería que vuelve a la fábrica sin entregarse (Chess la marca
+    como rechazo, `cantidadesRechazo`). Restan de los bultos, pero no son cambios. Hasta el 12/11 se sumaban a
+    `bultosDevueltos`.
+  - `bultosVendidos` = los netos de Volumen: FACTURA y FACTURA CIERRE CONSIG. menos NOTA DE CREDITO (el «Cantidad
+    Total Bultos» del dueño). La FACTURA PRESUPUESTO y la DEVOLUCION PRESUPUESTO no suman.
+  - **Fórmula** (la del dueño): `porcentaje = devueltos / vendidos` × 100, un decimal; null si no hay vendidos. Ej.
+    Alejandro Lizarraga, octubre: 1.357 / 49.499 = 2,7 %.
+  - Con `Comercial:NegativasSonDevolucion = false` las líneas negativas solo restan de lo entregado (no hay cambios).
+  - Ojo al comparar por vendedor: el Pivot agrupa por el vendedor del comprobante; esta pantalla, por la cartera del
+    cliente ese mes (y sin la casa ni los excluidos). Por cliente y por unidad da igual.
 
 ### `GET /api/resumen?mesDesde=&mesHasta=` · admin y supervisor
 
@@ -656,6 +658,9 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 12/11: **devolución = cambios** (las líneas negativas de las facturas), como el Pivot del dueño; las notas de
+  crédito ya no son devolución (volvieron sin entregarse) y en `/movimientos` van en `rechazados`. Porcentaje =
+  cambios / bultos netos. Sale en la 1.4.1.
 - 11/11: **focos para todos** (Checho): `/api/cobertura/focos` y `foco=` para operario y supervisor, cada uno sobre su
   cartera; solo los meses que ven. La administración, el análisis y `abc` siguen siendo del Admin. Sale en la 1.4.0.
 - 10/11: la `meta` de un foco vol pasa a ser los **bultos objetivo** (obligatoria) y el total trae `porcentajeMeta`.

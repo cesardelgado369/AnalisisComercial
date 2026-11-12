@@ -1,4 +1,4 @@
-using AnalisisComercial.Domain;
+﻿using AnalisisComercial.Domain;
 
 namespace AnalisisComercial.Domain.Tests;
 
@@ -69,9 +69,10 @@ public class VolumenTests
     [Fact]
     public void Lo_que_se_retira_en_la_factura_es_devolucion()
     {
-        // Entregó 10, retiró 2 en la misma factura y le hicieron una nota de crédito por 1.
-        Assert.Equal((10m, 3m), Volumen.Repartir(10, 2, 1, negativasSonDevolucion: true));
-        Assert.Equal((8m, 1m), Volumen.Repartir(10, 2, 1, negativasSonDevolucion: false));
+        // Entregó 10, le cambió 2 en la misma factura y le hicieron una nota de crédito por 1 (volvió sin entregarse):
+        // devolución son solo los cambios; la nota de crédito va aparte, como rechazo.
+        Assert.Equal((10m, 2m, 1m), Volumen.Repartir(10, 2, 1, negativasSonDevolucion: true));
+        Assert.Equal((8m, 0m, 1m), Volumen.Repartir(10, 2, 1, negativasSonDevolucion: false));
         // Los netos no cambian: 7 de las dos maneras.
     }
 
@@ -81,7 +82,9 @@ public class VolumenTests
         Assert.Equal(82.0m, Volumen.Porcentaje(820, 1000));
         Assert.Null(Volumen.Porcentaje(5, 0));
         Assert.Null(Volumen.Porcentaje(5, null));
-        Assert.Equal(20.0m, Volumen.PorcentajeDevolucion(4, 1));   // 1 / (4 + 1)
+        Assert.Equal(25.0m, Volumen.PorcentajeDevolucion(4, 1));   // cambios / bultos netos, como el Pivot del dueño
+        Assert.Equal(2.7m, Volumen.PorcentajeDevolucion(49499, 1357));   // Alejandro Lizarraga, octubre 2026
         Assert.Null(Volumen.PorcentajeDevolucion(0, 0));
+        Assert.Null(Volumen.PorcentajeDevolucion(0, 3));
     }
 }
