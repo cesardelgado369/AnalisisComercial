@@ -10,11 +10,14 @@ import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { cantidad, formatoBultos, formatoFecha, nombreMesCorto, nombreMesTitulo } from '../utils/formato'
 import { PestanaDevoluciones, PestanaVolumen } from './Pestanas'
+import { PestanaLinea } from './PestanaLinea'
 import '../cobertura/cobertura.css'
 import './ficha.css'
 
-type Pestana = 'compras' | 'volumen' | 'devoluciones'
+type Pestana = 'linea' | 'compras' | 'volumen' | 'devoluciones'
 const PESTANAS: { valor: Pestana; texto: string; icono: string }[] = [
+  // Cesar, 12/11: al tocar un cliente, el dueño ve primero cuándo compró y qué devolvió, en orden
+  { valor: 'linea', texto: 'Línea de tiempo', icono: 'route' },
   { valor: 'compras', texto: 'Qué compró', icono: 'checklist' },
   { valor: 'volumen', texto: 'Volumen', icono: 'inventory_2' },
   { valor: 'devoluciones', texto: 'Devoluciones', icono: 'assignment_return' },
@@ -22,7 +25,8 @@ const PESTANAS: { valor: Pestana; texto: string; icono: string }[] = [
 
 /**
  * Ficha del cliente (`/cliente/:id`, «CCC x bulto»): la cabecera (código, ruta, días de visita, dirección con el mapa,
- * última compra), su estado y sus bultos en cada mes, y tres pestañas: qué compró cada mes (artículos × meses), Volumen
+ * última compra), su estado y sus bultos en cada mes, y cuatro pestañas: la línea de tiempo del mes (cada comprobante en
+ * orden, la de la ventanita de Volumen y Devoluciones; Cesar, 12/11), qué compró cada mes (artículos × meses), Volumen
  * (qué bajó y qué subió contra la base) y Devoluciones. La pestaña va en la URL (`?pestana=`). Los meses son los cuatro
  * en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el dueño).
  *
@@ -37,9 +41,11 @@ export function FichaPage() {
   const esOperario = sesion.rol === 'operario'
   const deCartera = sesion.rol !== 'admin'
   const pestanaUrl = params.get('pestana') as Pestana | null
-  // Sin `veBultos` (hoy, el operario) la ficha es solo «Qué compró»: Volumen y Devoluciones le darían 403
+  // Sin `veBultos` (hoy, el operario) la ficha es solo «Qué compró»: la línea de tiempo, Volumen y Devoluciones le darían
+  // 403. Con bultos, de entrada la línea de tiempo
   const pestanas = sesion.veBultos ? PESTANAS : PESTANAS.filter((p) => p.valor === 'compras')
-  const pestana: Pestana = pestanas.some((p) => p.valor === pestanaUrl) ? pestanaUrl! : 'compras'
+  const defecto = pestanas[0].valor
+  const pestana: Pestana = pestanas.some((p) => p.valor === pestanaUrl) ? pestanaUrl! : defecto
   const idCliente = Number(id)
   const { mes: mesRef, ventana } = useMesReferencia()
   const rango = `mesDesde=${ventana[0]}&mesHasta=${mesRef}`
@@ -183,7 +189,7 @@ export function FichaPage() {
         {pestanas.length > 1 ? (
           <div className="pestanas ficha-pestanas" role="group" aria-label="Qué ver del cliente">
             {pestanas.map((p) => (
-              <button key={p.valor} type="button" aria-pressed={pestana === p.valor} onClick={() => cambiar('pestana', p.valor === 'compras' ? null : p.valor)}>
+              <button key={p.valor} type="button" aria-pressed={pestana === p.valor} onClick={() => cambiar('pestana', p.valor === defecto ? null : p.valor)}>
                 <span className="icono icono-chico" aria-hidden>{p.icono}</span>
                 {p.texto}
               </button>
@@ -191,12 +197,22 @@ export function FichaPage() {
           </div>
         ) : (
           <h2 className="ficha-cuerpo-titulo">
-            <span className="icono icono-chico" aria-hidden>{PESTANAS[0].icono}</span>
-            {PESTANAS[0].texto}
+            <span className="icono icono-chico" aria-hidden>{pestanas[0].icono}</span>
+            {pestanas[0].texto}
           </h2>
         )}
 
-        {pestana === 'volumen' ? (
+        {pestana === 'linea' ? (
+          <PestanaLinea
+            idCliente={f.idCliente}
+            meses={f.meses}
+            estados={f.estados}
+            bultos={f.bultos}
+            mes={mesDe('mesMov', ventana)}
+            onMes={(m) => cambiar('mesMov', m)}
+            esOperario={esOperario}
+          />
+        ) : pestana === 'volumen' ? (
           mesVol === PRIMER_MES ? (
             <p className="vacio">{nombreMesTitulo(PRIMER_MES)} es el primer mes con datos: no hay un mes anterior para comparar el volumen.</p>
           ) : (

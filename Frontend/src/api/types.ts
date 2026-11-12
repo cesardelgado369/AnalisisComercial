@@ -613,9 +613,25 @@ export interface Foco {
    * cantidad de bultos del objetivo del mes (Cesar, 10/11).
    */
   meta: number | null
+  /**
+   * El objetivo de clientes de cada vendedor en el foco (Cesar, 12/11: «que le hagan 80 en total comprar el dulce de
+   * leche»), siempre en clientes, también en los VOL. Solo los de los vendedores que la persona ve: el dueño, todos; el
+   * supervisor, los suyos; el vendedor, el propio. Vacío si no hay.
+   */
+  objetivos: ObjetivoFoco[]
   articulos: ArticuloFoco[]
   actualizadoPor: string
   actualizado: string
+}
+
+/** El objetivo de un vendedor en un foco (`PUT /api/admin/focos/{id}/objetivos`, solo el dueño). */
+export interface ObjetivoFoco {
+  idPersonal: number
+  nombre: string
+  /** Cuántos clientes de su cartera tienen que comprar algún artículo del foco en el mes. */
+  clientes: number
+  /** Cuántos compraron hasta ahora (la regla de `/api/cobertura?foco=`, sin filtros); 0 en un mes que no empezó. */
+  clientesConCompra: number
 }
 
 /**

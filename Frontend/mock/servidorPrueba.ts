@@ -117,7 +117,9 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
     if (ruta === '/api/sincronizacion/estado') return responder(res, 200, sinc.estado(ayerArgentina()))
     if (ruta === '/api/cobertura/vendedores') return responder(res, 200, vendedoresVisibles(rol, vendedoresDelOperario(email)))
     if (ruta === '/api/cobertura/unidades') return responder(res, 200, UNIDADES)
-    if (ruta === '/api/cobertura/focos') return responder(res, 200, focos.delMes(p))
+    // Los objetivos de clientes, solo de los vendedores que la persona ve (el dueño, todos)
+    if (ruta === '/api/cobertura/focos')
+      return responder(res, 200, focos.delMes(p, rol === 'admin' ? null : vendedoresVisibles(rol, vendedoresDelOperario(email)).map((v) => v.id)))
     if (ruta === '/api/cobertura') {
       await demora(350)
       return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))
@@ -156,6 +158,7 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   const exclusion = ruta.match(/^\/api\/admin\/exclusiones\/(\d+)$/)
   const vital = ruta.match(/^\/api\/admin\/clientes\/(\d+)\/vital$/)
   const foco = ruta.match(/^\/api\/admin\/focos\/(\d+)$/)
+  const objetivos = ruta.match(/^\/api\/admin\/focos\/(\d+)\/objetivos$/)
   // Con «sincuentas» en el usuario, /admin/cuentas responde 404 sin cuerpo, como la API real de hoy (sin ese endpoint)
   if (ruta.startsWith('/api/admin/cuentas') && /sincuentas/i.test(email)) return responder(res, 404)
   if (metodo === 'GET' && ruta === '/api/admin/cuentas') return responder(res, 200, admi.listarCuentas())
@@ -184,6 +187,7 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   if (metodo === 'GET' && ruta === '/api/admin/articulos') return responder(res, 200, focos.articulos())
   if (metodo === 'POST' && ruta === '/api/admin/focos') return responder(res, 201, focos.crear(await leerCuerpo(req), email))
   if (metodo === 'PUT' && foco) return responder(res, 200, focos.editar(Number(foco[1]), await leerCuerpo(req), email))
+  if (metodo === 'PUT' && objetivos) return responder(res, 200, focos.guardarObjetivos(Number(objetivos[1]), await leerCuerpo(req), email))
   if (metodo === 'DELETE' && foco) {
     focos.borrar(Number(foco[1]))
     return responder(res, 204)

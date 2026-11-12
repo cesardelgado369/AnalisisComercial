@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router-dom'
-import { useMesReferencia, useVistaFocos } from '../comercial/mesReferencia'
+import { useMesReferencia } from '../comercial/mesReferencia'
 import { nombreMes, nombreMesTitulo } from '../utils/formato'
 
 /** «Septiembre 2026». */
@@ -7,13 +6,11 @@ const mesConAnio = (mes: string) => `${nombreMesTitulo(mes)} ${mes.slice(0, 4)}`
 
 /**
  * El mes en el que se para toda la app (solo el dueño), en la cabecera: se ve en todas las pantallas, también en la
- * ficha (Cesar, 30/10: con el filtro de la barra no lo encontraba). En un mes pasado se pone ámbar. Al lado, «Focos»
- * prende la vista por focos de Cobertura. En el celular no entra en la cabecera: va en la barra de filtros.
+ * ficha (Cesar, 30/10: con el filtro de la barra no lo encontraba). En un mes pasado se pone ámbar. En el celular no
+ * entra en la cabecera: va en la barra de filtros. (Los focos son una sección del menú desde el 12/11.)
  */
 export function MesCabecera() {
   const { mes, enCurso, opciones, puedeElegir, elegir } = useMesReferencia()
-  const focos = useVistaFocos()
-  const navegar = useNavigate()
   if (!puedeElegir) return null
   const ultimo = opciones[opciones.length - 1]
   return (
@@ -30,16 +27,6 @@ export function MesCabecera() {
           ))}
         </select>
       </label>
-      <button
-        type="button"
-        className="header-mes-focos"
-        aria-pressed={focos.activa}
-        onClick={() => navegar(focos.destino)}
-        title={focos.activa ? 'Volver a los clientes por mes' : `Los clientes con una columna por foco de ${nombreMes(mes)}`}
-      >
-        <span className="icono icono-chico" aria-hidden>filter_alt</span>
-        Focos
-      </button>
     </div>
   )
 }
@@ -52,8 +39,8 @@ export function AvisoMesPasado() {
     <p className="aviso-mes-pasado" role="status">
       <span className="icono icono-chico" aria-hidden>calendar_month</span>
       <span>
-        Estás viendo <strong>{nombreMes(mes)} de {mes.slice(0, 4)}</strong>: Cobertura, Volumen, Devoluciones y la ficha
-        muestran ese mes y los tres anteriores.
+        Estás viendo <strong>{nombreMes(mes)} de {mes.slice(0, 4)}</strong>: Cobertura, Focos, Volumen, Devoluciones y la
+        ficha muestran ese mes y los tres anteriores.
       </span>
       <button type="button" className="btn" onClick={() => elegir(null)}>
         Volver a {nombreMes(opciones[opciones.length - 1])}

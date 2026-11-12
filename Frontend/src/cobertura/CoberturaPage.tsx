@@ -1,10 +1,9 @@
 import { Suspense, lazy, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import type { ChipCobertura, Cobertura } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { BarraFiltros, deLista, useFiltrosComerciales } from '../comercial/filtros'
 import { Chips, SinClientes } from '../comercial/lista'
-import { useVistaFocos } from '../comercial/mesReferencia'
 import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { ErrorCarga } from '../components/ErrorCarga'
 import { Segmentado } from '../components/Segmentado'
@@ -16,7 +15,6 @@ import { CHIPS, textoChip } from './estados'
 import { PorVendedor } from './PorVendedor'
 import { ResumenCobertura } from './ResumenCobertura'
 import { TablaCobertura, type Orden } from './TablaCobertura'
-import { VistaFocos } from './VistaFocos'
 import './cobertura.css'
 
 /** El mapa (Leaflet) se baja recién cuando alguien lo abre: no pesa en la tabla. */
@@ -35,9 +33,8 @@ const ORDENES: Orden[] = ['codigo', 'codigo-desc', 'nombre', 'nombre-desc']
  *   muestran. El orden de la tabla es lo único que se resuelve en el navegador.
  * - El operario de un solo vendedor no ve el filtro de vendedor (la API lo deja fijo en él); la lista sale de
  *   `/api/sesion`. Los filtros son los de `useFiltrosComerciales`, los mismos de Volumen y Devoluciones.
- * - Una tercera vista, **Focos** (`?vista=focos`, Cesar 05/11; el dueño también la abre con «Focos» junto al mes):
- *   una columna por foco del mes en lugar de los meses (VistaFocos). Desde el 11/11 la ven también los vendedores,
- *   cada uno con sus clientes (pedido de Checho).
+ * - Los focos del mes ya no son una vista de Cobertura: desde el 12/11 son su propia sección (`/focos`, Cesar). El link
+ *   viejo (`?vista=focos`) lleva ahí con los mismos filtros.
  */
 export function CoberturaPage() {
   const filtros = useFiltrosComerciales()
@@ -46,8 +43,6 @@ export function CoberturaPage() {
   const orden = deLista<Orden>(params.get('orden'), ORDENES, 'codigo')
   const vistaUrl = params.get('vista')
   const vista: 'tabla' | 'mapa' | 'focos' = vistaUrl === 'mapa' ? 'mapa' : vistaUrl === 'focos' ? 'focos' : 'tabla'
-  const vistaFocos = useVistaFocos()
-  const navegar = useNavigate()
   // Los cuatro meses en los que está parada la app (el en curso y los tres anteriores, o los del mes que eligió el
   // dueño). Mes de corte (`mesHasta`): el último, o otro de esos que se elija en el mapa; la cartera, los colores del
   // mapa y el compró o no compró son todos de ese mes (lo resuelve la API).
@@ -80,20 +75,16 @@ export function CoberturaPage() {
       opciones={[
         { valor: 'tabla', texto: 'Tabla' },
         { valor: 'mapa', texto: 'Mapa' },
-        { valor: 'focos', texto: 'Focos' },
       ]}
-      onCambio={(v) => (v === 'focos' ? navegar(vistaFocos.destino) : cambiar('vista', v === 'mapa' ? 'mapa' : null))}
+      onCambio={(v) => cambiar('vista', v === 'mapa' ? 'mapa' : null)}
     />
   )
 
-  if (vista === 'focos')
-    return (
-      <section className="pagina cob">
-        <BarraFiltros filtros={filtros} sinFoco />
-        {/* Los focos son los del mes en el que está parada la app: el mes de corte del mapa no cuenta acá */}
-        <VistaFocos filtros={filtros} mes={mesRef} orden={orden} onOrden={cambiarOrden} selectorVista={selectorVista} />
-      </section>
-    )
+  if (vista === 'focos') {
+    const p = new URLSearchParams(params)
+    for (const clave of ['vista', 'foco', 'chip']) p.delete(clave)
+    return <Navigate to={`/focos${p.size ? `?${p}` : ''}`} replace />
+  }
 
   return (
     <section className="pagina cob">

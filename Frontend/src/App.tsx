@@ -14,6 +14,7 @@ import {
   DevolucionesPage,
   FichaPage,
   FocosPage,
+  FocosSeccion,
   PerfilPage,
   SincronizacionPage,
   VolumenPage,
@@ -38,6 +39,7 @@ export default function App() {
               <Route element={<Layout />}>
                 <Route index element={<CoberturaPage />} />
                 <Route path="cliente/:id" element={<FichaPage />} />
+                <Route path="focos" element={<FocosSeccion />} />
                 {/* El operario, por ahora, solo Cobertura y la ficha (`sesion.veBultos`, 30/10) */}
                 <Route element={<SoloConBultos />}>
                   <Route path="volumen" element={<VolumenPage />} />

@@ -11,7 +11,7 @@ import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { mesesDisponibles, nombrePropio, sumarMes } from '../cobertura/estados'
 import { Parrafo } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
-import { cantidad, formatoBultos, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { cantidad, formatoBultos, formatoEntero, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
 import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
 import { ETIQUETA_MEDIDA } from './medidas'
 import { VentanaVendedor, type ClaveVendedorFoco } from './VentanaVendedor'
@@ -22,6 +22,7 @@ import { Segmentado } from '../components/Segmentado'
 import { useVentana } from '../components/Ventana'
 import '../cobertura/cobertura.css'
 import { ModalFoco } from './ModalFoco'
+import { ModalObjetivos } from './ModalObjetivos'
 import './admin.css'
 
 /**
@@ -38,6 +39,8 @@ export function FocosPage() {
   const [params, setParams] = useSearchParams()
   const focos = useConsulta<Foco[]>('/admin/focos', 'No pudimos leer los focos.')
   const [modal, setModal] = useState<{ foco: Foco | null } | null>(null)
+  // Los objetivos de clientes de cada vendedor en un foco (Cesar, 12/11)
+  const [objetivos, setObjetivos] = useState<Foco | null>(null)
   const [copiando, setCopiando] = useState(false)
   const [aviso, setAviso] = useState<{ ok: boolean; texto: string } | null>(null)
 
@@ -83,7 +86,12 @@ export function FocosPage() {
     for (const f of paraCopiar) {
       try {
         const cuerpo: FocoEnvio = { mes, nombre: f.nombre, idsArticulo: f.articulos.map((a) => a.idArticulo), medida: f.medida, meta: f.meta }
-        await api.post<Foco>('/admin/focos', cuerpo)
+        const nuevo = await api.post<Foco>('/admin/focos', cuerpo)
+        // Con sus objetivos de clientes, que Checho después ajusta
+        if (f.objetivos.length)
+          await api.put<Foco>(`/admin/focos/${nuevo.idFoco}/objetivos`, {
+            objetivos: f.objetivos.map((o) => ({ idPersonal: o.idPersonal, clientes: o.clientes })),
+          })
       } catch (e) {
         fallas.push(`${f.nombre} (${e instanceof ApiError ? e.mensajes.join(' ') : 'probá de nuevo'})`)
       }
@@ -228,16 +236,30 @@ export function FocosPage() {
                         </Parrafo>
                       </Ayuda>
                     </h3>
-                    <button type="button" className="btn-texto foco-editar" onClick={() => setModal({ foco: f })}>
-                      <span className="icono icono-chico" aria-hidden>edit</span>
-                      Editar<span className="sr-solo"> {f.nombre}</span>
-                    </button>
+                    <span className="foco-cabecera-acciones">
+                      <button type="button" className="btn-texto foco-editar" onClick={() => setObjetivos(f)}>
+                        <span className="icono icono-chico" aria-hidden>flag</span>
+                        Objetivos<span className="sr-solo"> de {f.nombre}</span>
+                      </button>
+                      <button type="button" className="btn-texto foco-editar" onClick={() => setModal({ foco: f })}>
+                        <span className="icono icono-chico" aria-hidden>edit</span>
+                        Editar<span className="sr-solo"> {f.nombre}</span>
+                      </button>
+                    </span>
                   </header>
-                  {f.meta !== null && (
+                  {(f.meta !== null || f.objetivos.length > 0) && (
                     <p className="foco-contenedor-mide">
-                      <strong className="foco-meta">
-                        {f.medida === 'vol' ? `Meta ${formatoBultos(f.meta)} bultos` : `Meta ${formatoPorcentaje(f.meta)} de los clientes`}
-                      </strong>
+                      {f.meta !== null && (
+                        <strong className="foco-meta">
+                          {f.medida === 'vol' ? `Meta ${formatoBultos(f.meta)} bultos` : `Meta ${formatoPorcentaje(f.meta)} de los clientes`}
+                        </strong>
+                      )}
+                      {f.objetivos.length > 0 && (
+                        <button type="button" className="foco-meta foco-objetivos-resumen" onClick={() => setObjetivos(f)}>
+                          <span className="icono icono-chico" aria-hidden>flag</span>
+                          Objetivo: {formatoEntero(f.objetivos.reduce((s, o) => s + o.clientes, 0))} clientes entre {f.objetivos.length} {f.objetivos.length === 1 ? 'vendedor' : 'vendedores'}
+                        </button>
+                      )}
                     </p>
                   )}
                   <div className="foco-tarjeta-articulos" aria-label="Artículos">
@@ -251,6 +273,7 @@ export function FocosPage() {
                       ctx={ctx}
                       alPasar={ventanita.alPasar}
                       enfocado={ventanita.abierta?.clave.idFoco === f.idFoco ? ventanita.abierta.clave.idPersonal : null}
+                      objetivos={f.objetivos}
                     />
                   ) : mes !== proximo && !analisis.errores.length ? (
                     <LoadingDefault texto="Armando cómo viene…" />
@@ -272,6 +295,18 @@ export function FocosPage() {
           fila={ventanita.abierta.fila}
           onEntrar={ventanita.quedarse}
           onSalir={ventanita.salir}
+        />
+      )}
+
+      {objetivos && (
+        <ModalObjetivos
+          foco={objetivos}
+          analizado={analisis.a?.focos.find((x) => x.idFoco === objetivos.idFoco) ?? null}
+          onCerrar={() => setObjetivos(null)}
+          onGuardado={(texto) => {
+            setObjetivos(null)
+            setAviso({ ok: true, texto })
+          }}
         />
       )}
 

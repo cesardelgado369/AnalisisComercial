@@ -206,17 +206,6 @@ input[type="checkbox"], input[type="radio"] { width: 16px; height: 16px; accent-
 }
 .header-mes:hover { background: rgba(255, 255, 255, .22); }
 .header-mes-elegir { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; font-size: inherit; font-weight: inherit; color: inherit; cursor: pointer; }
-.header-mes-focos {
-  display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 8px; cursor: pointer;
-  font: inherit; font-size: 12px; font-weight: 700; color: inherit; background: rgba(255, 255, 255, .16);
-  border: none; border-radius: 999px;
-}
-.header-mes-focos:hover { background: rgba(255, 255, 255, .28); }
-.header-mes-focos:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-.header-mes.pasado .header-mes-focos { background: rgba(69, 26, 3, .1); }
-.header-mes.pasado .header-mes-focos:hover { background: rgba(69, 26, 3, .18); }
-/* Con la vista por focos prendida, el botón blanco */
-.header-mes-focos[aria-pressed="true"], .header-mes.pasado .header-mes-focos[aria-pressed="true"] { background: #fff; color: var(--acento); }
 .header-mes select {
   height: 34px; padding: 0 30px 0 2px; border: 0; border-radius: 999px; font-size: 13px; font-weight: 700; color: inherit;
   cursor: pointer; appearance: none; -webkit-appearance: none;

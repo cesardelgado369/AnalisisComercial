@@ -89,6 +89,20 @@
 .ficha-dev-pct { font-size: 20px; font-weight: 800; color: var(--acento); font-variant-numeric: tabular-nums; }
 .ficha-dev-detalle { font-size: 12px; color: var(--texto-2); font-variant-numeric: tabular-nums; }
 .ficha-dev-titulo { margin: 4px 0 -8px; font-size: 14px; font-weight: 800; }
+/* La línea de tiempo (pestaña Línea de tiempo, Cesar 12/11): la de la ventanita, con su azul, sin scroll propio */
+.ficha-linea { --azul: #1d4ed8; --azul-claro: #93c5fd; --azul-fondo: #eff6ff; margin-top: 8px; border: 1px solid var(--superficie-media); border-radius: var(--radio); overflow: hidden; }
+.ficha-linea .ventana-columnas { padding: 10px 22px 4px 14px; background: var(--superficie-baja); }
+.ficha-linea .ventana-linea { padding: 10px 14px 4px; overflow: visible; }
+.ficha-linea .mov-fecha { font-size: 13px; }
+.ficha-linea .mov-tipo, .ficha-linea .mov-totales { font-size: 13px; }
+.ficha-linea .mov-lineas li { font-size: 12px; }
+.ficha-linea .mov-rubro { font-size: 11px; }
+.ficha-linea-total {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px;
+  font-size: 13px; font-weight: 700; color: #fff; background: var(--azul);
+}
+.ficha-linea-total .mov-entregado { color: #fff; }
+.ficha-linea-total .mov-devuelto { color: #fecaca; }
 .ficha-dev-pct-fila { text-align: right; font-variant-numeric: tabular-nums; }
 .ficha-tabla { width: 100%; border-collapse: collapse; }
 .ficha-tabla thead th {
@@ -109,6 +123,12 @@
 .ficha-tabla tbody tr:not(.ficha-grupo):hover { background: var(--superficie-baja); }
 
 @media (max-width: 720px) {
+  /* La línea de tiempo en el teléfono (A03): las columnas de números más angostas, para que entren los artículos */
+  .ficha-linea .ventana-columnas span, .ficha-linea .ventana-numeros > span { width: 52px; }
+  .ficha-linea .ventana-columnas span { white-space: normal; line-height: 1.15; }
+  .ficha-linea .ventana-columnas { padding: 8px 18px 4px 10px; }
+  .ficha-linea .ventana-linea { padding: 10px 10px 4px; }
+  .ficha-linea .mov-lineas li { gap: 6px; }
   .ficha-cabecera { padding: 16px; }
   .ficha-titulo h1 { font-size: 22px; line-height: 28px; }
   .ficha-datos { grid-template-columns: 1fr; }

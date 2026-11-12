@@ -1,4 +1,4 @@
-import { memo, useMemo, type ReactNode } from 'react'
+import { memo, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETA_MEDIDA } from '../admin/medidas'
 import { enParalelo } from '../api/enParalelo'
@@ -24,7 +24,19 @@ type FilaFocos = Pick<ClienteCobertura, 'idCliente' | 'razonSocial' | 'ruta' | '
 /** Cómo va la meta de un CCC: cumplida, o cuántos clientes faltan (en un mes cerrado, si no se llegó). */
 type EstadoMeta = { meta: number; cumplida: boolean; texto: string }
 /** Lo de arriba de cada foco: el porcentaje, su detalle, el ancho de la barra y, si el CCC tiene meta, cómo va. */
-type Indicador = { valor: number | null; detalle: string; meta: EstadoMeta | null }
+type Indicador = {
+  valor: number | null
+  detalle: string
+  meta: EstadoMeta | null
+  /** VOL: los bultos del mes contra los del anterior (la barra llega hasta ahí y se pone verde al pasarlo). */
+  vol: { actual: number; base: number } | null
+}
+
+/** El objetivo de clientes del vendedor que se mira, o de todo el equipo (Cesar, 12/11). */
+type ObjetivoVisto = { clientes: number; conCompra: number; equipo: boolean }
+
+/** VOL: la barra va hasta 150 % (o más si lo pasó), con la marca del mes anterior en el 100 %. */
+const escalaVol = (valor: number | null) => Math.max(150, Math.ceil((valor ?? 0) / 10) * 10)
 
 /**
  * La meta de un CCC es el porcentaje de la cartera que tiene que comprar (Checho). Para el vendedor se dice en clientes,
@@ -37,15 +49,15 @@ function metaCcc(meta: number, conCompra: number, cartera: number, enCurso: bool
 }
 
 /**
- * La vista por focos de Cobertura (Cesar, 05/11; los vendedores desde el 11/11, con sus clientes): los clientes con una
+ * Los focos del mes (la sección Focos desde el 12/11; los vendedores la ven desde el 11/11, con sus clientes): los clientes con una
  * columna por foco del mes en lugar
  * de los meses, y arriba el número de cada foco. Los CCC dicen si el cliente compró algún artículo del foco
  * (`GET /api/cobertura?foco=` de un solo mes); los VOL, cuántos bultos lleva contra el mes anterior al mismo día hábil
  * (`GET /api/volumen?foco=`). Los números los arma la API, acá solo se ponen lado a lado. Los filtros de vendedor, día,
  * unidad y la búsqueda valen igual; los chips no (cada foco tendría los suyos).
  */
-export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden; onOrden: (o: Orden) => void; selectorVista: ReactNode }) {
-  const { filtros, mes, orden, onOrden, selectorVista } = props
+export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden; onOrden: (o: Orden) => void }) {
+  const { filtros, mes, orden, onOrden } = props
   const { focos, busqueda, buscar, verTodos, titulo, conVendedor, sesion } = filtros
   // Sin bultos (el vendedor, `veBultos` en false): los VOL se miran como los CCC, si cada cliente compró o no algún
   // artículo del foco, sin bultos ni su meta (que es de bultos). Tampoco va la etiqueta CCC o VOL
@@ -108,6 +120,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
           detalle: `${formatoEntero(k.clientesConCompra)} de ${formatoEntero(k.clientesCartera)}`,
           // Sin compras ni cartera (el mes sin datos) no hay meta que medir
           meta: meta !== null && k.porcentaje !== null ? metaCcc(meta, k.clientesConCompra, k.clientesCartera, k.mesEnCurso) : null,
+          vol: null,
         }
       }
       // En los VOL la meta es de bultos del foco entero, no de la cartera que se mira: acá no se muestra
@@ -116,6 +129,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
         valor: t.porcentaje,
         detalle: t.bultosBase === null ? `${formatoBultos(t.bultosActual ?? 0)} bultos` : `${formatoBultos(t.bultosActual ?? 0)} de ${formatoBultos(t.bultosBase)} bultos`,
         meta: null,
+        vol: t.bultosBase === null || t.porcentaje === null ? null : { actual: t.bultosActual ?? 0, base: t.bultosBase },
       }
     })
     const cartera = 'chips' in primera ? primera.chips.todos : 0
@@ -124,6 +138,19 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
   }, [respuestas, lista])
 
   const hayVol = !!lista?.some((f) => f.medida === 'vol')
+  // El objetivo que se mira: el del vendedor elegido; si no hay uno elegido, los que manda la API (el vendedor, el suyo;
+  // supervisor y dueño, los de su equipo, sumados)
+  const vendedorVisto = filtros.vendedor
+  const objetivoDe = (f: Foco): ObjetivoVisto | null => {
+    const de = f.objetivos.filter((o) => vendedorVisto === null || o.idPersonal === vendedorVisto)
+    if (!de.length) return null
+    return {
+      clientes: de.reduce((s, o) => s + o.clientes, 0),
+      conCompra: de.reduce((s, o) => s + o.clientesConCompra, 0),
+      equipo: vendedorVisto === null && sesion.rol !== 'operario' && de.length > 1,
+    }
+  }
+  const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
   const enCurso = !!respuestas?.some((r) => ('kpis' in r ? r.kpis.at(-1)?.mesEnCurso : (r as Volumen).comparacion.tipo === 'mismoDiaHabil'))
 
   return (
@@ -142,6 +169,10 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
             {lista.map((f, i) => {
               const k = armado.indicadores[i]
               const pct = k.valor === null ? '—' : formatoPorcentaje(k.valor)
+              const o = objetivoDe(f)
+              const faltan = o ? o.clientes - o.conCompra : 0
+              const escala = k.vol ? escalaVol(k.valor) : 100
+              const superado = !!k.vol && k.vol.actual >= k.vol.base
               return (
                 <li key={f.idFoco} className="cob-kpi cob-kpi-foco">
                   <span className="cob-kpi-valor">{pct}</span>
@@ -159,8 +190,30 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                       <span className="cob-kpi-meta-estado">{k.meta.texto}</span>
                     </span>
                   )}
+                  {o && (
+                    // El objetivo de clientes que puso Checho (Cesar, 12/11), como la meta: en dos renglones
+                    <span className={faltan <= 0 ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
+                      <span className="cob-kpi-meta-valor">
+                        <span className="icono icono-chico" aria-hidden>{faltan <= 0 ? 'check_circle' : 'flag'}</span>
+                        {o.equipo ? 'Objetivo del equipo' : 'Objetivo'} {formatoEntero(o.clientes)}
+                      </span>
+                      <span className="cob-kpi-meta-estado">
+                        {faltan <= 0 ? 'cumplido' : faltan === 1 ? 'falta 1 cliente' : `faltan ${formatoEntero(faltan)} clientes`}
+                      </span>
+                    </span>
+                  )}
+                  {k.vol && (
+                    // VOL (Cesar, 12/11): el objetivo es vender más que el mes anterior
+                    <span className={superado ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
+                      <span className="cob-kpi-meta-estado">
+                        {superado
+                          ? `pasó ${anteriorCorto} por ${formatoBultos(k.vol.actual - k.vol.base)}`
+                          : `faltan ${formatoBultos(k.vol.base - k.vol.actual)} para ${anteriorCorto}`}
+                      </span>
+                    </span>
+                  )}
                   <span
-                    className="cob-kpi-barra"
+                    className={k.vol ? `cob-kpi-barra cob-kpi-barra-vol${superado ? ' superado' : ''}` : 'cob-kpi-barra'}
                     role="progressbar"
                     aria-valuemin={0}
                     aria-valuemax={100}
@@ -171,8 +224,9 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                         : `${f.nombre}: ${pct} de los clientes compraron`
                     }
                   >
-                    <span style={{ width: `${Math.min(100, Math.max(0, k.valor ?? 0))}%` }} />
+                    <span style={{ width: `${Math.min(100, (Math.max(0, k.valor ?? 0) / escala) * 100)}%` }} />
                     {k.meta && <span className="cob-kpi-barra-meta" style={{ left: `${Math.min(100, k.meta.meta)}%` }} aria-hidden />}
+                    {k.vol && <span className="cob-kpi-barra-meta" style={{ left: `${(100 / escala) * 100}%` }} aria-hidden />}
                   </span>
                 </li>
               )
@@ -190,7 +244,6 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       <div className="cob-barra">
         <BuscadorCobertura busqueda={busqueda} onBuscar={buscar} />
         <Referencias mes={mes} enCurso={enCurso} conVol={hayVol} />
-        {selectorVista}
       </div>
 
       <div className="cob-cuerpo">
@@ -288,7 +341,7 @@ const TablaFocos = memo(function TablaFocos(props: {
 }) {
   const { filas, focos, mes, orden, onOrden, conVendedor, conMedida } = props
   const angosto = useMedia('(max-width: 767px)')
-  const ficha = useAbrirFicha('Cobertura')
+  const ficha = useAbrirFicha('Focos')
   const lista = useMemo(() => ordenar(filas, orden), [filas, orden])
 
   if (angosto) {

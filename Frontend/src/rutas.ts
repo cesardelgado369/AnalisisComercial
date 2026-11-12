@@ -17,6 +17,7 @@ const cargas = {
   clasificacion: () => import('./admin/ClasificacionClientesPage'),
   sincronizacion: () => import('./admin/SincronizacionPage'),
   focos: () => import('./admin/FocosPage'),
+  seccionFocos: () => import('./focos/FocosSeccion'),
 }
 
 export const FichaPage = lazy(() => cargas.ficha().then((m) => ({ default: m.FichaPage })))
@@ -29,8 +30,9 @@ export const ClientesExcluidosPage = lazy(() => cargas.exclusiones().then((m) =>
 export const ClasificacionClientesPage = lazy(() => cargas.clasificacion().then((m) => ({ default: m.ClasificacionClientesPage })))
 export const SincronizacionPage = lazy(() => cargas.sincronizacion().then((m) => ({ default: m.SincronizacionPage })))
 export const FocosPage = lazy(() => cargas.focos().then((m) => ({ default: m.FocosPage })))
+export const FocosSeccion = lazy(() => cargas.seccionFocos().then((m) => ({ default: m.FocosSeccion })))
 
-const DE_TODOS = [cargas.ficha, cargas.volumen, cargas.devoluciones]
+const DE_TODOS = [cargas.ficha, cargas.seccionFocos, cargas.volumen, cargas.devoluciones]
 /** Las que no se adelantan sin `sesion.veBultos` (no las va a abrir). */
 const CON_BULTOS: unknown[] = [cargas.volumen, cargas.devoluciones]
 const POR_ROL: Record<Rol, (() => Promise<unknown>)[]> = {

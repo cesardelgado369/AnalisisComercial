@@ -1,13 +1,13 @@
 import { useCallback, type CSSProperties, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import type { ClaseAbc, Foco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useSesionApp } from '../auth/SesionApp'
 import { DIAS_VISITA, nombrePropio, nombreUnidad, unidadEnFrase } from '../cobertura/estados'
-import { cantidad, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { cantidad, nombreMesTitulo } from '../utils/formato'
 import type { ContextoAyuda } from './ayuda'
 import { IconoCalendario, IconoFoco, IconoPaquete, IconoVendedor } from './IconosFiltro'
-import { useMesReferencia, useVistaFocos, type MesReferencia } from './mesReferencia'
+import { useMesReferencia, type MesReferencia } from './mesReferencia'
 
 /** Un valor de la URL, si es uno de los válidos; si no (o si no está), el de siempre. */
 export function deLista<T extends string>(valor: string | null, validos: readonly T[], defecto: T): T {
@@ -273,8 +273,6 @@ export function Titulo({ icono, children }: { icono: ReactNode; children: string
  */
 function SelectorMes({ referencia }: { referencia: MesReferencia }) {
   const { mes, enCurso, opciones, elegir } = referencia
-  const focos = useVistaFocos()
-  const navegar = useNavigate()
   const ultimo = opciones[opciones.length - 1]
   return (
     <div className="cob-filtro-mes">
@@ -289,16 +287,6 @@ function SelectorMes({ referencia }: { referencia: MesReferencia }) {
           ))}
         </select>
       </label>
-      <button
-        type="button"
-        className="btn cob-filtro-mes-focos"
-        aria-pressed={focos.activa}
-        onClick={() => navegar(focos.destino)}
-        title={focos.activa ? 'Volver a los clientes por mes' : `Los clientes con una columna por foco de ${nombreMes(mes)}`}
-      >
-        <span className="icono icono-chico" aria-hidden>filter_alt</span>
-        Focos
-      </button>
     </div>
   )
 }

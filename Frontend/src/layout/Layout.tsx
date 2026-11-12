@@ -41,6 +41,8 @@ const MODO_PRUEBA = import.meta.env.MODE === 'mock'
  */
 export const MENU: ItemMenu[] = [
   { ruta: '/', texto: 'Cobertura', icono: 'groups', roles: TODOS, grupo: 'comercial' },
+  // Los focos del mes de Checho, su propia sección desde el 12/11 (Cesar); antes, una vista de Cobertura
+  { ruta: '/focos', texto: 'Focos', icono: 'track_changes', roles: TODOS, grupo: 'comercial' },
   { ruta: '/volumen', texto: 'Volumen', icono: 'inventory_2', roles: TODOS, grupo: 'comercial', conBultos: true },
   { ruta: '/devoluciones', texto: 'Devoluciones', icono: 'assignment_return', roles: TODOS, grupo: 'comercial', conBultos: true },
   // Mi ruta de hoy, oculta hasta que tenga pantalla (29/10). El Tablero, oculto por ahora (30/10, pedido de Cesar):

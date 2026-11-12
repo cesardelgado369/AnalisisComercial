@@ -1,5 +1,4 @@
 import { useSyncExternalStore } from 'react'
-import { useLocation } from 'react-router-dom'
 import { useSesionApp } from '../auth/SesionApp'
 import { mesesDisponibles, ventanaDe } from '../cobertura/estados'
 
@@ -52,23 +51,3 @@ export type MesReferencia = ReturnType<typeof useMesReferencia>
 
 /** Dónde se arman los focos de un mes (`/admin/focos?mes=`). */
 export const rutaFocos = (mes: string) => `/admin/focos?mes=${mes}`
-
-/**
- * «Focos» junto al mes del dueño (Cesar, 05/11): prende y apaga la vista por focos de Cobertura (una columna por foco
- * del mes en lugar de los meses). En Cobertura conserva los filtros (menos el foco suelto, que esa vista no usa); desde
- * otra sección lleva a Cobertura con la vista prendida.
- */
-export function useVistaFocos() {
-  const { pathname, search } = useLocation()
-  const enCobertura = pathname === '/'
-  const p = new URLSearchParams(enCobertura ? search : '')
-  const activa = enCobertura && p.get('vista') === 'focos'
-  if (activa) p.delete('vista')
-  else {
-    p.set('vista', 'focos')
-    p.delete('foco')
-    p.delete('chip')
-  }
-  const qs = p.toString()
-  return { activa, destino: qs ? `/?${qs}` : '/' }
-}

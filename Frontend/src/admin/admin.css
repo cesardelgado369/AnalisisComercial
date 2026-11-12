@@ -262,6 +262,36 @@
 .foco-barra-relleno { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--acento); }
 .foco-barra-antes { position: absolute; top: -3px; width: 2px; height: 14px; margin-left: -1px; border-radius: 1px; background: var(--texto); box-shadow: 0 0 0 1px var(--superficie); }
 .foco-barra-meta { position: absolute; top: -4px; height: 16px; margin-left: -1px; border-left: 2px dashed var(--texto-2); }
+/* VOL (Cesar, 12/11): el objetivo es vender más que el mes anterior. Verde cuando ya lo pasó */
+.foco-barra.superado .foco-barra-relleno { background: var(--ok); }
+.foco-vol-avance { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.foco-vol-barra { position: relative; display: block; height: 14px; border-radius: 7px; background: var(--superficie-media); }
+.foco-vol-relleno { position: absolute; inset: 0 auto 0 0; border-radius: 7px; background: var(--acento); transition: width .4s ease; }
+.foco-vol-barra.superado .foco-vol-relleno { background: var(--ok); }
+.foco-vol-marca { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--texto); box-shadow: 0 0 0 1px var(--superficie); }
+.foco-vol-marca-texto { position: absolute; bottom: 100%; left: 50%; margin-bottom: 2px; transform: translateX(-50%); font-size: 11px; font-weight: 800; color: var(--texto); white-space: nowrap; }
+.foco-vol-texto { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: var(--texto); }
+.foco-vol-texto .icono { color: var(--acento); }
+.foco-vol-texto.superado, .foco-vol-texto.superado .icono { color: var(--ok); }
+/* El objetivo de clientes de cada vendedor, debajo de su nombre (Cesar, 12/11) */
+.foco-vendedor-quien { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.foco-objetivo { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 700; color: var(--texto-2); white-space: nowrap; }
+.foco-objetivo .icono { font-size: 14px; color: var(--acento); }
+.foco-objetivo.cumplido, .foco-objetivo.cumplido .icono { color: var(--ok); }
+.foco-cabecera-acciones { display: inline-flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.foco-objetivos-resumen { gap: 4px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; color: var(--acento); background: none; border-style: solid; border-color: var(--acento); }
+.foco-objetivos-resumen .icono { font-size: 15px; }
+.foco-objetivos-resumen:hover { background: var(--superficie-baja); }
+/* El modal de objetivos: un renglón por vendedor con su cartera y el objetivo */
+.objetivos-explicacion { margin: 0 0 6px; font-size: 14px; color: var(--texto-2); }
+.objetivos-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.objetivos-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--superficie-media); }
+.objetivos-vendedor { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; cursor: pointer; }
+.objetivos-dato { font-size: 12px; font-weight: 500; color: var(--texto-2); }
+.objetivos-entrada { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 13px; color: var(--texto-2); }
+.adm-form .objetivos-entrada input { width: 120px; height: 42px; text-align: right; font-size: 16px; font-weight: 700; }
+.adm-form .objetivos-entrada input::placeholder { font-size: 13px; font-weight: 500; }
+.objetivos-total { margin: 12px 0 0; text-align: right; font-size: 14px; }
 .foco-analisis-vendedores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .foco-vendedor {
   display: grid; grid-template-columns: minmax(110px, 150px) minmax(60px, 1fr) 124px 92px; align-items: center; gap: 12px;
@@ -383,7 +413,9 @@
   .foco-del-mes-acciones, .foco-del-mes-acciones .btn { width: 100%; justify-content: center; }
   .foco-mes { min-width: 112px; }
   .foco-contenedor { padding: 0 16px 16px; }
-  .foco-contenedor-cabecera { margin: 0 -16px; padding: 10px 16px; }
+  .foco-contenedor-cabecera { margin: 0 -16px; padding: 10px 16px; flex-wrap: wrap; row-gap: 2px; }
+  /* Objetivos y Editar, abajo del nombre: el nombre entero en el teléfono (A03) */
+  .foco-cabecera-acciones { width: 100%; justify-content: flex-end; }
   /* Cada vendedor en dos renglones: nombre y números arriba, la barra abajo */
   .foco-vendedor { grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 10px; padding: 8px; }
   .foco-vendedor .foco-barra { grid-column: 1 / -1; grid-row: 2; }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { AnalisisFocos as Analisis, ClaseAbc, CoberturaFoco, FocoAnalizado, VolumenFoco } from '../api/types'
+import type { AnalisisFocos as Analisis, ClaseAbc, CoberturaFoco, FocoAnalizado, ObjetivoFoco, VolumenFoco } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
 import { useMesReferencia } from '../comercial/mesReferencia'
 import type { ClaveVendedorFoco } from './VentanaVendedor'
@@ -68,14 +68,64 @@ function Diferencia({ m, contra, corto }: { m: Medicion; contra: string; corto: 
   )
 }
 
-/** La barra del mes (violeta), la rayita del mes anterior y, si hay meta, su marca punteada. */
-function Barra({ m, meta, escala }: { m: Medicion; meta: number | null; escala: number }) {
+/**
+ * La barra del mes (violeta), la rayita del mes anterior y, si hay meta, su marca punteada. En VOL (`superado`), verde
+ * cuando ya vendió más que el mes anterior: el objetivo es pasarlo (Cesar, 12/11).
+ */
+function Barra({ m, meta, escala, superado = false }: { m: Medicion; meta: number | null; escala: number; superado?: boolean }) {
   const lugar = (n: number) => `${Math.min(100, (Math.max(0, n) / escala) * 100)}%`
   return (
-    <span className="foco-barra" aria-hidden>
+    <span className={superado ? 'foco-barra superado' : 'foco-barra'} aria-hidden>
       {m.valor !== null && <span className="foco-barra-relleno" style={{ width: lugar(m.valor) }} />}
       {meta !== null && <span className="foco-barra-meta" style={{ left: lugar(meta) }} />}
       {m.antes !== null && <span className="foco-barra-antes" style={{ left: lugar(m.antes) }} />}
+    </span>
+  )
+}
+
+/**
+ * El total de un VOL (Cesar, 12/11: «hacele una barra de progreso mejor, el objetivo es que le vendan más tapas a los
+ * clientes que lo que se vendió el mes anterior»): una barra gruesa hasta lo del mes anterior, con la marca rotulada,
+ * verde si ya lo pasó, y en palabras cuánto falta para igualarlo o por cuánto lo pasó.
+ */
+function AvanceVolumen({ v, escala, ctx }: { v: VolumenFoco; escala: number; ctx: ContextoAnalisis }) {
+  const lugar = (n: number) => `${Math.min(100, (Math.max(0, n) / escala) * 100)}%`
+  if (v.bultosBase === null || v.porcentaje === null)
+    return <p className="foco-vol-texto">Sin {ctx.anterior} para comparar: van {formatoBultos(v.bultosActual)} bultos.</p>
+  const diferencia = v.bultosActual - v.bultosBase
+  const superado = diferencia >= 0
+  return (
+    <div className="foco-vol-avance">
+      <span className={superado ? 'foco-vol-barra superado' : 'foco-vol-barra'} aria-hidden>
+        <span className="foco-vol-relleno" style={{ width: lugar(v.porcentaje) }} />
+        <span className="foco-vol-marca" style={{ left: lugar(100) }}>
+          <span className="foco-vol-marca-texto">{ctx.anteriorCorto}</span>
+        </span>
+      </span>
+      <p className={superado ? 'foco-vol-texto superado' : 'foco-vol-texto'} title={`Contra ${ctx.vol}.`}>
+        <span className="icono icono-chico" aria-hidden>{superado ? 'trending_up' : 'flag'}</span>
+        {superado ? (
+          <span>
+            Ya pasó {ctx.parcial ? `${ctx.anterior} a esta altura` : ctx.anterior} por <strong>{formatoBultos(diferencia)} bultos</strong>
+          </span>
+        ) : (
+          <span>
+            Faltan <strong>{formatoBultos(-diferencia)} bultos</strong> para igualar {ctx.parcial ? `${ctx.anterior} a esta altura` : ctx.anterior}
+          </span>
+        )}
+      </p>
+    </div>
+  )
+}
+
+/** El objetivo de clientes de un vendedor (Cesar, 12/11): cuántos le faltan, o cumplido. */
+function Objetivo({ o }: { o: ObjetivoFoco }) {
+  const faltan = o.clientes - o.clientesConCompra
+  return (
+    <span className={faltan <= 0 ? 'foco-objetivo cumplido' : 'foco-objetivo'}>
+      <span className="icono icono-chico" aria-hidden>{faltan <= 0 ? 'check_circle' : 'flag'}</span>
+      Objetivo {formatoEntero(o.clientes)}
+      {faltan > 0 ? ` · ${faltan === 1 ? 'falta 1' : `faltan ${formatoEntero(faltan)}`}` : ' · cumplido'}
     </span>
   )
 }
@@ -146,8 +196,10 @@ export function MedicionFoco(props: {
   alPasar?: (clave: ClaveVendedorFoco | null, fila?: HTMLElement) => void
   /** El vendedor de la ventanita abierta en este foco, resaltado. */
   enfocado?: number | null
+  /** Los objetivos de clientes de cada vendedor (Cesar, 12/11), con sus compras sin filtros. */
+  objetivos?: ObjetivoFoco[]
 }) {
-  const { f, ctx, alPasar, enfocado } = props
+  const { f, ctx, alPasar, enfocado, objetivos = [] } = props
   const referencia = useMesReferencia()
   const contra = f.medida === 'vol' ? ctx.vol : ctx.ccc
   const total = f.medida === 'vol' ? deVol(f.total) : deCcc(f.total, true)
@@ -161,6 +213,7 @@ export function MedicionFoco(props: {
   // CCC va de 0 a 100; VOL puede pasar el 100 % del mes anterior: la escala crece hasta el más alto
   const escala =
     f.medida === 'ccc' ? 100 : Math.max(120, Math.ceil(Math.max(total.valor ?? 0, ...vendedores.map((v) => v.m.valor ?? 0)) / 10) * 10)
+  const objetivoDe = (idPersonal: number) => objetivos.find((o) => o.idPersonal === idPersonal)
   const destino = (idPersonal: number) =>
     f.medida === 'vol' ? `/volumen?vendedor=${idPersonal}&foco=${f.idFoco}` : `/?vendedor=${idPersonal}&foco=${f.idFoco}`
 
@@ -180,7 +233,7 @@ export function MedicionFoco(props: {
           </span>
         )}
       </div>
-      <Barra m={total} meta={metaBarra} escala={escala} />
+      {f.medida === 'vol' ? <AvanceVolumen v={f.total} escala={escala} ctx={ctx} /> : <Barra m={total} meta={metaBarra} escala={escala} />}
       <ul className="foco-analisis-vendedores" aria-label={`${f.nombre} por vendedor`}>
         {vendedores.map((v) => (
           <li key={v.idPersonal}>
@@ -195,8 +248,11 @@ export function MedicionFoco(props: {
               onClick={() => referencia.elegir(ctx.enCurso ? null : ctx.mes)}
               title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, metaBarra)}`}
             >
-              <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
-              <Barra m={v.m} meta={metaBarra} escala={escala} />
+              <span className="foco-vendedor-quien">
+                <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
+                {objetivoDe(v.idPersonal) && <Objetivo o={objetivoDe(v.idPersonal)!} />}
+              </span>
+              <Barra m={v.m} meta={metaBarra} escala={escala} superado={f.medida === 'vol' && (v.m.valor ?? 0) >= 100} />
               <span className="foco-vendedor-numeros">
                 <strong>{v.m.valor === null ? '—' : formatoPorcentaje(v.m.valor)}</strong>
                 <span className="foco-analisis-detalle">{v.m.detalle}</span>

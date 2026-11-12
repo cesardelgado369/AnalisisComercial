@@ -34,6 +34,8 @@ interface FocoMock {
   nombre: string
   medida: Medida
   meta: number | null
+  /** El objetivo de clientes de cada vendedor (idPersonal → clientes; Cesar, 12/11). */
+  objetivos: Map<number, number>
   idsArticulo: number[]
   actualizadoPor: string
   actualizado: string
@@ -86,6 +88,7 @@ const nuevo = (mes: string, nombre: string, idsArticulo: number[], dias: number,
   nombre,
   medida,
   meta,
+  objetivos: new Map(),
   idsArticulo,
   actualizadoPor: 'checho@madomi',
   actualizado: hace(dias),
@@ -100,14 +103,33 @@ const focos: FocoMock[] = [
   nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol', 400),
   nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
 ]
+// Los objetivos de clientes de Dulce de leche de noviembre (para probar: Nicolás cumple, los demás no todavía)
+focos[2].objetivos = new Map([[1, 10], [2, 20], [3, 15], [4, 12], [5, 25]])
 
 const descripcionDe = (idArt: number) => (idArt === ANULADO.idArticulo ? ANULADO.descripcion : articuloDe(idArt).descripcion)
-const respuesta = (f: FocoMock) => ({
+/**
+ * Los objetivos de clientes del foco (Cesar, 12/11), de los vendedores que se ven (null = todos, el dueño), con cuántos
+ * clientes de su cartera compraron algún artículo del foco en el mes (la regla de `/api/cobertura?foco=`, sin filtros).
+ */
+function objetivosDe(f: FocoMock, visibles: number[] | null) {
+  const m = f.mes > MES ? -1 : indiceMes(f.mes)
+  const filtro = filtroCompra(null, comoConsulta(f))
+  return VENDEDORES.filter((v) => f.objetivos.has(v.id) && (!visibles || visibles.includes(v.id))).map((v) => ({
+    idPersonal: v.id,
+    nombre: v.nombre,
+    clientes: f.objetivos.get(v.id)!,
+    clientesConCompra:
+      m < 0 ? 0 : datos().filter((c) => !excluidos.has(c.idCliente) && c.ruta.idPersonal === v.id && enCartera(c, m) && compro(c, m, filtro)).length,
+  }))
+}
+
+const respuesta = (f: FocoMock, visibles: number[] | null = null) => ({
   idFoco: f.idFoco,
   mes: f.mes,
   nombre: f.nombre,
   medida: f.medida,
   meta: f.meta,
+  objetivos: objetivosDe(f, visibles),
   articulos: f.idsArticulo.map((a) => ({ idArticulo: a, descripcion: descripcionDe(a) })),
   actualizadoPor: f.actualizadoPor,
   actualizado: f.actualizado,
@@ -122,14 +144,17 @@ function mesValido(texto: unknown, campo = 'mes') {
   return mes
 }
 
-/** `GET /api/cobertura/focos?mes=` (solo admin): los de ese mes, por nombre. Sin mes, el en curso. */
-export function delMes(p: URLSearchParams) {
+/**
+ * `GET /api/cobertura/focos?mes=`: los de ese mes, por nombre. Sin mes, el en curso. Los objetivos, solo de los
+ * vendedores que la persona ve (`visibles`; null = el dueño, todos).
+ */
+export function delMes(p: URLSearchParams, visibles: number[] | null = null) {
   const mes = p.get('mes') ? mesValido(p.get('mes')) : MES
-  return focos.filter((f) => f.mes === mes).sort(porNombre).map(respuesta)
+  return focos.filter((f) => f.mes === mes).sort(porNombre).map((f) => respuesta(f, visibles))
 }
 
 /** `GET /api/admin/focos`: los de todos los meses, el más nuevo primero y por nombre. */
-export const listar = () => [...focos].sort((a, b) => b.mes.localeCompare(a.mes) || porNombre(a, b)).map(respuesta)
+export const listar = () => [...focos].sort((a, b) => b.mes.localeCompare(a.mes) || porNombre(a, b)).map((f) => respuesta(f))
 
 /** Los artículos de un foco como filtro de compra (como `?foco=` en Cobertura). */
 function comoConsulta(foco: FocoMock): FocoConsulta {
@@ -180,7 +205,7 @@ function validar(cuerpo: Record<string, unknown>, idFoco: number | null) {
 /** `POST /api/admin/focos` → 201. */
 export function crear(cuerpo: Record<string, unknown>, email: string) {
   const { mes, nombre, ids, medida, meta } = validar(cuerpo, null)
-  const foco: FocoMock = { idFoco: siguiente++, mes, nombre, medida, meta, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
+  const foco: FocoMock = { idFoco: siguiente++, mes, nombre, medida, meta, objetivos: new Map(), idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() }
   focos.push(foco)
   return respuesta(foco)
 }
@@ -191,6 +216,31 @@ export function editar(idFoco: number, cuerpo: Record<string, unknown>, email: s
   if (!foco) throw new ErrorMock(404, 'Ese foco no existe.')
   const { mes, nombre, ids, medida, meta } = validar(cuerpo, idFoco)
   Object.assign(foco, { mes, nombre, medida, meta, idsArticulo: ids, actualizadoPor: email, actualizado: new Date().toISOString() })
+  return respuesta(foco)
+}
+
+/**
+ * `PUT /api/admin/focos/{id}/objetivos` `{ objetivos: [{ idPersonal, clientes }] }` (Cesar, 12/11): reemplaza los
+ * objetivos de clientes del foco; el vendedor que no va queda sin objetivo. Cada uno, un vendedor (no la casa) una sola
+ * vez, con 1 a 10.000 clientes. → 200 con el foco.
+ */
+export function guardarObjetivos(idFoco: number, cuerpo: Record<string, unknown>, email: string) {
+  const foco = focos.find((f) => f.idFoco === idFoco)
+  if (!foco) throw new ErrorMock(404, 'Ese foco no existe.')
+  const lista = Array.isArray(cuerpo.objetivos) ? (cuerpo.objetivos as Record<string, unknown>[]) : null
+  const nuevos = new Map<number, number>()
+  const mal = (texto: string) => new ErrorMock(400, 'Revisá los objetivos.', { objetivos: [texto] })
+  if (!lista) throw mal('Mandá la lista de objetivos.')
+  for (const o of lista) {
+    const id = o.idPersonal
+    const clientes = o.clientes
+    if (typeof id !== 'number' || !VENDEDORES.some((v) => v.id === id && !v.esCasa)) throw mal('Hay un vendedor que no existe.')
+    if (nuevos.has(id)) throw mal('Hay un vendedor repetido.')
+    if (typeof clientes !== 'number' || !Number.isInteger(clientes) || clientes < 1 || clientes > 10_000)
+      throw mal('Cada objetivo va de 1 a 10.000 clientes.')
+    nuevos.set(id, clientes)
+  }
+  Object.assign(foco, { objetivos: nuevos, actualizadoPor: email, actualizado: new Date().toISOString() })
   return respuesta(foco)
 }
 

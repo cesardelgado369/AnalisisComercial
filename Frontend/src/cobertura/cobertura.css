@@ -8,8 +8,6 @@
 /* El mes del dueño (con «Focos» al lado): en la PC está en la cabecera; en la barra, solo en el celular */
 .cob-filtro-mes { display: none; align-items: flex-end; gap: 8px; min-width: 0; }
 .cob-filtro-mes .cob-filtro { flex: 1; min-width: 0; }
-.cob-filtro-mes-focos { flex-shrink: 0; min-height: 44px; border-radius: var(--radio-grande); }
-.cob-filtro-mes-focos[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
 
 /* Vista por focos (VistaFocos): los focos como columnas, su nombre en el indicador y qué dice cada círculo */
 .cob-kpi-foco .cob-kpi-mes { max-width: 140px; line-height: 1.2; }
@@ -28,8 +26,10 @@
 .cob-kpi-meta-valor .icono { font-size: 15px; color: var(--acento); }
 .cob-kpi-meta-estado { font-weight: 600; }
 .cob-kpi-meta.cumplida .cob-kpi-meta-estado, .cob-kpi-meta.cumplida .icono { color: var(--ok); font-weight: 700; }
-.cob-kpi-foco .cob-kpi-barra { position: relative; }
-.cob-kpi-barra-meta { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--texto); border-radius: 1px; }
+.cob-kpi-foco .cob-kpi-barra { position: relative; margin-top: auto; }
+.cob-kpi-barra > .cob-kpi-barra-meta { position: absolute; top: 0; bottom: 0; width: 2px; height: auto; margin-left: -1px; background: var(--texto); border-radius: 1px; }
+/* VOL (Cesar, 12/11): la marca es el mes anterior; verde cuando ya lo pasó */
+.cob-kpi-barra-vol.superado > span:first-child { background: var(--ok); }
 .cob-kpi-foco .foco-medida, .cob-col-foco .foco-medida { display: inline-block; padding: 0 5px; font-size: 10px; font-weight: 800; color: var(--acento); background: var(--superficie-media); border-radius: 4px; vertical-align: 1px; }
 /* Una celda VOL: los bultos del mes y la flecha contra el mes anterior al mismo día hábil */
 .cob-vol { display: inline-flex; align-items: center; justify-content: center; gap: 1px; min-width: 28px; height: 28px; font-size: 14px; font-weight: 700; color: var(--texto); font-variant-numeric: tabular-nums; }
