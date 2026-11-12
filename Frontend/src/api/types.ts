@@ -15,6 +15,11 @@ export interface Usuario {
   modulos?: ModuloPlataforma[]
   /** Aplicaciones a las que puede entrar en cualquiera de sus empresas: arman el menú del logo. */
   aplicaciones?: AplicacionPlataforma[]
+  /**
+   * Si puede pasar a otra aplicación sin volver a loguearse (el Dueño y el SuperAdmin, 12/11/2026): solo entonces el
+   * logo abre el menú de aplicaciones.
+   */
+  cambiaDeAplicacion?: boolean
 }
 
 export interface ModuloPlataforma {

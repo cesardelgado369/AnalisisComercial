@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { ApiError, irAOtraAplicacion } from '../api/client'
 import type { AplicacionPlataforma } from '../api/types'
 import { ESTA_APP, useAuth } from '../auth/AuthContext'
 import { LogoApp } from '../images/LogoApp'
@@ -12,20 +13,24 @@ const ICONOS: Record<string, string> = {
   'analisis-comercial': 'query_stats',
 }
 
+/** Destino del pase que es el portal (no es una aplicación). */
+const PORTAL = 'portal'
+
 /**
- * Logo de Análisis Comercial en la cabecera (como el de De Ruta y Mantenimiento). Si el usuario puede entrar a más de una
- * aplicación de Vignoli (`usuario.aplicaciones`, en cualquiera de sus empresas), el logo abre, animado, el menú
- * para saltar entre ellas; con una sola, es solo el logo. El salto navega a la `urlBase` de la otra aplicación y
- * allá se entra con la cookie de la plataforma, sin volver a loguearse. Con `soloLogo` (el vendedor en el celular),
- * es solo el logo: no se pasa a otra aplicación.
+ * Logo de Análisis Comercial en la cabecera (como el de De Ruta y Mantenimiento). **Solo para el Dueño** (y el
+ * SuperAdmin; `usuario.cambiaDeAplicacion`, 12/11/2026), el logo abre, animado, el menú para saltar a las otras
+ * aplicaciones de Vignoli que tiene (`usuario.aplicaciones`) y al portal. El salto pide un pase a la plataforma y la
+ * otra aplicación abre su propia sesión con él, sin volver a loguearse. Para el resto, y con `soloLogo` (el vendedor en
+ * el celular), es solo el logo.
  */
 export function MenuAplicaciones({ soloLogo = false }: { soloLogo?: boolean }) {
   const { usuario } = useAuth()
   const [abierto, setAbierto] = useState(false)
+  const [yendo, setYendo] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const caja = useRef<HTMLDivElement>(null)
 
-  const aplicaciones: AplicacionPlataforma[] =
-    usuario?.aplicaciones ?? usuario?.modulos?.map((m) => ({ ...m, empresas: [] })) ?? []
+  const aplicaciones: AplicacionPlataforma[] = usuario?.aplicaciones ?? []
 
   useEffect(() => {
     if (!abierto) return
@@ -42,12 +47,30 @@ export function MenuAplicaciones({ soloLogo = false }: { soloLogo?: boolean }) {
   }, [abierto])
 
   const logo = <LogoApp className="logo-app" />
-  if (soloLogo || aplicaciones.length < 2) return logo
+  if (soloLogo || !usuario?.cambiaDeAplicacion) return logo
 
-  function ir(app: AplicacionPlataforma) {
-    if (app.codigo === ESTA_APP || !app.urlBase) return
-    window.location.href = app.urlBase
+  async function ir(destino: string) {
+    if (destino === ESTA_APP || yendo) return
+    setYendo(destino)
+    setError(null)
+    try {
+      await irAOtraAplicacion(destino)
+    } catch (e) {
+      setYendo(null)
+      setError(e instanceof ApiError ? e.mensajes.join(' ') : 'No se pudo abrir la otra aplicación. Probá de nuevo.')
+    }
   }
+
+  const otras = [
+    ...aplicaciones.map((app) => ({
+      codigo: app.codigo,
+      nombre: app.nombre,
+      icono: ICONOS[app.codigo] ?? 'apps',
+      disponible: !!app.urlBase,
+      detalle: !app.urlBase ? 'Todavía no disponible' : app.empresas.map((e) => e.nombre).join(' · '),
+    })),
+    { codigo: PORTAL, nombre: 'Portal de Vignoli', icono: 'home', disponible: true, detalle: 'Tableros y todas tus aplicaciones' },
+  ]
 
   return (
     <div className="menu-apps" ref={caja}>
@@ -66,9 +89,8 @@ export function MenuAplicaciones({ soloLogo = false }: { soloLogo?: boolean }) {
       {abierto && (
         <div className="menu-apps-panel" role="menu" aria-label="Tus aplicaciones">
           <div className="menu-apps-titulo">Tus aplicaciones</div>
-          {aplicaciones.map((app, i) => {
+          {otras.map((app, i) => {
             const actual = app.codigo === ESTA_APP
-            const disponible = actual || !!app.urlBase
             return (
               <button
                 key={app.codigo}
@@ -76,27 +98,29 @@ export function MenuAplicaciones({ soloLogo = false }: { soloLogo?: boolean }) {
                 role="menuitem"
                 className={actual ? 'menu-apps-item actual' : 'menu-apps-item'}
                 style={{ animationDelay: `${60 + i * 50}ms` }}
-                disabled={!disponible}
+                disabled={!actual && (!app.disponible || !!yendo)}
                 aria-current={actual || undefined}
-                onClick={() => ir(app)}
+                onClick={() => void ir(app.codigo)}
               >
                 <span className="menu-apps-icono" aria-hidden>
-                  <span className="icono">{ICONOS[app.codigo] ?? 'apps'}</span>
+                  <span className="icono">{app.icono}</span>
                 </span>
                 <span className="menu-apps-texto">
                   <span className="menu-apps-nombre">{app.nombre}</span>
                   <span className="menu-apps-detalle">
-                    {actual
-                      ? 'Estás acá'
-                      : !app.urlBase
-                        ? 'Todavía no disponible'
-                        : app.empresas.map((e) => e.nombre).join(' · ')}
+                    {actual ? 'Estás acá' : yendo === app.codigo ? 'Abriendo…' : app.detalle}
                   </span>
                 </span>
                 {actual && <span className="icono icono-chico menu-apps-tilde" aria-hidden>check</span>}
               </button>
             )
           })}
+          {error && (
+            <p className="menu-apps-error" role="alert">
+              <span className="icono icono-chico" aria-hidden>error</span>
+              {error}
+            </p>
+          )}
         </div>
       )}
     </div>

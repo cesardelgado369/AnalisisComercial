@@ -107,6 +107,53 @@ async function renovar(): Promise<Renovacion> {
   return renovando
 }
 
+/**
+ * Pase entre aplicaciones (12/11/2026, solo el Dueño y el SuperAdmin): otra aplicación de Vignoli (o el portal) manda acá
+ * con un código de un solo uso en el fragmento (`/entrar#pase=…`), y con él se abre la sesión propia de esta app sin
+ * volver a loguearse. Se lee una vez, al cargar, y se borra de la barra de direcciones.
+ */
+export const PASE_DE_LA_URL: string | null = (() => {
+  try {
+    const m = /^#pase=([A-Za-z0-9_-]{20,100})$/.exec(window.location.hash)
+    if (!m) return null
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search)
+    return m[1]
+  } catch {
+    return null
+  }
+})()
+
+/** Canjea el pase por la sesión de esta app (y su cookie). Sin token: el de una sesión anterior no tiene que viajar. */
+let canje: { codigo: string; promesa: Promise<LoginResponse> } | null = null
+
+/** Un pase se canjea una sola vez: si se pide de nuevo (el efecto corre dos veces en desarrollo), es la misma respuesta. */
+export function canjearPase(codigo: string): Promise<LoginResponse> {
+  if (canje?.codigo !== codigo) canje = { codigo, promesa: canjearUnaVez(codigo) }
+  return canje.promesa
+}
+
+async function canjearUnaVez(codigo: string): Promise<LoginResponse> {
+  let r: Response
+  try {
+    r = await fetch(`${BASE_AUTH}/auth/pase/canjear?aplicacion=${ESTA_APP}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ codigo }),
+      credentials: 'include',
+    })
+  } catch {
+    throw new ApiError(0, { title: 'No se pudo conectar para entrar. Revisá tu conexión e iniciá sesión.' })
+  }
+  if (!r.ok) throw await aError(r, 'No se pudo entrar con el acceso directo. Iniciá sesión.')
+  return (await r.json()) as LoginResponse
+}
+
+/** Pide un pase para `destino` (el código de otra aplicación, o `portal`) y va para allá. */
+export async function irAOtraAplicacion(destino: string): Promise<void> {
+  const { url } = await auth.post<{ url: string }>('/auth/pase', { destino })
+  window.location.href = url
+}
+
 async function aError(r: Response, tituloPorDefecto?: string): Promise<ApiError> {
   let problema: Partial<ProblemaApi> = {}
   try {

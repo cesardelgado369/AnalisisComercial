@@ -2,7 +2,7 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { emailRecordado, recordarEmail } from '../api/sesion'
-import { useAuth } from '../auth/AuthContext'
+import { avisoPase, useAuth } from '../auth/AuthContext'
 import { LogoApp } from '../images/LogoApp'
 import '../animations/ola.css'
 import { PanelLogin } from './PanelLogin'
@@ -25,7 +25,8 @@ export function LoginPage() {
   const [verPassword, setVerPassword] = useState(false)
   const [mayusculas, setMayusculas] = useState(false)
   const [olvido, setOlvido] = useState(false)
-  const [errores, setErrores] = useState<string[]>([])
+  // Si se llegó con un pase de otra aplicación que no sirvió, se dice por qué
+  const [errores, setErrores] = useState<string[]>(() => (avisoPase() ? [avisoPase()!] : []))
   const [enviando, setEnviando] = useState(false)
 
   if (usuario) return <Navigate to={destino} replace />

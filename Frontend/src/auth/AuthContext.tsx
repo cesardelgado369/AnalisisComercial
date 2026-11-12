@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { ESTA_APP, auth, onSesionExpirada, sesionCompartida } from '../api/client'
+import { ApiError, ESTA_APP, PASE_DE_LA_URL, auth, canjearPase, onSesionExpirada, sesionCompartida } from '../api/client'
 import { guardarSesion, leerSesion, marcarIngreso } from '../api/sesion'
 import type { LoginResponse, Usuario } from '../api/types'
 import { limpiarCacheConsultas } from '../api/useConsulta'
@@ -21,6 +21,10 @@ interface AuthValor {
 
 const AuthContext = createContext<AuthValor | null>(null)
 
+/** Por qué no se pudo entrar con el pase de otra aplicación; lo muestra el login. */
+let avisoDelPase: string | null = null
+export const avisoPase = () => avisoDelPase
+
 export { ESTA_APP }
 
 /**
@@ -40,8 +44,9 @@ async function conEmpresaDeLaApp(sesion: LoginResponse, recordar?: boolean): Pro
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [usuario, setUsuario] = useState<Usuario | null>(() => leerSesion()?.usuario ?? null)
-  // Sin sesión guardada, antes de mandar al login se pregunta si la cookie de esta app tiene una abierta.
-  const [comprobando, setComprobando] = useState(() => !leerSesion())
+  // Sin sesión guardada, antes de mandar al login se pregunta si la cookie de esta app tiene una abierta. Con un pase de
+  // otra aplicación, primero se canjea (y reemplaza la sesión que hubiera).
+  const [comprobando, setComprobando] = useState(() => !!PASE_DE_LA_URL || !leerSesion())
 
   useEffect(
     () =>
@@ -55,11 +60,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!comprobando) return
     let vigente = true
-    sesionCompartida()
-      .then(async (sesion) => {
-        if (!vigente || !sesion) return
-        const propia = await conEmpresaDeLaApp(sesion)
-        if (vigente) setUsuario(propia.usuario)
+    const abrir = async (): Promise<LoginResponse | null> => {
+      if (PASE_DE_LA_URL) {
+        try {
+          const sesion = await canjearPase(PASE_DE_LA_URL)
+          limpiarCacheConsultas() // nunca se muestra lo que quedó de otra persona
+          guardarSesion(sesion)
+          marcarIngreso()
+          return sesion
+        } catch (e) {
+          avisoDelPase = e instanceof ApiError ? e.mensajes.join(' ') : 'No se pudo entrar con el acceso directo. Iniciá sesión.'
+          const guardada = leerSesion()
+          if (guardada) return guardada // la que ya estaba abierta sigue
+        }
+      }
+      const sesion = await sesionCompartida()
+      return sesion ? conEmpresaDeLaApp(sesion) : null
+    }
+    abrir()
+      .then((sesion) => {
+        if (vigente && sesion) setUsuario(sesion.usuario)
       })
       .catch(() => guardarSesion(null)) // no se pudo pasar a la empresa: se pide login
       .finally(() => vigente && setComprobando(false))

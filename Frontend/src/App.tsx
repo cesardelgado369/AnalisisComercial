@@ -34,6 +34,8 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          {/* Pase desde otra aplicación (12/11): el AuthProvider ya lo canjeó; acá solo se sigue al inicio */}
+          <Route path="/entrar" element={<Navigate to="/" replace />} />
           <Route element={<RequireAuth />}>
             <Route element={<ConSesionApp />}>
               <Route element={<Layout />}>
