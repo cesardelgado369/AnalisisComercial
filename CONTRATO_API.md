@@ -141,11 +141,11 @@ Todos los parámetros son opcionales.
   operario siempre es él: otro → 403.
 - `dia`: código de Chess (ver Convenciones). Filtra por los días de visita de la ruta del cliente.
 - `unidad`: una de `/api/cobertura/unidades`. Filtra lo que cuenta como compra, no la cartera.
-- `foco` (**solo Admin**): un `idFoco` de `/api/cobertura/focos`. Como `unidad`: cuenta como compra solo la de los
-  artículos del foco («CCC Manteca» = clientes de la cartera que compraron alguna manteca), en todos los meses de la
-  ventana. Se puede combinar con `unidad`. El `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no
-  existe. Operario y supervisor → 403 «Los focos del mes son solo para administradores.» (queda registrado): un enlace
-  con foco falla en vez de mostrar números sin el filtro. Igual en `/api/volumen` y `/api/devoluciones`.
+- `foco` (todos los roles desde el 11/11, pedido de Checho: la vista Focos; cada uno sobre su cartera): un `idFoco` de
+  `/api/cobertura/focos`. Como `unidad`: cuenta como compra solo la de los artículos del foco («CCC Manteca» = clientes
+  de la cartera que compraron alguna manteca), en todos los meses de la ventana. Se puede combinar con `unidad`. El
+  `subtitulo` termina en «foco Manteca». 400 en `errors.foco` si no existe. Igual en `/api/volumen` y
+  `/api/devoluciones`.
 - `abc` (**solo Admin**): `A`, `B` o `C` (ver Clientes A, B y C). Recorta la cartera de **cada mes** a los clientes de
   esa categoría en ese mes (agosto con la de agosto, noviembre con la de noviembre): KPIs, chips y `clientes` salen
   sobre esa cartera. El `subtitulo` termina en «, clientes A». Otra letra → 400 en `errors.abc`; mesHasta sin base
@@ -195,13 +195,15 @@ Todos los parámetros son opcionales.
 negocio de los artículos, ordenadas, tal como las nombra Chess (agrupación «UNIDAD DE NEGOCIO»; sin el «124 - » de la
 web vieja). Los artículos sin esa agrupación (dulce de leche, quesos, salsas) van a `SIN UNIDAD DE NEGOCIO`.
 
-### `GET /api/cobertura/focos?mes=` · solo Admin
+### `GET /api/cobertura/focos?mes=` · todos los roles
 
-Los **focos de un mes** (Checho, 03/11/2026; por mes y solo Admin desde el 05/11), por nombre, para el filtro «Foco»
-de Cobertura, Volumen y Devoluciones. `mes`: el mes en el que está parada la app; sin él, el en curso.
+Los **focos de un mes** (Checho, 03/11/2026; por mes desde el 05/11; para todos desde el 11/11), por nombre, para la
+vista Focos y el filtro Foco del mes. `mes`: el mes en el que está parada la app; sin él, el en curso. Operario y
+supervisor: solo los de los meses que ven (los últimos 4, nunca el que viene); fuera de esos, `[]`. La administración
+(`/api/admin/focos*`) y el análisis siguen siendo solo del Admin.
 `[{ idFoco, mes: "2026-11-01", nombre, medida: "ccc" | "vol", meta: 80 | null, articulos: [{ idArticulo, descripcion }],
 actualizadoPor, actualizado }]`.
-Vacío si ese mes no tiene focos (el filtro no se muestra). Operario y supervisor → 403.
+Vacío si ese mes no tiene focos (el filtro no se muestra).
 
 ### `GET /api/clientes/{idCliente}?mesDesde=&mesHasta=`
 
@@ -654,6 +656,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 11/11: **focos para todos** (Checho): `/api/cobertura/focos` y `foco=` para operario y supervisor, cada uno sobre su
+  cartera; solo los meses que ven. La administración, el análisis y `abc` siguen siendo del Admin. Sale en la 1.4.0.
 - 10/11: la `meta` de un foco vol pasa a ser los **bultos objetivo** (obligatoria) y el total trae `porcentajeMeta`.
   Se rehízo otra vez la migración `FocosDelMes` (Meta decimal(9,1); sin publicar).
 - 04/11: **revisión de seguridad** (CHATBOT.md): empresa en las políticas, `/api/admin` exige Admin en la política,

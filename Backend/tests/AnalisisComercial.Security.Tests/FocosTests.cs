@@ -74,25 +74,30 @@ public class FocosTests(Entorno e)
     }
 
     [Fact]
-    public async Task Los_focos_no_los_ven_vendedores_ni_supervisores()
+    public async Task Vendedores_y_supervisores_ven_los_focos_sobre_su_cartera()
     {
+        // Checho, 11/11/2026: la vista Focos de Cobertura también para ellos. La administración y el análisis, no.
         var admin = e.Admin();
         try
         {
             var foco = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Pastas", idsArticulo = new[] { 900 } });
+            await CrearAsync(admin, new { mes = "2026-11-01", nombre = "Próximo", idsArticulo = new[] { 900 } });
             foreach (var quien in new[] { e.Operario(), e.Supervisor() })
             {
-                await quien.EstadoAsync("/api/cobertura/focos", HttpStatusCode.Forbidden);
-                // Un enlace con foco falla: ignorarlo mostraría números que no son los del filtro.
-                await quien.EstadoAsync($"/api/cobertura?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
+                Assert.Equal(["Pastas"], Nombres(await quien.JsonAsync("/api/cobertura/focos")));
+                // El que el dueño deja armado para el mes que viene no se ve todavía.
+                Assert.Empty(Nombres(await quien.JsonAsync("/api/cobertura/focos?mes=2026-11-01")));
                 await quien.EstadoAsync("/api/admin/focos", HttpStatusCode.Forbidden);
                 await quien.EstadoAsync("/api/admin/focos/analisis", HttpStatusCode.Forbidden);
+                await quien.EstadoAsync("/api/cobertura?abc=A", HttpStatusCode.Forbidden);   // la categoría sigue siendo del dueño
             }
-            await e.Supervisor().EstadoAsync($"/api/volumen?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
-            await e.Supervisor().EstadoAsync($"/api/devoluciones?foco={foco["idFoco"]}", HttpStatusCode.Forbidden);
-            await e.Supervisor().JsonAsync("/api/cobertura");   // sin foco, igual que siempre
-            Assert.True(await e.ConBaseAsync(db => db.AccesoLogs.AnyAsync(l =>
-                l.Email == "operario@madomi" && l.Denegado && l.Pantalla == "focos" && l.Parametros == $"foco={foco["idFoco"]}")));
+            Assert.Single(Nombres(await admin.JsonAsync("/api/cobertura/focos?mes=2026-11-01")));
+
+            // El operario de UNO (101 y 102 en octubre; compró 101) con el foco: su cartera, no la de todos.
+            var operario = await e.Operario().JsonAsync($"/api/cobertura?foco={foco["idFoco"]}");
+            Assert.Equal((1, 2), (Compraron(operario), (int)operario["kpis"]!.AsArray()[^1]!["clientesCartera"]!));
+            await e.Supervisor().JsonAsync($"/api/volumen?foco={foco["idFoco"]}");
+            await e.Supervisor().JsonAsync($"/api/devoluciones?foco={foco["idFoco"]}");
         }
         finally
         {

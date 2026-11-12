@@ -71,7 +71,10 @@ public interface ICoberturaService
     Task<IReadOnlyList<OpcionVendedorDto>> VendedoresAsync(CancellationToken ct = default);
     Task<IReadOnlyList<string>> UnidadesAsync(CancellationToken ct = default);
 
-    /// <summary>Los focos de un mes (sin mes: el en curso), para el filtro. Solo el Admin; el resto, 403.</summary>
+    /// <summary>
+    /// Los focos de un mes (sin mes: el en curso), para la vista Focos y el filtro. Todos los roles (Checho, 11/11/2026);
+    /// operario y supervisor, solo de los meses que ven (fuera de esos, vacío).
+    /// </summary>
     Task<IReadOnlyList<FocoDto>> FocosAsync(DateOnly? mes, CancellationToken ct = default);
 }
 

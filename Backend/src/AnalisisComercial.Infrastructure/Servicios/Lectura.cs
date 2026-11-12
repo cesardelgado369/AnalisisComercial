@@ -109,23 +109,18 @@ public class Lectura(ComercialDbContext db, IAlcanceUsuario alcance, IReloj relo
         => Meses(desde, hasta, await PrimerMesVisibleAsync(ct));
 
     /// <summary>
-    /// El filtro de artículos de un pedido. Los focos son solo del Admin (Cesar, 05/11/2026): para el resto, 403 y queda
-    /// registrado (ignorarlo mostraría números que no son los del filtro). El foco tiene que existir (400 en
-    /// <c>foco</c>); vale el de cualquier mes, sobre todos los meses de la ventana.
+    /// El filtro de artículos de un pedido. Todos los roles (Checho, 11/11/2026: la vista Focos también para vendedores y
+    /// supervisores), cada uno sobre su cartera: el foco solo elige qué artículos cuentan. El foco tiene que existir (400
+    /// en <c>foco</c>); vale el de cualquier mes, sobre todos los meses de la ventana.
     /// </summary>
     public async Task<FiltroArticulos?> ArticulosAsync(string? unidad, int? foco, CancellationToken ct)
     {
         if (foco is null)
             return FiltroArticulos.De(unidad);
-        await ExigirAdminFocosAsync($"foco={foco}", ct);
         var nombre = await db.Focos.AsNoTracking().Where(x => x.IdFoco == foco).Select(x => x.Nombre).FirstOrDefaultAsync(ct)
                      ?? throw new ValidacionException("foco", "No existe ese foco.");
         return new FiltroArticulos(string.IsNullOrWhiteSpace(unidad) ? null : unidad, foco, nombre);
     }
-
-    /// <summary>Los focos (el filtro y su lista) son solo del Admin: 403 para operario y supervisor, y queda registrado.</summary>
-    public Task ExigirAdminFocosAsync(string? parametros, CancellationToken ct)
-        => ExigirAdminAsync("focos", parametros, "Los focos del mes son solo para administradores.", ct);
 
     private async Task ExigirAdminAsync(string pantalla, string? parametros, string mensaje, CancellationToken ct)
     {
