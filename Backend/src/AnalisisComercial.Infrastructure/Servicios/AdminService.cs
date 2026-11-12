@@ -258,13 +258,22 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     /// Los focos con sus artículos, por mes descendente y nombre (<paramref name="mes"/>: solo los de ese mes). También
     /// para el filtro de las pantallas.
     /// </summary>
-    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, DateOnly? mes, CancellationToken ct)
+    /// <param name="vendedores">Los objetivos que se ven: null = todos (admin); si no, los de esos vendedores.</param>
+    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, DateOnly? mes, CancellationToken ct,
+        IReadOnlySet<int>? vendedores = null)
     {
-        var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Where(f => mes == null || f.Mes == mes).ToListAsync(ct);
+        var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Include(f => f.Objetivos)
+            .Where(f => mes == null || f.Mes == mes).ToListAsync(ct);
         var ids = focos.SelectMany(f => f.Articulos.Select(a => a.IdArticulo)).Distinct().ToList();
         var nombres = await db.Articulos.AsNoTracking().Where(a => ids.Contains(a.IdArticulo))
             .ToDictionaryAsync(a => a.IdArticulo, a => a.Descripcion, ct);
-        return focos.Select(f => Dto(f, nombres))
+        foreach (var f in focos)
+            f.Objetivos.RemoveAll(o => vendedores is not null && !vendedores.Contains(o.IdPersonal));
+        var personas = await db.Vendedores.AsNoTracking().ToDictionaryAsync(v => v.IdPersonal, v => v.Nombre, ct);
+        var compraron = new Dictionary<int, Dictionary<int, int>>();
+        foreach (var f in focos.Where(f => f.Objetivos.Count > 0))
+            compraron[f.IdFoco] = await CompraronPorVendedorAsync(db, f.IdFoco, f.Mes, f.Objetivos.Select(o => o.IdPersonal).ToList(), ct);
+        return focos.Select(f => Dto(f, nombres, personas, compraron.GetValueOrDefault(f.IdFoco) ?? []))
             .OrderByDescending(f => f.Mes)
             .ThenBy(f => f.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
             .ToList();
@@ -472,14 +481,61 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         foco.Actualizado = reloj.Ahora;
     }
 
+    /// <summary>
+    /// Por vendedor, los clientes de su cartera en el mes (la foto del mes, sin excluidos) que compraron algún artículo del
+    /// foco: la regla de <c>/api/cobertura?foco=</c>, sin filtros. 0 en un mes que no empezó.
+    /// </summary>
+    private static async Task<Dictionary<int, int>> CompraronPorVendedorAsync(ComercialDbContext db, int idFoco, DateOnly mes,
+        List<int> vendedores, CancellationToken ct)
+        => await db.CarterasMes.AsNoTracking()
+            .Where(k => k.Mes == mes && k.IdPersonal != null && vendedores.Contains(k.IdPersonal.Value))
+            .Where(k => !db.Exclusiones.Any(e => e.IdCliente == k.IdCliente))
+            .Where(k => db.ComprasMes.Any(c => c.Compro && c.Mes == mes && c.IdCliente == k.IdCliente
+                                               && db.FocoArticulos.Any(a => a.IdFoco == idFoco && a.IdArticulo == c.IdArticulo)))
+            .GroupBy(k => k.IdPersonal!.Value)
+            .Select(g => new { g.Key, Clientes = g.Select(k => k.IdCliente).Distinct().Count() })
+            .ToDictionaryAsync(x => x.Key, x => x.Clientes, ct);
+
+    /// <summary>
+    /// Los objetivos de clientes por vendedor del foco (Cesar, 12/11/2026): reemplazan a todos; el vendedor que no viene
+    /// queda sin objetivo. Vendedores que existan y sean personas (no la casa), sin repetir, de 1 a 10.000 clientes.
+    /// </summary>
+    public async Task<FocoDto> GuardarObjetivosAsync(int idFoco, GuardarObjetivosDto dto, CancellationToken ct = default)
+    {
+        var admin = await AdminAsync("admin-focos", ct);
+        var foco = await db.Focos.Include(f => f.Objetivos).FirstOrDefaultAsync(f => f.IdFoco == idFoco, ct)
+                   ?? throw new NoEncontradoException("No existe ese foco.");
+        var objetivos = dto.Objetivos ?? [];
+        var ids = objetivos.Select(o => o.IdPersonal).ToList();
+        if (ids.Distinct().Count() != ids.Count)
+            throw new ValidacionException("objetivos", "Hay un vendedor repetido.");
+        if (await db.Vendedores.CountAsync(v => ids.Contains(v.IdPersonal) && v.EsPersona, ct) != ids.Count)
+            throw new ValidacionException("objetivos", "Hay un vendedor que no existe.");
+        if (objetivos.Any(o => o.Clientes < 1 || o.Clientes > 10_000 || decimal.Truncate(o.Clientes) != o.Clientes))
+            throw new ValidacionException("objetivos", "Cada objetivo va de 1 a 10.000 clientes.");
+
+        foco.Objetivos.Clear();
+        foco.Objetivos.AddRange(objetivos.Select(o => new FocoObjetivo { IdFoco = idFoco, IdPersonal = o.IdPersonal, Clientes = (int)o.Clientes }));
+        foco.ActualizadoPor = admin.Email;
+        foco.Actualizado = reloj.Ahora;
+        await db.GuardarAsync(ct);
+        await alcance.RegistrarAsync("admin-focos", $"objetivos={idFoco}", denegado: false, ct);
+        return await UnFocoAsync(idFoco, ct);
+    }
+
     private async Task<FocoDto> UnFocoAsync(int idFoco, CancellationToken ct)
         => (await FocosAsync(db, mes: null, ct)).Single(f => f.IdFoco == idFoco);
 
-    private static FocoDto Dto(Foco f, Dictionary<int, string> nombres)
+    private static FocoDto Dto(Foco f, Dictionary<int, string> nombres, Dictionary<int, string> personas,
+        Dictionary<int, int> compraron)
         => new(f.IdFoco, f.Mes, f.Nombre, f.Medida, f.Meta,
             f.Articulos.Select(a => new ArticuloFocoDto(a.IdArticulo, nombres.GetValueOrDefault(a.IdArticulo, $"Artículo {a.IdArticulo}")))
                 .OrderBy(a => a.Descripcion, StringComparer.Ordinal).ToList(),
-            f.ActualizadoPor, f.Actualizado);
+            f.ActualizadoPor, f.Actualizado,
+            f.Objetivos.Select(o => new ObjetivoFocoDto(o.IdPersonal, personas.GetValueOrDefault(o.IdPersonal, $"Vendedor {o.IdPersonal}"),
+                    o.Clientes, compraron.GetValueOrDefault(o.IdPersonal)))
+                .OrderBy(o => o.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
+                .ToList());
 
     // ---- clientes Vitales (Cesar, 30/10/2026: un click en la lista)
 

@@ -131,7 +131,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
         // el mes que viene.
         if (!a.EsAdmin && (m > lectura.MesEnCurso || m < await lectura.PrimerMesVisibleAsync(ct)))
             return [];
-        return await AdminService.FocosAsync(db, m, ct);
+        return await AdminService.FocosAsync(db, m, ct, a.EsAdmin ? null : a.Vendedores);
     }
 
     private static string Parametros(FiltroCobertura f)

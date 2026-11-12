@@ -158,6 +158,10 @@ public class AdminController(IAdminService admin) : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("focos/{idFoco:int}/objetivos")]
+    public Task<FocoDto> GuardarObjetivos(int idFoco, GuardarObjetivosDto dto, CancellationToken ct)
+        => admin.GuardarObjetivosAsync(idFoco, dto, ct);
+
     [HttpGet("focos/analisis")]
     public Task<AnalisisFocosDto> AnalisisFocos([FromQuery] DateOnly? mes, [FromQuery] string? comparacion, [FromQuery] string? abc,
         CancellationToken ct)

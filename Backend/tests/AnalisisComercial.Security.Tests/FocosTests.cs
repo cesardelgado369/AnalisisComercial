@@ -232,6 +232,55 @@ public class FocosTests(Entorno e)
         }
     }
 
+    [Fact]
+    public async Task Objetivos_de_clientes_por_vendedor()
+    {
+        // Cesar, 12/11/2026: cuántos clientes de su cartera tiene que lograr cada vendedor en el foco. En octubre la
+        // cartera de UNO es 101 y 102 (compró 101); la de DOS, 201 (no compró).
+        var admin = e.Admin();
+        try
+        {
+            var foco = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Pastas", idsArticulo = new[] { 900 } });
+            Assert.Empty(foco["objetivos"]!.AsArray());
+            var url = $"/api/admin/focos/{foco["idFoco"]}/objetivos";
+
+            var r = await admin.PutAsJsonAsync(url, new { objetivos = new[] { new { idPersonal = 2, clientes = 5 }, new { idPersonal = 1, clientes = 2 } } });
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+            var objetivos = JsonNode.Parse(await r.Content.ReadAsStringAsync())!["objetivos"]!.AsArray();
+            Assert.Equal(["VENDEDOR DOS", "VENDEDOR UNO"], objetivos.Select(o => (string?)o!["nombre"]));
+            Assert.Equal((5, 0), ((int)objetivos[0]!["clientes"]!, (int)objetivos[0]!["clientesConCompra"]!));
+            Assert.Equal((2, 1), ((int)objetivos[1]!["clientes"]!, (int)objetivos[1]!["clientesConCompra"]!));
+            Assert.Equal(2, (await admin.JsonAsync("/api/admin/focos"))[0]!["objetivos"]!.AsArray().Count);
+
+            // Cada uno ve el de sus vendedores: el operario (UNO), el suyo; el supervisor (DOS), el de DOS.
+            Assert.Equal([1], (await e.Operario().JsonAsync("/api/cobertura/focos"))[0]!["objetivos"]!.AsArray().Select(o => (int)o!["idPersonal"]!));
+            Assert.Equal([2], (await e.Supervisor().JsonAsync("/api/cobertura/focos"))[0]!["objetivos"]!.AsArray().Select(o => (int)o!["idPersonal"]!));
+
+            async Task ErrorObjetivos(object body)
+            {
+                var x = await admin.PutAsJsonAsync(url, body);
+                Assert.Equal(HttpStatusCode.BadRequest, x.StatusCode);
+                Assert.NotNull(JsonNode.Parse(await x.Content.ReadAsStringAsync())!["errors"]!["objetivos"]);
+            }
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 999, clientes = 5 } } });
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 6, clientes = 5 } } });   // la casa
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 5 }, new { idPersonal = 1, clientes = 3 } } });
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 0m } } });
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 10_001m } } });
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 2.5m } } });
+            Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/admin/focos/99999/objetivos", new { objetivos = Array.Empty<object>() })).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await e.Supervisor().PutAsJsonAsync(url, new { objetivos = Array.Empty<object>() })).StatusCode);
+
+            // Reemplaza todos: sin objetivos, el foco queda vacío.
+            r = await admin.PutAsJsonAsync(url, new { objetivos = Array.Empty<object>() });
+            Assert.Empty(JsonNode.Parse(await r.Content.ReadAsStringAsync())!["objetivos"]!.AsArray());
+        }
+        finally
+        {
+            await e.ConBaseAsync(db => db.Focos.ExecuteDeleteAsync());
+        }
+    }
+
     private static IEnumerable<string?> Nombres(JsonNode lista) => lista.AsArray().Select(f => (string?)f!["nombre"]);
 
     private static void AssertCcc(JsonNode n, int conCompra, int cartera, decimal porcentaje, decimal? anterior)

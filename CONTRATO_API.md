@@ -202,7 +202,11 @@ vista Focos y el filtro Foco del mes. `mes`: el mes en el que está parada la ap
 supervisor: solo los de los meses que ven (los últimos 4, nunca el que viene); fuera de esos, `[]`. La administración
 (`/api/admin/focos*`) y el análisis siguen siendo solo del Admin.
 `[{ idFoco, mes: "2026-11-01", nombre, medida: "ccc" | "vol", meta: 80 | null, articulos: [{ idArticulo, descripcion }],
-actualizadoPor, actualizado }]`.
+actualizadoPor, actualizado, objetivos: [{ idPersonal, nombre, clientes, clientesConCompra }] }]`.
+- `objetivos` (Cesar, 12/11): cuántos clientes de su cartera tiene que lograr cada vendedor en el foco (siempre en
+  clientes, también en los VOL), por nombre. `clientesConCompra` = los de su cartera en el mes del foco (la foto del
+  mes, sin excluidos) que compraron algún artículo del foco, con la regla de `/api/cobertura?foco=` y sin filtros; 0
+  en un mes que no empezó. El admin ve todos; supervisor y operario, los de sus vendedores. `[]` si no hay.
 Vacío si ese mes no tiene focos (el filtro no se muestra).
 
 ### `GET /api/clientes/{idCliente}?mesDesde=&mesHasta=`
@@ -567,7 +571,12 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
     comprarlo, 1–100 %. vol → **obligatoria**, los **bultos objetivo del mes**, más de 0 y hasta 1.000.000; sin ella,
     400 «Poné la cantidad de bultos del objetivo.».
 - `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza todo). 404 si no existe.
-- `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe.
+- `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe (se van también sus objetivos).
+- `PUT /api/admin/focos/{idFoco}/objetivos` `{ objetivos: [{ idPersonal, clientes }] }` → 200 con el foco (ya trae
+  los objetivos). Reemplaza todos: el vendedor que no viene queda sin objetivo; `[]` los borra. 404 si el foco no
+  existe. 400 en `errors.objetivos`: «Hay un vendedor que no existe.» (no existe o es la casa), «Hay un vendedor
+  repetido.», «Cada objetivo va de 1 a 10.000 clientes.» (también si no es entero). «Copiar los del mes anterior» =
+  POST del foco y después este PUT.
 - 400: `errors.mes` (obligatorio, día 1, desde el primer mes con datos hasta el mes que viene, para dejarlo armado),
   `errors.nombre` (1–60, único en el mes: «Ya hay un foco con ese nombre en ese mes.»), `errors.idsArticulo` (entre 1
   y 50, todos existentes), `errors.medida` (otra cosa que ccc o vol), `errors.meta` (fuera de rango).
@@ -658,6 +667,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 12/11: **objetivos de clientes por vendedor** en cada foco (`objetivos` en los focos y
+  `PUT /api/admin/focos/{id}/objetivos`). Migración `FocoObjetivos` (una tabla nueva). Sale en la 1.5.0.
 - 12/11: **devolución = cambios** (las líneas negativas de las facturas), como el Pivot del dueño; las notas de
   crédito ya no son devolución (volvieron sin entregarse) y en `/movimientos` van en `rechazados`. Porcentaje =
   cambios / bultos netos. Sale en la 1.4.1.

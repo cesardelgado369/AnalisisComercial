@@ -25,6 +25,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
     public DbSet<ClienteVital> Vitales => Set<ClienteVital>();
     public DbSet<Foco> Focos => Set<Foco>();
     public DbSet<FocoArticulo> FocoArticulos => Set<FocoArticulo>();
+    public DbSet<FocoObjetivo> FocoObjetivos => Set<FocoObjetivo>();
     public DbSet<SyncLog> SyncLogs => Set<SyncLog>();
     public DbSet<SyncSolicitud> SyncSolicitudes => Set<SyncSolicitud>();
     public DbSet<AccesoLog> AccesoLogs => Set<AccesoLog>();
@@ -157,6 +158,13 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
         {
             e.ToTable("FocoArticulo");
             e.HasKey(x => new { x.IdFoco, x.IdArticulo });
+        });
+
+        b.Entity<FocoObjetivo>(e =>
+        {
+            e.ToTable("FocoObjetivo");
+            e.HasKey(x => new { x.IdFoco, x.IdPersonal });
+            e.HasOne<Foco>().WithMany(f => f.Objetivos).HasForeignKey(x => x.IdFoco).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<ClienteVital>(e =>

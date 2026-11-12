@@ -82,8 +82,22 @@ public interface ICoberturaService
 
 public record ArticuloFocoDto(int IdArticulo, string Descripcion);
 
+/// <param name="Objetivos">Los objetivos de clientes por vendedor (Cesar, 12/11/2026), por nombre. Admin: todos;
+/// supervisor y operario: los de sus vendedores.</param>
 public record FocoDto(int IdFoco, DateOnly Mes, string Nombre, MedidaFoco Medida, decimal? Meta,
-    IReadOnlyList<ArticuloFocoDto> Articulos, string ActualizadoPor, DateTimeOffset Actualizado);
+    IReadOnlyList<ArticuloFocoDto> Articulos, string ActualizadoPor, DateTimeOffset Actualizado,
+    IReadOnlyList<ObjetivoFocoDto> Objetivos);
+
+/// <param name="Clientes">El objetivo: cuántos clientes de su cartera tienen que comprar algún artículo del foco.</param>
+/// <param name="ClientesConCompra">Los de su cartera en el mes del foco que ya compraron (la regla de
+/// <c>/api/cobertura?foco=</c>, sin filtros).</param>
+public record ObjetivoFocoDto(int IdPersonal, string Nombre, int Clientes, int ClientesConCompra);
+
+/// <summary>Los objetivos de un foco: reemplazan a todos los que tenía.</summary>
+/// <param name="Clientes">Decimal para que uno no entero dé 400 en <c>errors.objetivos</c>.</param>
+public record ObjetivoDto(int IdPersonal, decimal Clientes);
+
+public record GuardarObjetivosDto(IReadOnlyList<ObjetivoDto>? Objetivos);
 
 /// <summary>Alta o edición de un foco (la edición reemplaza todo).</summary>
 /// <param name="Medida">"ccc" (por defecto) o "vol"; texto para que un valor inválido dé 400 en <c>errors.medida</c>.</param>
@@ -361,6 +375,9 @@ public interface IAdminService
     Task<FocoDto> CrearFocoAsync(GuardarFocoDto dto, CancellationToken ct = default);
     Task<FocoDto> ActualizarFocoAsync(int idFoco, GuardarFocoDto dto, CancellationToken ct = default);
     Task BorrarFocoAsync(int idFoco, CancellationToken ct = default);
+
+    /// <summary>Reemplaza los objetivos de clientes por vendedor del foco y devuelve el foco.</summary>
+    Task<FocoDto> GuardarObjetivosAsync(int idFoco, GuardarObjetivosDto dto, CancellationToken ct = default);
 
     /// <summary>
     /// Cómo vienen los focos de un mes, por vendedor (sin mes: el en curso), con la Comparativa ("parcial" o

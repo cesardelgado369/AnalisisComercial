@@ -359,6 +359,22 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                     b.ToTable("FocoArticulo", (string)null);
                 });
 
+            modelBuilder.Entity("AnalisisComercial.Domain.FocoObjetivo", b =>
+                {
+                    b.Property<int>("IdFoco")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IdPersonal")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Clientes")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdFoco", "IdPersonal");
+
+                    b.ToTable("FocoObjetivo", (string)null);
+                });
+
             modelBuilder.Entity("AnalisisComercial.Domain.Ruta", b =>
                 {
                     b.Property<int>("IdRuta")
@@ -594,6 +610,15 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("AnalisisComercial.Domain.FocoObjetivo", b =>
+                {
+                    b.HasOne("AnalisisComercial.Domain.Foco", null)
+                        .WithMany("Objetivos")
+                        .HasForeignKey("IdFoco")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AnalisisComercial.Domain.RutaDia", b =>
                 {
                     b.HasOne("AnalisisComercial.Domain.Ruta", null)
@@ -611,6 +636,8 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
             modelBuilder.Entity("AnalisisComercial.Domain.Foco", b =>
                 {
                     b.Navigation("Articulos");
+
+                    b.Navigation("Objetivos");
                 });
 
             modelBuilder.Entity("AnalisisComercial.Domain.Ruta", b =>

@@ -202,6 +202,7 @@ public class Foco
     public string ActualizadoPor { get; set; } = "";
     public DateTimeOffset Actualizado { get; set; }
     public List<FocoArticulo> Articulos { get; set; } = [];
+    public List<FocoObjetivo> Objetivos { get; set; } = [];
 }
 
 /// <summary>Qué se mide de un foco (los objetivos de Checho: «CCC MANTECA», «VOL TAPAS»).</summary>
@@ -217,6 +218,17 @@ public class FocoArticulo
 {
     public int IdFoco { get; set; }
     public int IdArticulo { get; set; }
+}
+
+/// <summary>
+/// El objetivo de un vendedor en un foco (Cesar, 12/11/2026): cuántos clientes de su cartera tienen que comprar algún
+/// artículo del foco en el mes. Siempre en clientes, también en los focos VOL.
+/// </summary>
+public class FocoObjetivo
+{
+    public int IdFoco { get; set; }
+    public int IdPersonal { get; set; }
+    public int Clientes { get; set; }
 }
 
 /// <summary>Cliente que el dueño marcó como Vital (Cesar, 30/10/2026): por ahora solo una marca en la lista.</summary>
