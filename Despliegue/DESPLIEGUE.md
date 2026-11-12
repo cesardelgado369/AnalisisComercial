@@ -51,6 +51,15 @@ su cartera (`/api/cobertura/focos` y `foco=` abiertos; la administración, el an
 y en el celular los clientes de a 25. Sin migraciones. Verificado: `/api/sesion` 401, la página 200, los tres
 contenedores en `1.4.0`, la API sin errores al arrancar, `X-Robots-Tag: noindex`.
 
+**Versión `1.4.1`, publicada el 12/11** (pedido de Cesar en el chat del back; la publicó la sesión del back; imágenes
+desde `git archive` del tag `v1.4.1` = `4e5b93c`: el front de la 1.4.0 con su versión y el back nuevo; backup antes:
+`AnalisisComercial_20261112_1844.bak.gz`). Devolución = cambios (las líneas negativas de las facturas), como el Pivot
+del dueño, que da igual al bulto en octubre; las notas de crédito pasan a `rechazados` (volvieron sin entregarse) y el
+porcentaje es cambios / bultos netos. Sin migraciones. El primer `publicar.sh` falló al subir las imágenes (error de
+containerd al cargar un blob: `failed to ingest … no such file or directory`) sin tocar lo que corría; el segundo
+anduvo. Verificado: `/api/sesion` 401, la página 200, los tres contenedores en `1.4.1`, la API sin errores,
+`X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
