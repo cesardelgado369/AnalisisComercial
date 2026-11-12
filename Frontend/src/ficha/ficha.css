@@ -103,6 +103,7 @@
 }
 .ficha-linea-total .mov-entregado { color: #fff; }
 .ficha-linea-total .mov-devuelto { color: #fecaca; }
+.ficha-linea-total .mov-rechazado { color: #fde68a; }
 .ficha-dev-pct-fila { text-align: right; font-variant-numeric: tabular-nums; }
 .ficha-tabla { width: 100%; border-collapse: collapse; }
 .ficha-tabla thead th {

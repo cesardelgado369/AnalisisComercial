@@ -165,8 +165,8 @@ export function volumen(p: URLSearchParams, rol: RolPrueba, idsOperario: number[
   }
 }
 
-const porcentajeDevolucion = (vendidos: number, devueltos: number) =>
-  vendidos + devueltos > 0 ? uno((devueltos / (vendidos + devueltos)) * 100) : null
+// Como la 1.4.1 del back (12/11): devueltos ÷ vendidos, la fórmula del dueño
+const porcentajeDevolucion = (vendidos: number, devueltos: number) => (vendidos > 0 ? uno((devueltos / vendidos) * 100) : null)
 
 /** `GET /api/devoluciones` (CONTRATO_API.md). */
 export function devoluciones(p: URLSearchParams, rol: RolPrueba, idsOperario: number[], foco: FocoConsulta | null = null) {

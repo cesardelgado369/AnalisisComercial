@@ -254,12 +254,15 @@ export interface LineaMovimiento {
   descripcion: string
   unidadNegocio: string
   entregados: number
+  /** Los cambios: lo que el vendedor le cambió en la misma factura (sus líneas negativas). */
   devueltos: number
+  /** Lo de una nota de crédito: volvió a la fábrica sin entregarse. Desde el 12/11 no es devolución (resta de lo vendido). */
+  rechazados: number
 }
 
 /**
- * Un comprobante del cliente: una factura (lo entregado; sus líneas negativas son devoluciones) o una nota de crédito
- * (solo devuelto). `vendedor`, el del comprobante; null si no es uno de los de quien mira.
+ * Un comprobante del cliente: una factura (lo entregado; sus líneas negativas son los cambios, la devolución) o una nota
+ * de crédito (solo `rechazados`: volvió a la fábrica sin entregarse). `vendedor`, el del comprobante; null si no es uno de los de quien mira.
  */
 export interface MovimientoCliente {
   /** «2026-11-03». */
@@ -270,12 +273,14 @@ export interface MovimientoCliente {
   vendedor: string | null
   entregados: number
   devueltos: number
+  rechazados: number
   lineas: LineaMovimiento[]
 }
 
 /**
  * `GET /api/clientes/{id}/movimientos?mes=&unidad=&foco=` (Cesar, 10/11: la ventanita de Devoluciones): los comprobantes
- * del mes, del más viejo al más nuevo. Σ entregados − Σ devueltos = los vendidos del cliente en Devoluciones.
+ * del mes, del más viejo al más nuevo. Σ entregados − Σ devueltos − Σ rechazados = los vendidos del cliente en
+ * Devoluciones, y Σ devueltos = sus devueltos (12/11: devolución = los cambios, como el Pivot del dueño).
  */
 export interface MovimientosCliente {
   idCliente: number
@@ -321,7 +326,7 @@ export interface KpiDevolucion {
   /** null = fuera de tu cartera (en la ficha) o el operario en `/api/devoluciones` (solo el porcentaje, 30/10). */
   bultosVendidos: number | null
   bultosDevueltos: number | null
-  /** devueltos / (vendidos + devueltos) × 100, un decimal; null si los dos son 0. */
+  /** devueltos / vendidos × 100 (la fórmula del dueño, 12/11), un decimal; null si no hay vendidos. */
   porcentaje: number | null
   mesEnCurso: boolean
   corteAl: string | null

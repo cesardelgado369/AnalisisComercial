@@ -70,8 +70,9 @@ function ExplicacionMes({ k, ayuda }: { k: KpiMes; ayuda: ContextoAyuda }) {
         , no es parte de la cartera de ese mes. Por eso el total de clientes cambia de un mes a otro.
       </Parrafo>
       <Parrafo titulo="Compró:">
-        tuvo al menos una factura de {mes} no anulada ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)} y, descontado lo que se
-        le retiró en la misma factura y las notas de crédito del mes, le quedó algo comprado de al menos un artículo. La
+        tuvo al menos una factura de {mes} no anulada ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)} y, descontados los cambios
+        de la misma factura y las notas de crédito del mes (lo que volvió a la fábrica sin entregarse), le quedó algo
+        comprado de al menos un artículo. La
         Factura presupuesto no cuenta.
       </Parrafo>
       {k.mesEnCurso && <ParrafoEnCurso mes={k.mes} corteAl={k.corteAl} />}

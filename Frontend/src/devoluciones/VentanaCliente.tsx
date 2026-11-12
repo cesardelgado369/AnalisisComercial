@@ -51,7 +51,7 @@ export function VentanaCliente(props: {
   // El vendedor va en la cabecera, donde estaba el mes (Cesar, 10/11: ya se sabe qué mes es). Si le vendieron varios,
   // también en cada comprobante
   const vendedores = [...new Set((d?.movimientos ?? []).map((m) => m.vendedor).filter((v): v is string => !!v))]
-  const { entregados, devueltos } = totalesDelMes(d?.movimientos ?? [])
+  const { entregados, devueltos, rechazados, conRechazos } = totalesDelMes(d?.movimientos ?? [])
 
   const cabecera = (
     <>
@@ -71,7 +71,7 @@ export function VentanaCliente(props: {
   const pie = d ? (
     <>
       <span>Total del mes</span>
-      <Numeros entregados={entregados} devueltos={devueltos} className="mov-totales" siempre />
+      <Numeros entregados={entregados} devueltos={devueltos} rechazados={rechazados} conRechazos={conRechazos} className="mov-totales" siempre />
     </>
   ) : (
     <span>{nombreMesTitulo(mes)}…</span>
@@ -139,7 +139,7 @@ function deArticulos(lista: { descripcion: string; bultos: number }[]) {
 
 /**
  * El mes elegido del graficito de Devoluciones, en palabras (Cesar, 10/11): «Agosto devolvió 1 bulto de Ñoquis de
- * Papa 500g. En total, el 4,8 % de lo facturado».
+ * Papa 500g. En total, el 4,8 % de lo vendido».
  */
 function DetalleDevuelto({ ficha, mes }: { ficha: FichaDevolucionesMeses | null; mes: string }) {
   const k = ficha?.kpis.find((x) => x.mes === mes)
@@ -156,7 +156,7 @@ function DetalleDevuelto({ ficha, mes }: { ficha: FichaDevolucionesMeses | null;
       ) : articulos.length > 1 ? (
         <>: {deArticulos(articulos.map((a) => ({ descripcion: a.descripcion, bultos: a.bultosDevueltos })))}</>
       ) : null}
-      .{k.porcentaje !== null && <> En total, el <strong>{formatoPorcentajeDecimal(k.porcentaje)}</strong> de lo facturado.</>}
+      .{k.porcentaje !== null && <> En total, el <strong>{formatoPorcentajeDecimal(k.porcentaje)}</strong> de lo vendido.</>}
     </>
   )
 }

@@ -35,11 +35,11 @@ export function PestanaLinea(props: {
   const d = consulta.datos?.idCliente === idCliente && consulta.datos.mes === elegido ? consulta.datos : null
 
   if (!elegido) return <p className="vacio">En estos meses no fue cliente de {esOperario ? 'tu' : 'la'} cartera.</p>
-  const { entregados, devueltos } = totalesDelMes(d?.movimientos ?? [])
+  const { entregados, devueltos, rechazados, conRechazos } = totalesDelMes(d?.movimientos ?? [])
 
   return (
     <div className={`ficha-pestana${consulta.cargando && d ? ' recargando' : ''}`}>
-      <p className="apagado ficha-dev-ayuda">Cada factura y nota de crédito del mes, en orden: qué compró y qué devolvió. Tocá un mes para ver otro.</p>
+      <p className="apagado ficha-dev-ayuda">Cada factura y nota de crédito del mes, en orden: qué compró, qué le cambiaron y qué se rechazó. Tocá un mes para ver otro.</p>
       <ol className="ficha-dev-meses">
         {meses.map((m, i) => (
           <li key={m}>
@@ -78,7 +78,7 @@ export function PestanaLinea(props: {
           <LineaComprobantes movimientos={d.movimientos} />
           <div className="ficha-linea-total">
             <span>Total de {nombreMes(elegido)}</span>
-            <Numeros entregados={entregados} devueltos={devueltos} className="mov-totales" siempre />
+            <Numeros entregados={entregados} devueltos={devueltos} rechazados={rechazados} conRechazos={conRechazos} className="mov-totales" siempre />
           </div>
         </div>
       )}

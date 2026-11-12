@@ -2,7 +2,8 @@
  * TODO testing — `GET /api/clientes/{id}/movimientos?mes=&unidad=&foco=` para `npm run dev:mock` (pedido de Cesar del
  * 10/11: la ventanita de Devoluciones): los comprobantes del cliente en el mes, del más viejo al más nuevo. Se arman
  * con sus líneas inventadas del mes (`lineas`), repartidas en 1 a 3 facturas; lo devuelto va en la misma factura o en
- * una nota de crédito unos días después. Cumple lo del contrato: Σ entregados − Σ devueltos = los vendidos de la lista.
+ * una nota de crédito unos días después (desde el 12/11, un rechazo: `rechazados`, no devolución). Aproximado: el mock
+ * de Devoluciones sigue contando las dos como devolución.
  * **No es la lógica oficial** (la del backend).
  */
 import { articuloDe, lineas } from './datosArticulos.ts'
@@ -30,6 +31,7 @@ interface LineaMock {
   unidadNegocio: string
   entregados: number
   devueltos: number
+  rechazados: number
 }
 interface ComprobanteMock {
   fecha: string
@@ -74,18 +76,18 @@ export function movimientos(idCliente: number, p: URLSearchParams, rol: RolPrueb
     const f = facturas[i % cuantas]
     const a = articuloDe(l.idArticulo)
     const enLaFactura = l.devueltos > 0 && r() < 0.5
-    f.lineas.push({ ...a, entregados: medio(l.bultos + l.devueltos), devueltos: enLaFactura ? l.devueltos : 0 })
+    f.lineas.push({ ...a, entregados: medio(l.bultos + l.devueltos), devueltos: enLaFactura ? l.devueltos : 0, rechazados: 0 })
     if (l.devueltos > 0 && !enLaFactura)
       notas.push({
         fecha: fecha(Number(f.fecha.slice(8)) + 1 + Math.floor(r() * 5)),
         tipo: 'notaCredito',
         comprobante: numero(),
         vendedor,
-        lineas: [{ ...a, entregados: 0, devueltos: l.devueltos }],
+        lineas: [{ ...a, entregados: 0, devueltos: 0, rechazados: l.devueltos }],
       })
   })
 
-  const suma = (ls: LineaMock[], campo: 'entregados' | 'devueltos') => medio(ls.reduce((s, l) => s + l[campo], 0))
+  const suma = (ls: LineaMock[], campo: 'entregados' | 'devueltos' | 'rechazados') => medio(ls.reduce((s, l) => s + l[campo], 0))
   return {
     idCliente,
     razonSocial: c.razonSocial,
@@ -97,6 +99,7 @@ export function movimientos(idCliente: number, p: URLSearchParams, rol: RolPrueb
         lineas: [...x.lineas].sort((a, b) => a.unidadNegocio.localeCompare(b.unidadNegocio, 'es') || a.descripcion.localeCompare(b.descripcion, 'es')),
         entregados: suma(x.lineas, 'entregados'),
         devueltos: suma(x.lineas, 'devueltos'),
+        rechazados: suma(x.lineas, 'rechazados'),
       }))
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.comprobante.localeCompare(b.comprobante)),
   }

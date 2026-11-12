@@ -39,7 +39,8 @@ export function ExplicacionVolumen(props: { total: TotalVolumen; c: ComparacionV
       </Parrafo>
       <Parrafo titulo="Bultos:">
         la cantidad de Chess de cada artículo en las facturas no anuladas ({FACTURAS_QUE_CUENTAN}){conUnidad(ayuda)}, menos
-        lo que se le retiró al cliente en la misma factura y las notas de crédito. Es lo que le quedó al cliente; la
+        los cambios de la misma factura y las notas de crédito (lo que volvió a la fábrica sin entregarse). Es lo que le
+        quedó al cliente; la
         Factura presupuesto no cuenta.
       </Parrafo>
       <ParrafoCartera mes={c.mes} ayuda={ayuda}>

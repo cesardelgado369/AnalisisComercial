@@ -142,7 +142,8 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
   // supervisor y dueño, los de su equipo, sumados)
   const vendedorVisto = filtros.vendedor
   const objetivoDe = (f: Foco): ObjetivoVisto | null => {
-    const de = f.objetivos.filter((o) => vendedorVisto === null || o.idPersonal === vendedorVisto)
+    // `?? []`: una API anterior a los objetivos no los manda
+    const de = (f.objetivos ?? []).filter((o) => vendedorVisto === null || o.idPersonal === vendedorVisto)
     if (!de.length) return null
     return {
       clientes: de.reduce((s, o) => s + o.clientes, 0),

@@ -95,7 +95,7 @@ export function PestanaVolumen(props: { idCliente: number; mes: string | null; m
 }
 
 /**
- * Pestaña Devoluciones de la ficha: un recuadro por mes (bultos devueltos sobre lo facturado; tocándolo se elige) y
+ * Pestaña Devoluciones de la ficha: un recuadro por mes (bultos devueltos, los cambios, sobre lo vendido; tocándolo se elige) y
  * los artículos devueltos en el mes elegido. Gobernanza: los meses que no fueron de su cartera vienen en null.
  */
 export function PestanaDevoluciones(props: {
@@ -115,7 +115,7 @@ export function PestanaDevoluciones(props: {
 
   return (
     <div className={`ficha-pestana${cargando ? ' recargando' : ''}`}>
-      <p className="apagado ficha-dev-ayuda">Bultos devueltos sobre lo facturado (vendidos + devueltos). Tocá un mes para ver qué devolvió.</p>
+      <p className="apagado ficha-dev-ayuda">Bultos devueltos (los cambios) sobre los vendidos. Tocá un mes para ver qué devolvió.</p>
       <ol className="ficha-dev-meses">
         {datos.kpis.map((k) => {
           const fuera = k.bultosVendidos === null
@@ -138,7 +138,7 @@ export function PestanaDevoluciones(props: {
                   <>
                     <strong className="ficha-dev-pct">{pct(k.porcentaje)}</strong>
                     <span className="ficha-dev-detalle">
-                      {formatoBultos(k.bultosDevueltos ?? 0)} de {formatoBultos((k.bultosVendidos ?? 0) + (k.bultosDevueltos ?? 0))}
+                      {formatoBultos(k.bultosDevueltos ?? 0)} de {formatoBultos(k.bultosVendidos ?? 0)}
                     </span>
                     {k.mesEnCurso && k.corteAl && <span className="ficha-dev-detalle">al {formatoFechaCorta(k.corteAl)}</span>}
                   </>
@@ -158,7 +158,7 @@ export function PestanaDevoluciones(props: {
               <NombreArticulo articulo={a} className="ficha-vol-articulo" />
               <span className="ficha-vol-numeros">
                 <strong>{formatoBultos(a.bultosDevueltos)}</strong>
-                <span className="apagado"> de {formatoBultos(a.bultosVendidos + a.bultosDevueltos)}</span>
+                <span className="apagado"> de {formatoBultos(a.bultosVendidos)}</span>
               </span>
               <strong className="ficha-dev-pct-fila">{pct(a.porcentaje)}</strong>
             </li>

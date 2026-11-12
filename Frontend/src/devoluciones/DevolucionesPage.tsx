@@ -18,10 +18,10 @@ import { ProductosCliente } from '../comercial/ProductosCliente'
 import './devoluciones.css'
 
 /**
- * Devoluciones (`/devoluciones`): por mes, qué parte de lo facturado volvió (`devueltos ÷ (vendidos + devueltos)`, la
- * fórmula de la nota del dueño), y en el mes elegido, los clientes y los artículos con devoluciones. Los números los
- * arma la API (CONTRATO_API.md). Qué cuenta como devolución lo decide el backend (hoy: las notas de crédito y las líneas
- * con cantidad negativa de las facturas, los «cambios»; falta que Cesar lo confirme con Madomi).
+ * Devoluciones (`/devoluciones`): por mes, qué parte de lo vendido se devolvió (`devueltos ÷ vendidos`, la fórmula del
+ * dueño), y en el mes elegido, los clientes y los artículos con devoluciones. Los números los arma la API
+ * (CONTRATO_API.md, «Qué es devolución»): desde el 12/11 (1.4.1) devolución son solo los cambios (las líneas negativas de
+ * las facturas), como el Pivot del dueño; las notas de crédito son rechazos y solo restan de lo vendido.
  * El vendedor ve lo que suma su cartera (por mes y por artículo) solo en porcentajes, sin bultos (Cesar, 30/10); lo de
  * cada cliente, con bultos. El dueño tiene la ayuda del mes elegido.
  */
@@ -62,7 +62,7 @@ export function DevolucionesPage() {
         <header className="cob-resumen">
           <div className="cob-resumen-textos ayuda-ancla">
             <p>
-              Bultos devueltos sobre lo facturado (vendidos + devueltos), por mes.
+              Bultos devueltos (los cambios) sobre los vendidos, por mes.
               {filtros.ayuda && kpiElegido && (
                 <Ayuda etiqueta={`Cómo se calculó ${nombreMes(kpiElegido.mes)}`}>
                   <ExplicacionDevoluciones k={kpiElegido} ayuda={filtros.ayuda} />
@@ -89,8 +89,8 @@ export function DevolucionesPage() {
                       </span>
                       <span className="dev-kpi-detalle">
                         {esOperario
-                          ? 'de lo facturado'
-                          : `${formatoBultos(k.bultosDevueltos ?? 0)} de ${formatoBultos((k.bultosVendidos ?? 0) + (k.bultosDevueltos ?? 0))} bultos`}
+                          ? 'de lo vendido'
+                          : `${formatoBultos(k.bultosDevueltos ?? 0)} de ${formatoBultos(k.bultosVendidos ?? 0)} bultos`}
                       </span>
                     </button>
                   </li>
@@ -124,7 +124,7 @@ export function DevolucionesPage() {
                   {(c) => (
                     <TarjetaCliente key={c.idCliente} cliente={c} ficha={ficha} conVendedor={conVendedor}>
                       <span className="dev-tarjeta-numeros">
-                        <strong>{pct(c.porcentaje)}</strong> · devolvió {formatoBultos(c.bultosDevueltos)} de {formatoBultos(c.bultosVendidos + c.bultosDevueltos)} bultos
+                        <strong>{pct(c.porcentaje)}</strong> · devolvió {formatoBultos(c.bultosDevueltos)} de {formatoBultos(c.bultosVendidos)} bultos vendidos
                       </span>
                       <ProductosCliente articulos={c.articulosDevueltos} verbo="Devolvió" />
                     </TarjetaCliente>
@@ -137,7 +137,7 @@ export function DevolucionesPage() {
                       <tr>
                         <th className="cob-col-codigo">Cód. cliente</th>
                         <th>Razón social</th>
-                        <th className="dev-col-num">Facturado</th>
+                        <th className="dev-col-num">Vendido</th>
                         <th className="dev-col-num">Devuelto</th>
                         <th className="dev-col-num">%</th>
                       </tr>
@@ -152,7 +152,7 @@ export function DevolucionesPage() {
                           alPasar={ventanita.alPasar}
                           className={ventanita.abierta?.clave === c.idCliente ? 'enfocada' : undefined}
                         >
-                          <td className="dev-col-num apagado">{formatoBultos(c.bultosVendidos + c.bultosDevueltos)}</td>
+                          <td className="dev-col-num apagado">{formatoBultos(c.bultosVendidos)}</td>
                           <td className="dev-col-num">
                             {formatoBultos(c.bultosDevueltos)}
                             <ProductosCliente articulos={c.articulosDevueltos} verbo="Devolvió" />
@@ -192,12 +192,12 @@ export function DevolucionesPage() {
                       {esOperario ? (
                         <span className="dev-articulo-numeros">
                           <strong>{pct(a.porcentaje)}</strong>
-                          <span className="apagado">de lo facturado</span>
+                          <span className="apagado">de lo vendido</span>
                         </span>
                       ) : (
                         <span className="dev-articulo-numeros">
                           <span><strong>{formatoBultos(a.bultosDevueltos ?? 0)}</strong> {a.bultosDevueltos === 1 ? 'bulto' : 'bultos'}</span>
-                          <span className="apagado">{pct(a.porcentaje)} de lo facturado</span>
+                          <span className="apagado">{pct(a.porcentaje)} de lo vendido</span>
                         </span>
                       )}
                     </li>

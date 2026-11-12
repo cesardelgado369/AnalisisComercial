@@ -32,11 +32,11 @@ export function ModalObjetivos(props: {
     ? analizado.vendedores.map((v) => ({ id: v.idPersonal, nombre: v.nombre, cartera: clientesDe(v).clientesCartera ?? null }))
     : sesion.vendedores.filter((v) => !v.esCasa).map((v) => ({ id: v.id, nombre: v.nombre, cartera: null }))
   const [valores, setValores] = useState<Record<number, string>>(() =>
-    Object.fromEntries(foco.objetivos.map((o) => [o.idPersonal, String(o.clientes)])),
+    Object.fromEntries((foco.objetivos ?? []).map((o) => [o.idPersonal, String(o.clientes)])),
   )
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
-  const yaCompraron = (id: number) => foco.objetivos.find((o) => o.idPersonal === id)?.clientesConCompra ?? clientesDe(analizado?.vendedores.find((v) => v.idPersonal === id)).clientesConCompra ?? null
+  const yaCompraron = (id: number) => foco.objetivos?.find((o) => o.idPersonal === id)?.clientesConCompra ?? clientesDe(analizado?.vendedores.find((v) => v.idPersonal === id)).clientesConCompra ?? null
 
   const numero = (texto: string | undefined) => (texto?.trim() ? Number(texto.replace(/\./g, '')) : null)
   const total = vendedores.reduce((s, v) => s + (numero(valores[v.id]) ?? 0), 0)

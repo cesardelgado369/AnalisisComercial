@@ -88,7 +88,7 @@ export function FocosPage() {
         const cuerpo: FocoEnvio = { mes, nombre: f.nombre, idsArticulo: f.articulos.map((a) => a.idArticulo), medida: f.medida, meta: f.meta }
         const nuevo = await api.post<Foco>('/admin/focos', cuerpo)
         // Con sus objetivos de clientes, que Checho después ajusta
-        if (f.objetivos.length)
+        if (f.objetivos?.length)
           await api.put<Foco>(`/admin/focos/${nuevo.idFoco}/objetivos`, {
             objetivos: f.objetivos.map((o) => ({ idPersonal: o.idPersonal, clientes: o.clientes })),
           })
@@ -213,6 +213,9 @@ export function FocosPage() {
           <div className="foco-contenedores">
             {estos.map((f) => {
               const analizado = analisis.a?.focos.find((x) => x.idFoco === f.idFoco)
+              // Una API anterior a los objetivos (12/11) no los manda: sin el botón ni el resumen
+              const conObjetivos = f.objetivos !== undefined
+              const objetivosF = f.objetivos ?? []
               return (
                 <article key={f.idFoco} className="tarjeta foco-contenedor" aria-labelledby={`foco-${f.idFoco}`}>
                   {/* Simple, como lo escribe Checho (Cesar, 10/11): CCC - Dulce de leche; qué mide va en el globito */}
@@ -237,27 +240,29 @@ export function FocosPage() {
                       </Ayuda>
                     </h3>
                     <span className="foco-cabecera-acciones">
-                      <button type="button" className="btn-texto foco-editar" onClick={() => setObjetivos(f)}>
-                        <span className="icono icono-chico" aria-hidden>flag</span>
-                        Objetivos<span className="sr-solo"> de {f.nombre}</span>
-                      </button>
+                      {conObjetivos && (
+                        <button type="button" className="btn-texto foco-editar" onClick={() => setObjetivos(f)}>
+                          <span className="icono icono-chico" aria-hidden>flag</span>
+                          Objetivos<span className="sr-solo"> de {f.nombre}</span>
+                        </button>
+                      )}
                       <button type="button" className="btn-texto foco-editar" onClick={() => setModal({ foco: f })}>
                         <span className="icono icono-chico" aria-hidden>edit</span>
                         Editar<span className="sr-solo"> {f.nombre}</span>
                       </button>
                     </span>
                   </header>
-                  {(f.meta !== null || f.objetivos.length > 0) && (
+                  {(f.meta !== null || objetivosF.length > 0) && (
                     <p className="foco-contenedor-mide">
                       {f.meta !== null && (
                         <strong className="foco-meta">
                           {f.medida === 'vol' ? `Meta ${formatoBultos(f.meta)} bultos` : `Meta ${formatoPorcentaje(f.meta)} de los clientes`}
                         </strong>
                       )}
-                      {f.objetivos.length > 0 && (
+                      {objetivosF.length > 0 && (
                         <button type="button" className="foco-meta foco-objetivos-resumen" onClick={() => setObjetivos(f)}>
                           <span className="icono icono-chico" aria-hidden>flag</span>
-                          Objetivo: {formatoEntero(f.objetivos.reduce((s, o) => s + o.clientes, 0))} clientes entre {f.objetivos.length} {f.objetivos.length === 1 ? 'vendedor' : 'vendedores'}
+                          Objetivo: {formatoEntero(objetivosF.reduce((s, o) => s + o.clientes, 0))} clientes entre {objetivosF.length} {objetivosF.length === 1 ? 'vendedor' : 'vendedores'}
                         </button>
                       )}
                     </p>
@@ -273,7 +278,7 @@ export function FocosPage() {
                       ctx={ctx}
                       alPasar={ventanita.alPasar}
                       enfocado={ventanita.abierta?.clave.idFoco === f.idFoco ? ventanita.abierta.clave.idPersonal : null}
-                      objetivos={f.objetivos}
+                      objetivos={objetivosF}
                     />
                   ) : mes !== proximo && !analisis.errores.length ? (
                     <LoadingDefault texto="Armando cómo viene…" />

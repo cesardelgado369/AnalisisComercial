@@ -50,12 +50,14 @@
   display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 13px; font-weight: 800;
   line-height: 1; color: #fff; background: var(--azul);
 }
-.mov-notaCredito .mov-punto { background: var(--rojo); }
+/* La nota de crédito es un rechazo (12/11): volvió a la fábrica sin entregarse; en ámbar, no en rojo como los cambios */
+.mov-notaCredito .mov-punto { background: #b45309; }
 .mov-cuerpo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .mov-cabecera { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; }
 .mov-fecha { font-size: 12px; font-weight: 800; color: #111827; }
 .mov-tipo { font-size: 11px; font-weight: 700; color: var(--azul); }
-.mov-notaCredito .mov-tipo { color: var(--rojo); }
+.mov-notaCredito .mov-tipo { color: #b45309; }
+.mov-rechazado { color: #b45309; }
 .ventana-cliente .capsula { height: 20px; font-size: 11px; border-color: var(--azul); }
 .ventana-cliente .capsula-icono { background: var(--azul); }
 .ventana-cliente .capsula-texto { color: var(--azul); }
@@ -76,6 +78,7 @@
 /* En el pie azul, los números en blanco y lo devuelto en rosa claro (el rojo no se lee sobre azul) */
 .ventana-cliente-pie .mov-entregado { color: #fff; }
 .ventana-cliente-pie .mov-devuelto { color: #fecaca; }
+.ventana-cliente-pie .mov-rechazado { color: #fde68a; }
 /* La ventanita de un vendedor en Focos del mes: el foco en la cabecera y sus clientes, los que ya compraron arriba */
 .ventana-foco { font-size: 11px; font-weight: 700; color: #dbeafe; white-space: nowrap; }
 .ventana-clientes { list-style: none; margin: 0; padding: 6px 8px; overflow-y: auto; min-height: 0; overscroll-behavior: contain; }
