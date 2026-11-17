@@ -2,7 +2,7 @@ import { api } from '../api/client'
 import type { ClienteCobertura, Cobertura, Foco, OpcionVendedor, Volumen } from '../api/types'
 import { nombrePropio } from '../cobertura/estados'
 import logoMadomi from '../images/madomi-color.png'
-import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, formatoPorcentajeDecimal, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { formatoBultos, formatoEntero, formatoFechaCorta, nombreMes, nombreMesTitulo } from '../utils/formato'
 
 // Se imprime en blanco y negro (Cesar, 17/11): todo en grises, nada que dependa del color
 const MARGEN = 12
@@ -23,8 +23,7 @@ export interface PedidoPdfFocos {
   dia: string | null
   /**
    * Con bultos (dueño y supervisor): los VOL dicen, por cliente, cuántos bultos de más o de menos lleva contra el mes
-   * anterior, y el vendedor, cuántos le faltan para su objetivo o cuántos lo pasó (Cesar, 17/11). Sin bultos, como en la
-   * pantalla del vendedor: si compró o no.
+   * anterior (Cesar, 17/11). Sin bultos, como en la pantalla del vendedor: si compró o no.
    */
   conBultos: boolean
   /** Contra qué se comparan los VOL: la Comparativa de la pantalla. */
@@ -57,7 +56,7 @@ const nombreArchivo = (t: string) =>
 /**
  * Los focos del mes en PDF, **una hoja por vendedor** (Cesar, 17/11: Checho dice que la app es compleja para los
  * choferes; como las hojas de ruta de De Ruta). Arriba, vendedor, mes, hasta cuándo hay datos y sus clientes; después
- * cómo va cada foco (compraron, meta, objetivo y cuántos le faltan) y la lista de sus clientes, por zona, con un círculo
+ * cómo va cada foco (cuántos compraron, a lo ancho) y la lista de sus clientes, por zona, con un círculo
  * por foco: lleno si ya compró algún artículo, vacío si todavía no. Sin bultos: los VOL también cuentan clientes que
  * compraron (como los ve el vendedor). Una consulta por foco (`/cobertura?foco=` del mes, como la sección), sin la
  * búsqueda. jsPDF se carga recién acá.
@@ -107,9 +106,18 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
   doc.setProperties({ title: `Focos de ${nombreMes(p.mes)} ${p.mes.slice(0, 4)}`, creator: 'Madomi Pastas' })
   /** El vendedor de cada página (para el pie): uno con muchos clientes ocupa más de una hoja. */
   const vendedorDePagina: string[] = []
+  /** La primera hoja de cada vendedor: ahí va la nota de los VOL. */
+  const primerasHojas = new Set<number>()
+  // Los VOL con bultos llevan un asterisco y su nota al pie (Cesar, 17/11)
+  const notaVol = comparacionVol
+    ? `* ${p.focos.filter((_, i) => bultos[i]).map((f) => f.nombre).join(', ')}: bultos de más (+) o de menos (–) que compró cada cliente contra ${
+        comparacionVol.tipo === 'mismoDiaHabil' ? `${nombreMes(comparacionVol.mesBase)} al mismo día` : `todo ${nombreMes(comparacionVol.mesBase)}`
+      }.`
+    : null
 
   porVendedor.forEach(({ v, clientes }, iv) => {
     if (iv > 0) doc.addPage()
+    primerasHojas.add(doc.getNumberOfPages())
     const nombre = nombrePropio(v.nombre)
     let y = MARGEN + 2
 
@@ -151,55 +159,26 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
     // Cómo va cada foco
     doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20).text('Cómo va cada foco', MARGEN, y + 2)
     doc.setFont('helvetica', 'normal')
-    const resumen = p.focos.map((f, i) => {
-      const compraron = clientes.filter((c) => compro[i].get(c.idCliente)).length
-      const pct = clientes.length ? (compraron / clientes.length) * 100 : 0
-      // La meta de un CCC es un porcentaje de la cartera; la de un VOL es de bultos del foco entero: acá no va
-      const metaClientes = f.medida === 'ccc' && f.meta !== null ? Math.ceil((f.meta * clientes.length) / 100) : null
-      const del = f.objetivos?.find((o) => o.idPersonal === v.id)
-      const tendencia = del?.tendencia ?? null
-      const comun = [f.nombre, `${formatoEntero(compraron)} de ${formatoEntero(clientes.length)}`, formatoPorcentaje(pct)]
-      // VOL con bultos: el objetivo en bultos y cuántos le faltan o cuántos lo pasó (Cesar, 17/11)
-      if (f.medida === 'vol' && p.conBultos && del?.bultos != null) {
-        const dif = del.bultos - (del.bultosActual ?? 0)
-        return [
-          ...comun,
-          '—',
-          `${formatoBultos(del.bultos)} bultos`,
-          dif > 0 ? `${formatoBultos(dif)} bultos` : dif === 0 ? 'Cumplido' : `Pasó por ${formatoBultos(-dif)} bultos`,
-          tendencia === null ? '—' : formatoPorcentajeDecimal(tendencia),
-        ]
-      }
-      const objetivo = f.medida === 'ccc' ? (del?.clientes ?? null) : null
-      // El objetivo es de todo el mes con toda su cartera (la API manda cuántos compraron): un día o un tipo de producto
-      // no lo achican. La meta, en cambio, es un porcentaje de los clientes de la hoja
-      const faltan =
-        objetivo !== null && del
-          ? Math.max(0, objetivo - del.clientesConCompra)
-          : metaClientes === null
-            ? null
-            : Math.max(0, metaClientes - compraron)
-      return [
-        ...comun,
-        metaClientes === null ? '—' : `${formatoEntero(f.meta!)} % (${formatoEntero(metaClientes)} clientes)`,
-        objetivo === null ? '—' : `${formatoEntero(objetivo)} clientes`,
-        faltan === null ? '—' : faltan === 0 ? 'Cumplido' : `${formatoEntero(faltan)} ${faltan === 1 ? 'cliente' : 'clientes'}`,
-        objetivo === null || tendencia === null ? '—' : formatoPorcentajeDecimal(tendencia),
-      ]
-    })
+    // A lo ancho, solo cuántos compraron (Cesar, 17/11): una columna por foco
     autoTable(doc, {
       startY: y + 5,
-      margin: { left: MARGEN, right: MARGEN, top: MARGEN + 8, bottom: 16 },
-      head: [['Foco', 'Compraron', '%', 'Meta', 'Objetivo', 'Le faltan', 'Tendencia']],
-      body: resumen,
+      margin: { left: MARGEN, right: MARGEN, top: MARGEN + 8, bottom: 19 },
+      head: [['Foco', ...p.focos.map((f) => f.nombre)]],
+      body: [
+        [
+          'Compraron',
+          ...p.focos.map((_, i) => `${formatoEntero(clientes.filter((c) => compro[i].get(c.idCliente)).length)} de ${formatoEntero(clientes.length)}`),
+        ],
+      ],
       theme: 'grid',
-      styles: { font: 'helvetica', fontSize: 9, cellPadding: 1.6, lineColor: LINEA, lineWidth: 0.2, textColor: NEGRO },
-      headStyles: { fillColor: FONDO_TITULOS, textColor: NEGRO, fontStyle: 'bold' },
-      columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 5: { fontStyle: 'bold' }, 6: { halign: 'right', fontStyle: 'bold' } },
+      styles: { font: 'helvetica', fontSize: 9.5, cellPadding: 1.8, lineColor: LINEA, lineWidth: 0.2, textColor: NEGRO, halign: 'center', valign: 'middle' },
+      headStyles: { fillColor: FONDO_TITULOS, textColor: NEGRO, fontStyle: 'bold', fontSize: 8.5 },
+      columnStyles: { 0: { cellWidth: 24, halign: 'left', fontStyle: 'bold' } },
     })
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8
 
-    // Sus clientes: un círculo por foco (lleno, ya compró; vacío, todavía no); en los VOL con bultos, los de más o de menos
+    // Sus clientes: un círculo por foco (lleno, ya compró; vacío, todavía no); en los VOL con bultos, los de más o de
+    // menos (con asterisco: qué son, en la nota al pie)
     doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(NEGRO).text('Sus clientes', MARGEN, y)
     doc.setFont('helvetica', 'normal').setFontSize(8).setTextColor(70)
     const xLeyenda = MARGEN + 28
@@ -207,20 +186,13 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
     doc.text('ya compró algún artículo del foco', xLeyenda + 3.5, y)
     circulo(doc, xLeyenda + 52, y - 1.2, false)
     doc.text('todavía no compró', xLeyenda + 55.5, y)
-    if (comparacionVol) {
-      const contra =
-        comparacionVol.tipo === 'mismoDiaHabil' ? `${nombreMes(comparacionVol.mesBase)} al mismo día` : `todo ${nombreMes(comparacionVol.mesBase)}`
-      const nombresVol = p.focos.filter((_, i) => bultos[i]).map((f) => f.nombre).join(', ')
-      y += 4.5
-      doc.text(`${nombresVol}: bultos de más (+) o de menos (–) contra ${contra}`, xLeyenda, y)
-    }
 
     // Las marcas de cada cliente, por su código (la tercera columna): así no dependen del orden de las filas
     const marcas = new Map(clientes.map((c) => [String(c.idCliente), p.focos.map((_, i) => !!compro[i].get(c.idCliente))]))
     const anchoFoco = p.focos.length > 5 ? 20 : 17
     autoTable(doc, {
       startY: y + 3,
-      margin: { left: MARGEN, right: MARGEN, top: MARGEN + 8, bottom: 16 },
+      margin: { left: MARGEN, right: MARGEN, top: MARGEN + 8, bottom: 19 },
       // En las hojas que siguen, arriba dice de qué vendedor es
       didDrawPage: (d) => {
         if (d.pageNumber === 1) return
@@ -228,9 +200,9 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
         doc.text(`${nombre} (continuación)`, MARGEN, MARGEN + 4)
         doc.setFont('helvetica', 'normal')
       },
-      head: [['#', 'Cliente', 'Cód.', ...p.focos.map((f) => f.nombre), 'Le faltan']],
+      // Sin la columna Le faltan (Cesar, 17/11: innecesaria)
+      head: [['#', 'Cliente', 'Cód.', ...p.focos.map((f, i) => (bultos[i] ? `${f.nombre}*` : f.nombre))]],
       body: clientes.map((c: ClienteCobertura, k) => {
-        const faltan = marcas.get(String(c.idCliente))!.filter((m) => !m).length
         return [
           String(k + 1),
           c.ruta ? `${c.razonSocial}\n${nombrePropio(c.ruta)}` : c.razonSocial,
@@ -242,7 +214,6 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
             const n = dif ?? 0
             return n > 0 ? `+${formatoBultos(n)}` : n < 0 ? `–${formatoBultos(-n)}` : '0'
           }),
-          faltan === 0 ? 'Ninguno' : String(faltan),
         ]
       }),
       theme: 'grid',
@@ -253,7 +224,6 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
         1: { cellWidth: 'auto' },
         2: { cellWidth: 14, halign: 'center' },
         ...Object.fromEntries(p.focos.map((_, i) => [i + 3, { cellWidth: anchoFoco, halign: 'center' as const }])),
-        [p.focos.length + 3]: { cellWidth: 16, halign: 'center', fontStyle: 'bold' },
       },
       didParseCell: (d) => {
         if (d.section !== 'body') return
@@ -282,6 +252,10 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
       alto - 8,
     )
     doc.text(`Página ${n} de ${total}`, ancho - MARGEN, alto - 8, { align: 'right' })
+    if (notaVol && primerasHojas.has(n)) {
+      doc.setFontSize(8).setTextColor(60)
+      doc.text(doc.splitTextToSize(notaVol, ancho - 2 * MARGEN)[0] ?? '', MARGEN, alto - 13)
+    }
   }
 
   const quien = porVendedor.length === 1 ? nombreArchivo(porVendedor[0].v.nombre) : 'por-vendedor'
