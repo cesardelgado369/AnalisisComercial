@@ -76,6 +76,13 @@ Admin edita la meta y los objetivos por vendedor de cada foco desde el resumen d
 **Poner meta** si no tiene). Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en
 `1.7.1`, los tres contenedores en `1.7.1`, la API sin errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.7.2`, publicada el 17/11** (OK de Cesar en el chat del back para estos tres cambios; la publicó la sesión
+del back con `publicar.sh`; imágenes desde `git archive` del tag `v1.7.2` = `a1cd87a`; backup antes:
+`AnalisisComercial_20261117_1856.bak.gz`). El PDF de focos más simple: Cómo va cada foco a lo ancho solo con
+Compraron, Sus clientes sin Le faltan y los VOL con bultos con asterisco (Tapas\*) y la nota al pie en la primera hoja
+de cada vendedor. Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.7.2`,
+los tres contenedores en `1.7.2`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
