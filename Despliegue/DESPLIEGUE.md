@@ -83,6 +83,14 @@ Compraron, Sus clientes sin Le faltan y los VOL con bultos con asterisco (Tapas\
 de cada vendedor. Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.7.2`,
 los tres contenedores en `1.7.2`, la API sin errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.7.3`, publicada el 17/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`; imágenes desde `git archive` del tag `v1.7.3` = `a411217`; backup antes:
+`AnalisisComercial_20261117_1924.bak.gz`). Corrige la 1.7.1: el lápiz del resumen de Focos abre directo los objetivos
+por vendedor (con su cartera y cuántos compraron, arrancando en el vendedor elegido) y se va la ventanita de la meta;
+un CCC con objetivo se cuenta contra el objetivo y no contra la cartera (en Todos los vendedores, solo si todos tienen
+el suyo). Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.7.3`, los tres
+contenedores en `1.7.3`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
