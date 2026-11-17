@@ -59,6 +59,25 @@ public static class Volumen
         return Math.Round(b * c.DiaHabil / c.DiasHabilesMes, 2, MidpointRounding.AwayFromZero);
     }
 
+    /// <summary>
+    /// La tendencia de un objetivo (Checho, 17/11/2026, como su Excel): lo que se lleva proyectado a fin de mes contra el
+    /// objetivo, actual ÷ (díaHábil ÷ díasHábilesMes) ÷ objetivo × 100, un decimal. En un mes cerrado, actual ÷ objetivo.
+    /// null si el mes no empezó (sin corte o sin días hábiles) o el objetivo no es positivo.
+    /// </summary>
+    public static decimal? Tendencia(decimal actual, decimal objetivo, Comparacion c)
+    {
+        if (objetivo <= 0 || c.CorteAl is not { } corte)
+            return null;
+        decimal avance;
+        if (corte >= Calendario.FinDeMes(c.Mes))
+            avance = 1m;
+        else if (c.DiaHabil > 0 && c.DiasHabilesMes > 0)
+            avance = (decimal)c.DiaHabil / c.DiasHabilesMes;
+        else
+            return null;
+        return Math.Round(100m * actual / avance / objetivo, 1, MidpointRounding.AwayFromZero);
+    }
+
     /// <summary>actual / base × 100, un decimal. null sin base o con base ≤ 0.</summary>
     public static decimal? Porcentaje(decimal actual, decimal? bultosBase)
         => bultosBase is { } b && b > 0 ? Math.Round(100m * actual / b, 1, MidpointRounding.AwayFromZero) : null;

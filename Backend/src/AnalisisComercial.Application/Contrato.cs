@@ -82,20 +82,30 @@ public interface ICoberturaService
 
 public record ArticuloFocoDto(int IdArticulo, string Descripcion);
 
-/// <param name="Objetivos">Los objetivos de clientes por vendedor (Cesar, 12/11/2026), por nombre. Admin: todos;
-/// supervisor y operario: los de sus vendedores.</param>
+/// <param name="Objetivos">Los objetivos por vendedor (Cesar, 12/11/2026; Checho, 17/11), por nombre. Admin: todos;
+/// supervisor y operario: los de sus vendedores; los VOL, solo para quien ve bultos.</param>
+/// <param name="ObjetivoEquipo">La suma de los objetivos que ve la persona; null si no ve ninguno.</param>
 public record FocoDto(int IdFoco, DateOnly Mes, string Nombre, MedidaFoco Medida, decimal? Meta,
     IReadOnlyList<ArticuloFocoDto> Articulos, string ActualizadoPor, DateTimeOffset Actualizado,
-    IReadOnlyList<ObjetivoFocoDto> Objetivos);
+    IReadOnlyList<ObjetivoFocoDto> Objetivos, ObjetivoEquipoDto? ObjetivoEquipo);
 
-/// <param name="Clientes">El objetivo: cuántos clientes de su cartera tienen que comprar algún artículo del foco.</param>
+/// <param name="Clientes">CCC: el objetivo, cuántos clientes de su cartera tienen que comprar algún artículo del foco.
+/// null en VOL.</param>
+/// <param name="Bultos">VOL: el objetivo en bultos; si no hay guardado, lo que llevó su cartera en todo el mes anterior
+/// (<paramref name="Sugerido"/>). null en CCC.</param>
 /// <param name="ClientesConCompra">Los de su cartera en el mes del foco que ya compraron (la regla de
 /// <c>/api/cobertura?foco=</c>, sin filtros).</param>
-public record ObjetivoFocoDto(int IdPersonal, string Nombre, int Clientes, int ClientesConCompra);
+/// <param name="BultosActual">VOL: los bultos netos del foco de su cartera en el mes, al corte de Volumen.</param>
+/// <param name="Tendencia">Lo que se lleva proyectado a fin de mes contra el objetivo (<see cref="Volumen.Tendencia"/>).</param>
+public record ObjetivoFocoDto(int IdPersonal, string Nombre, int? Clientes, decimal? Bultos, int ClientesConCompra,
+    decimal? BultosActual, decimal? Tendencia, bool Sugerido);
 
-/// <summary>Los objetivos de un foco: reemplazan a todos los que tenía.</summary>
+/// <summary>La fila Totales del Excel de Checho: la suma de los objetivos que ve la persona.</summary>
+public record ObjetivoEquipoDto(decimal Objetivo, decimal Actual, decimal? Tendencia);
+
+/// <summary>Los objetivos de un foco: reemplazan a todos los que tenía. CCC: <c>clientes</c>; VOL: <c>bultos</c>.</summary>
 /// <param name="Clientes">Decimal para que uno no entero dé 400 en <c>errors.objetivos</c>.</param>
-public record ObjetivoDto(int IdPersonal, decimal Clientes);
+public record ObjetivoDto(int IdPersonal, decimal? Clientes = null, decimal? Bultos = null);
 
 public record GuardarObjetivosDto(IReadOnlyList<ObjetivoDto>? Objetivos);
 

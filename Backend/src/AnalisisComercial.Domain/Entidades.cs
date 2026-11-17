@@ -221,14 +221,16 @@ public class FocoArticulo
 }
 
 /// <summary>
-/// El objetivo de un vendedor en un foco (Cesar, 12/11/2026): cuántos clientes de su cartera tienen que comprar algún
-/// artículo del foco en el mes. Siempre en clientes, también en los focos VOL.
+/// El objetivo de un vendedor en un foco (Cesar, 12/11/2026; Checho, 17/11). En un foco CCC, cuántos clientes de su
+/// cartera tienen que comprar algún artículo del foco en el mes (<see cref="Clientes"/>). En uno VOL, cuántos bultos
+/// (<see cref="Bultos"/>); si no hay, vale lo que llevó su cartera en todo el mes anterior.
 /// </summary>
 public class FocoObjetivo
 {
     public int IdFoco { get; set; }
     public int IdPersonal { get; set; }
-    public int Clientes { get; set; }
+    public int? Clientes { get; set; }
+    public decimal? Bultos { get; set; }
 }
 
 /// <summary>Cliente que el dueño marcó como Vital (Cesar, 30/10/2026): por ahora solo una marca en la lista.</summary>

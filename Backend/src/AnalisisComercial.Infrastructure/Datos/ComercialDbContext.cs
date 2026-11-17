@@ -164,6 +164,7 @@ public class ComercialDbContext(DbContextOptions<ComercialDbContext> options) : 
         {
             e.ToTable("FocoObjetivo");
             e.HasKey(x => new { x.IdFoco, x.IdPersonal });
+            e.Property(x => x.Bultos).HasPrecision(9, 1);
             e.HasOne<Foco>().WithMany(f => f.Objetivos).HasForeignKey(x => x.IdFoco).OnDelete(DeleteBehavior.Cascade);
         });
 

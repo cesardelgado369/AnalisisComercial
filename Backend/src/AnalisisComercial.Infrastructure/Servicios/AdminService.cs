@@ -251,7 +251,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     public async Task<IReadOnlyList<FocoDto>> FocosAsync(CancellationToken ct = default)
     {
         await AdminAsync("admin-focos", ct);
-        return await FocosAsync(db, mes: null, ct);
+        return await FocosAsync(db, lectura, mes: null, ct);
     }
 
     /// <summary>
@@ -259,21 +259,27 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     /// para el filtro de las pantallas.
     /// </summary>
     /// <param name="vendedores">Los objetivos que se ven: null = todos (admin); si no, los de esos vendedores.</param>
-    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, DateOnly? mes, CancellationToken ct,
-        IReadOnlySet<int>? vendedores = null)
+    /// <param name="veBultos">Si ve los objetivos VOL (el operario que ve solo Cobertura, no).</param>
+    /// <param name="conObjetivos">false: sin calcular objetivos (el análisis no los usa).</param>
+    internal static async Task<IReadOnlyList<FocoDto>> FocosAsync(ComercialDbContext db, Lectura lectura, DateOnly? mes,
+        CancellationToken ct, IReadOnlySet<int>? vendedores = null, bool veBultos = true, bool conObjetivos = true)
     {
         var focos = await db.Focos.AsNoTracking().Include(f => f.Articulos).Include(f => f.Objetivos)
             .Where(f => mes == null || f.Mes == mes).ToListAsync(ct);
         var ids = focos.SelectMany(f => f.Articulos.Select(a => a.IdArticulo)).Distinct().ToList();
         var nombres = await db.Articulos.AsNoTracking().Where(a => ids.Contains(a.IdArticulo))
             .ToDictionaryAsync(a => a.IdArticulo, a => a.Descripcion, ct);
+        var personas = await db.Vendedores.AsNoTracking().ToDictionaryAsync(v => v.IdPersonal, ct);
+        var ultimoDia = await lectura.UltimoDiaCompletoAsync(ct);
+        var resultado = new List<FocoDto>();
         foreach (var f in focos)
-            f.Objetivos.RemoveAll(o => vendedores is not null && !vendedores.Contains(o.IdPersonal));
-        var personas = await db.Vendedores.AsNoTracking().ToDictionaryAsync(v => v.IdPersonal, v => v.Nombre, ct);
-        var compraron = new Dictionary<int, Dictionary<int, int>>();
-        foreach (var f in focos.Where(f => f.Objetivos.Count > 0))
-            compraron[f.IdFoco] = await CompraronPorVendedorAsync(db, f.IdFoco, f.Mes, f.Objetivos.Select(o => o.IdPersonal).ToList(), ct);
-        return focos.Select(f => Dto(f, nombres, personas, compraron.GetValueOrDefault(f.IdFoco) ?? []))
+        {
+            var (objetivos, equipo) = conObjetivos
+                ? await ObjetivosAsync(db, lectura, f, personas, ultimoDia, vendedores, veBultos, ct)
+                : ([], null);
+            resultado.Add(Dto(f, nombres, objetivos, equipo));
+        }
+        return resultado
             .OrderByDescending(f => f.Mes)
             .ThenBy(f => f.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
             .ToList();
@@ -353,7 +359,7 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
                 anteriorAl = anterior.AddDays(hasta.Day - 1) is var d && d <= fin ? d : fin;
         }
 
-        var focos = await FocosAsync(db, m, ct);
+        var focos = await FocosAsync(db, lectura, m, ct, conObjetivos: false);
         var vendedores = await lectura.VendedoresAsync(ct);
         var mirada = await lectura.MiradaAsync(null, "admin-focos-analisis", ct);   // las personas: sin la casa
         var carteras = await lectura.CarterasAsync(mirada, [m, anterior], null, ct);
@@ -482,6 +488,70 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     }
 
     /// <summary>
+    /// Los objetivos de un foco que ve la persona, con su avance y su tendencia (Checho, 17/11/2026: como su Excel), y la
+    /// suma de todos. CCC: los guardados, en clientes. VOL (solo si ve bultos): uno por vendedor con cartera ese mes (y
+    /// los guardados), en bultos; sin guardado, lo que llevó su cartera de este mes en todo el mes anterior (la base de
+    /// <c>/volumen?comparacion=acumulado</c>). El avance VOL es el de <c>/volumen?foco=</c> del admin, al corte.
+    /// </summary>
+    private static async Task<(IReadOnlyList<ObjetivoFocoDto>, ObjetivoEquipoDto?)> ObjetivosAsync(ComercialDbContext db,
+        Lectura lectura, Foco f, Dictionary<int, Vendedor> personas, DateOnly? ultimoDia, IReadOnlySet<int>? vendedores,
+        bool veBultos, CancellationToken ct)
+    {
+        bool Ve(int id) => vendedores is null || vendedores.Contains(id);
+        var c = Volumen.Comparar(f.Mes, TipoComparacion.MismoDiaHabil, ultimoDia, lectura.Op.DiasFeriados());
+        var esVol = f.Medida == MedidaFoco.Vol;
+        // (vendedor, objetivo, actual en bultos, sugerido)
+        var filas = new List<(int Id, decimal Objetivo, decimal? Bultos, bool Sugerido)>();
+        if (!esVol)
+        {
+            filas.AddRange(f.Objetivos.Where(o => o.Clientes is not null && Ve(o.IdPersonal))
+                .Select(o => (o.IdPersonal, (decimal)o.Clientes!.Value, (decimal?)null, false)));
+        }
+        else if (veBultos)
+        {
+            var cartera = (await db.CarterasMes.AsNoTracking()
+                    .Where(k => k.Mes == f.Mes && k.IdPersonal != null && !db.Exclusiones.Any(e => e.IdCliente == k.IdCliente))
+                    .Select(k => new { k.IdCliente, IdPersonal = k.IdPersonal!.Value })
+                    .ToListAsync(ct))
+                .Where(k => personas.TryGetValue(k.IdPersonal, out var v) && v.EsPersona && Ve(k.IdPersonal))
+                .ToList();
+            var clientes = cartera.Select(k => k.IdCliente).Distinct().ToList();
+            var filtro = new FiltroArticulos(null, f.IdFoco, f.Nombre);
+            var anterior = f.Mes.AddMonths(-1);
+            var actual = c.CorteAl is { } corte && clientes.Count > 0
+                ? await lectura.BultosAsync(f.Mes, corte, clientes, filtro, ct) : [];
+            var enBase = anterior >= lectura.Op.PrimerMes && clientes.Count > 0
+                ? await lectura.BultosAsync(anterior, Calendario.FinDeMes(anterior), clientes, filtro, ct) : [];
+            var actualPorCliente = actual.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
+            var basePorCliente = enBase.GroupBy(b => b.IdCliente).ToDictionary(g => g.Key, g => g.Sum(b => b.Netos));
+            var porVendedor = cartera.GroupBy(k => k.IdPersonal).ToDictionary(g => g.Key, g => g.Select(k => k.IdCliente).ToList());
+            var guardados = f.Objetivos.Where(o => o.Bultos is not null && Ve(o.IdPersonal)).ToDictionary(o => o.IdPersonal, o => o.Bultos!.Value);
+            foreach (var id in porVendedor.Keys.Union(guardados.Keys))
+            {
+                var suyos = porVendedor.GetValueOrDefault(id) ?? [];
+                var bultos = Volumen.Redondear(suyos.Sum(x => actualPorCliente.GetValueOrDefault(x)));
+                var sugerido = Math.Round(suyos.Sum(x => basePorCliente.GetValueOrDefault(x)), 1, MidpointRounding.AwayFromZero);
+                filas.Add(guardados.TryGetValue(id, out var objetivo) ? (id, objetivo, bultos, false) : (id, sugerido, bultos, true));
+            }
+        }
+        if (filas.Count == 0)
+            return ([], null);
+
+        var compraron = await CompraronPorVendedorAsync(db, f.IdFoco, f.Mes, filas.Select(x => x.Id).ToList(), ct);
+        decimal Actual(int id, decimal? bultos) => esVol ? bultos ?? 0 : compraron.GetValueOrDefault(id);
+        var orden = StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true);
+        var objetivos = filas
+            .Select(x => new ObjetivoFocoDto(x.Id, personas.GetValueOrDefault(x.Id)?.Nombre ?? $"Vendedor {x.Id}",
+                esVol ? null : (int)x.Objetivo, esVol ? x.Objetivo : null, compraron.GetValueOrDefault(x.Id), x.Bultos,
+                Volumen.Tendencia(Actual(x.Id, x.Bultos), x.Objetivo, c), x.Sugerido))
+            .OrderBy(o => o.Nombre, orden)
+            .ToList();
+        var objetivoEquipo = filas.Sum(x => x.Objetivo);
+        var actualEquipo = filas.Sum(x => Actual(x.Id, x.Bultos));
+        return (objetivos, new ObjetivoEquipoDto(objetivoEquipo, actualEquipo, Volumen.Tendencia(actualEquipo, objetivoEquipo, c)));
+    }
+
+    /// <summary>
     /// Por vendedor, los clientes de su cartera en el mes (la foto del mes, sin excluidos) que compraron algún artículo del
     /// foco: la regla de <c>/api/cobertura?foco=</c>, sin filtros. 0 en un mes que no empezó.
     /// </summary>
@@ -497,8 +567,9 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             .ToDictionaryAsync(x => x.Key, x => x.Clientes, ct);
 
     /// <summary>
-    /// Los objetivos de clientes por vendedor del foco (Cesar, 12/11/2026): reemplazan a todos; el vendedor que no viene
-    /// queda sin objetivo. Vendedores que existan y sean personas (no la casa), sin repetir, de 1 a 10.000 clientes.
+    /// Los objetivos por vendedor del foco (Cesar, 12/11/2026; Checho, 17/11): reemplazan a todos; el vendedor que no
+    /// viene queda sin objetivo (en VOL, vuelve al sugerido). Vendedores que existan y sean personas (no la casa), sin
+    /// repetir. CCC: de 1 a 10.000 clientes. VOL: de 0,5 a 1.000.000 bultos, con un decimal.
     /// </summary>
     public async Task<FocoDto> GuardarObjetivosAsync(int idFoco, GuardarObjetivosDto dto, CancellationToken ct = default)
     {
@@ -511,11 +582,18 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             throw new ValidacionException("objetivos", "Hay un vendedor repetido.");
         if (await db.Vendedores.CountAsync(v => ids.Contains(v.IdPersonal) && v.EsPersona, ct) != ids.Count)
             throw new ValidacionException("objetivos", "Hay un vendedor que no existe.");
-        if (objetivos.Any(o => o.Clientes < 1 || o.Clientes > 10_000 || decimal.Truncate(o.Clientes) != o.Clientes))
+        var esVol = foco.Medida == MedidaFoco.Vol;
+        if (!esVol && objetivos.Any(o => o.Clientes is not { } n || n < 1 || n > 10_000 || decimal.Truncate(n) != n))
             throw new ValidacionException("objetivos", "Cada objetivo va de 1 a 10.000 clientes.");
+        if (esVol && objetivos.Any(o => o.Bultos is not { } b || b < 0.5m || b > 1_000_000m || decimal.Round(b, 1) != b))
+            throw new ValidacionException("objetivos", "Cada objetivo de volumen va de 0,5 a 1.000.000 bultos.");
 
         foco.Objetivos.Clear();
-        foco.Objetivos.AddRange(objetivos.Select(o => new FocoObjetivo { IdFoco = idFoco, IdPersonal = o.IdPersonal, Clientes = (int)o.Clientes }));
+        foco.Objetivos.AddRange(objetivos.Select(o => new FocoObjetivo
+        {
+            IdFoco = idFoco, IdPersonal = o.IdPersonal,
+            Clientes = esVol ? null : (int)o.Clientes!.Value, Bultos = esVol ? o.Bultos : null,
+        }));
         foco.ActualizadoPor = admin.Email;
         foco.Actualizado = reloj.Ahora;
         await db.GuardarAsync(ct);
@@ -524,18 +602,14 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     }
 
     private async Task<FocoDto> UnFocoAsync(int idFoco, CancellationToken ct)
-        => (await FocosAsync(db, mes: null, ct)).Single(f => f.IdFoco == idFoco);
+        => (await FocosAsync(db, lectura, mes: null, ct)).Single(f => f.IdFoco == idFoco);
 
-    private static FocoDto Dto(Foco f, Dictionary<int, string> nombres, Dictionary<int, string> personas,
-        Dictionary<int, int> compraron)
+    private static FocoDto Dto(Foco f, Dictionary<int, string> nombres, IReadOnlyList<ObjetivoFocoDto> objetivos,
+        ObjetivoEquipoDto? equipo)
         => new(f.IdFoco, f.Mes, f.Nombre, f.Medida, f.Meta,
             f.Articulos.Select(a => new ArticuloFocoDto(a.IdArticulo, nombres.GetValueOrDefault(a.IdArticulo, $"Artículo {a.IdArticulo}")))
                 .OrderBy(a => a.Descripcion, StringComparer.Ordinal).ToList(),
-            f.ActualizadoPor, f.Actualizado,
-            f.Objetivos.Select(o => new ObjetivoFocoDto(o.IdPersonal, personas.GetValueOrDefault(o.IdPersonal, $"Vendedor {o.IdPersonal}"),
-                    o.Clientes, compraron.GetValueOrDefault(o.IdPersonal)))
-                .OrderBy(o => o.Nombre, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
-                .ToList());
+            f.ActualizadoPor, f.Actualizado, objetivos, equipo);
 
     // ---- clientes Vitales (Cesar, 30/10/2026: un click en la lista)
 

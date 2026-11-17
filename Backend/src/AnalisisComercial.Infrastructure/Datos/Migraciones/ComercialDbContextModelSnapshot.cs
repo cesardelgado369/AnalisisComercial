@@ -367,7 +367,11 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                     b.Property<int>("IdPersonal")
                         .HasColumnType("int");
 
-                    b.Property<int>("Clientes")
+                    b.Property<decimal?>("Bultos")
+                        .HasPrecision(9, 1)
+                        .HasColumnType("decimal(9,1)");
+
+                    b.Property<int?>("Clientes")
                         .HasColumnType("int");
 
                     b.HasKey("IdFoco", "IdPersonal");

@@ -250,6 +250,12 @@ public class FocosTests(Entorno e)
             Assert.Equal(["VENDEDOR DOS", "VENDEDOR UNO"], objetivos.Select(o => (string?)o!["nombre"]));
             Assert.Equal((5, 0), ((int)objetivos[0]!["clientes"]!, (int)objetivos[0]!["clientesConCompra"]!));
             Assert.Equal((2, 1), ((int)objetivos[1]!["clientes"]!, (int)objetivos[1]!["clientesConCompra"]!));
+            // Tendencia al 25/10 (20 de 26 días hábiles): UNO 1 ÷ (20/26) ÷ 2 = 65 %; DOS 0 %. En CCC no hay bultos.
+            Assert.Equal((65.0m, 0.0m), ((decimal)objetivos[1]!["tendencia"]!, (decimal)objetivos[0]!["tendencia"]!));
+            Assert.Null(objetivos[1]!["bultos"]);
+            Assert.False((bool)objetivos[1]!["sugerido"]!);
+            var equipo = JsonNode.Parse(await r.Content.ReadAsStringAsync())!["objetivoEquipo"]!;
+            Assert.Equal((7m, 1m, 18.6m), ((decimal)equipo["objetivo"]!, (decimal)equipo["actual"]!, (decimal)equipo["tendencia"]!));
             Assert.Equal(2, (await admin.JsonAsync("/api/admin/focos"))[0]!["objetivos"]!.AsArray().Count);
 
             // Cada uno ve el de sus vendedores: el operario (UNO), el suyo; el supervisor (DOS), el de DOS.
@@ -268,12 +274,63 @@ public class FocosTests(Entorno e)
             await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 0m } } });
             await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 10_001m } } });
             await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, clientes = 2.5m } } });
+            await ErrorObjetivos(new { objetivos = new[] { new { idPersonal = 1, bultos = 10m } } });   // CCC va en clientes
             Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/admin/focos/99999/objetivos", new { objetivos = Array.Empty<object>() })).StatusCode);
             Assert.Equal(HttpStatusCode.Forbidden, (await e.Supervisor().PutAsJsonAsync(url, new { objetivos = Array.Empty<object>() })).StatusCode);
 
             // Reemplaza todos: sin objetivos, el foco queda vacío.
             r = await admin.PutAsJsonAsync(url, new { objetivos = Array.Empty<object>() });
             Assert.Empty(JsonNode.Parse(await r.Content.ReadAsStringAsync())!["objetivos"]!.AsArray());
+        }
+        finally
+        {
+            await e.ConBaseAsync(db => db.Focos.ExecuteDeleteAsync());
+        }
+    }
+
+    [Fact]
+    public async Task Objetivos_de_volumen_en_bultos_con_sugerido_y_tendencia()
+    {
+        // Checho, 17/11/2026. Octubre al 25/10 (20 de 26 días hábiles). Cartera: UNO 101 y 102, DOS 201, UNO BIS 501.
+        // Llevan: 101 un bulto (2 − 1 cambiado). Septiembre entero de esos clientes: 101 = 4 (2 − 1 de la nota de crédito
+        // + 3) y 102 = 2 → el sugerido de UNO es 6.
+        var admin = e.Admin();
+        try
+        {
+            var foco = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Vol pastas", idsArticulo = new[] { 900 }, medida = "vol", meta = 4 });
+            var objetivos = foco["objetivos"]!.AsArray();
+            Assert.Equal(["VENDEDOR DOS", "VENDEDOR UNO", "VENDEDOR UNO BIS"], objetivos.Select(o => (string?)o!["nombre"]));
+            var uno = objetivos[1]!;
+            Assert.Equal((6.0m, 1m, true, 21.7m), ((decimal)uno["bultos"]!, (decimal)uno["bultosActual"]!, (bool)uno["sugerido"]!, (decimal)uno["tendencia"]!));
+            Assert.Null(uno["clientes"]);
+            Assert.Null(objetivos[0]!["tendencia"]);   // DOS: sugerido 0, sin objetivo para proyectar
+
+            // Checho le pone 10 a DOS; UNO sigue con el sugerido.
+            var url = $"/api/admin/focos/{foco["idFoco"]}/objetivos";
+            var r = await admin.PutAsJsonAsync(url, new { objetivos = new[] { new { idPersonal = 2, bultos = 10m } } });
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+            var guardado = JsonNode.Parse(await r.Content.ReadAsStringAsync())!;
+            var dos = guardado["objetivos"]!.AsArray().Single(o => (int)o!["idPersonal"]! == 2)!;
+            Assert.Equal((10.0m, false, 0.0m), ((decimal)dos["bultos"]!, (bool)dos["sugerido"]!, (decimal)dos["tendencia"]!));
+            var equipo = guardado["objetivoEquipo"]!;
+            Assert.Equal((16.0m, 1m, 8.1m), ((decimal)equipo["objetivo"]!, (decimal)equipo["actual"]!, (decimal)equipo["tendencia"]!));
+
+            // El supervisor (DOS) ve el suyo; el que no es VOL en bultos no pasa.
+            Assert.Equal([2], (await e.Supervisor().JsonAsync("/api/cobertura/focos"))[0]!["objetivos"]!.AsArray().Select(o => (int)o!["idPersonal"]!));
+            async Task Error(object body)
+            {
+                var x = await admin.PutAsJsonAsync(url, body);
+                Assert.Equal(HttpStatusCode.BadRequest, x.StatusCode);
+                Assert.NotNull(JsonNode.Parse(await x.Content.ReadAsStringAsync())!["errors"]!["objetivos"]);
+            }
+            await Error(new { objetivos = new[] { new { idPersonal = 1, clientes = 5m } } });
+            await Error(new { objetivos = new[] { new { idPersonal = 1, bultos = 0.4m } } });
+            await Error(new { objetivos = new[] { new { idPersonal = 1, bultos = 1_000_001m } } });
+            await Error(new { objetivos = new[] { new { idPersonal = 1, bultos = 2.25m } } });
+
+            // Sin objetivos, DOS vuelve al sugerido.
+            r = await admin.PutAsJsonAsync(url, new { objetivos = Array.Empty<object>() });
+            Assert.True((bool)JsonNode.Parse(await r.Content.ReadAsStringAsync())!["objetivos"]!.AsArray().Single(o => (int)o!["idPersonal"]! == 2)!["sugerido"]!);
         }
         finally
         {

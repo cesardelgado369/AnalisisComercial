@@ -87,4 +87,18 @@ public class VolumenTests
         Assert.Null(Volumen.PorcentajeDevolucion(0, 0));
         Assert.Null(Volumen.PorcentajeDevolucion(0, 3));
     }
+
+    [Fact]
+    public void Tendencia_proyecta_a_fin_de_mes_contra_el_objetivo()
+    {
+        // Octubre al 25: 20 de 26 días hábiles. Lleva 1 de un objetivo de 2 → 1 ÷ (20/26) ÷ 2 = 65 %.
+        var oct = Volumen.Comparar(Oct, TipoComparacion.MismoDiaHabil, new DateOnly(2026, 10, 25), Feriados);
+        Assert.Equal(65.0m, Volumen.Tendencia(1, 2, oct));
+        Assert.Equal(0.0m, Volumen.Tendencia(0, 5, oct));
+        Assert.Null(Volumen.Tendencia(3, 0, oct));   // sin objetivo
+        // Mes cerrado: lo que llevó contra el objetivo.
+        Assert.Equal(75.0m, Volumen.Tendencia(3, 4, Volumen.Comparar(Sep, TipoComparacion.MismoDiaHabil, new DateOnly(2026, 10, 25), Feriados)));
+        // Mes que no empezó.
+        Assert.Null(Volumen.Tendencia(0, 4, Volumen.Comparar(new DateOnly(2026, 11, 1), TipoComparacion.MismoDiaHabil, new DateOnly(2026, 10, 25), Feriados)));
+    }
 }
