@@ -40,6 +40,19 @@
 .cob-kpi-estado-dato { font-weight: 600; color: var(--texto-2); white-space: pre; }
 .cob-kpi-estado .foco-tendencia { margin-left: 3px; }
 .cob-kpi-estado.cumplida .icono, .cob-kpi-estado.cumplida .cob-kpi-estado-dato { color: var(--ok); font-weight: 700; }
+/* El dueño: el renglón se toca para editar la meta y los objetivos; el lápiz aparece al pasar el mouse (17/11) */
+.cob-kpi-editar { display: inline-flex; align-items: center; justify-content: center; gap: 2px; margin: 0 -6px; padding: 1px 6px; font: inherit; color: inherit; background: none; border: 1px dashed transparent; border-radius: 6px; cursor: pointer; }
+.cob-kpi-editar .cob-kpi-estado { margin-top: 0; }
+.cob-kpi-editar-lapiz { font-size: 15px; color: var(--acento); }
+.cob-kpi-editar:hover, .cob-kpi-editar:focus-visible, .cob-kpi-editar[aria-expanded='true'] { background: var(--superficie-baja); border-color: var(--acento); }
+.cob-kpi-editar.sin-estado .cob-kpi-estado { font-weight: 600; color: var(--texto-3); }
+@media (hover: hover) {
+  .cob-kpi-editar .cob-kpi-editar-lapiz { opacity: 0; }
+  .cob-kpi-editar:hover .cob-kpi-editar-lapiz, .cob-kpi-editar:focus-visible .cob-kpi-editar-lapiz, .cob-kpi-editar[aria-expanded='true'] .cob-kpi-editar-lapiz { opacity: 1; }
+  /* Sin meta ni objetivo: el renglón aparece al pasar por el foco */
+  .cob-kpi-editar.sin-estado { opacity: 0; }
+  .cob-kpi-foco:hover .cob-kpi-editar.sin-estado, .cob-kpi-editar.sin-estado:focus-visible, .cob-kpi-editar.sin-estado[aria-expanded='true'] { opacity: 1; }
+}
 /* La tendencia (17/11; la usan la sección Focos y Focos del mes), como las celdas del Excel de Checho: verde desde el 100 %, roja abajo */
 .foco-tendencia { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .foco-tendencia.buena { color: #047857; background: #d1fae5; }

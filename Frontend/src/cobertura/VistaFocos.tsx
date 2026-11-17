@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { lazy, memo, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETA_MEDIDA } from '../admin/medidas'
 import { enParalelo } from '../api/enParalelo'
@@ -19,6 +19,9 @@ import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
 import { Tendencia } from '../admin/AnalisisFocos'
 import { diaDeHoy, ElegirDiaPdf } from '../focos/ElegirDiaPdf'
+
+/** La ventanita para editar la meta y los objetivos desde el resumen (solo el dueño): se carga recién al abrirla. */
+const EditarFoco = lazy(() => import('../focos/EditarFoco'))
 import { DIAS_VISITA, sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
 
@@ -223,6 +226,10 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
     }
   }
   const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
+  // El dueño edita la meta y los objetivos desde el renglón de cada foco (Cesar, 17/11: «al posicionarme por encima de
+  // la meta, que me permita editar»)
+  const esDueno = sesion.rol === 'admin'
+  const [editando, setEditando] = useState<{ foco: Foco; ancla: DOMRect } | null>(null)
 
   // El PDF por vendedor (Cesar, 17/11: «la app es muy compleja para los choferes»; como las hojas de ruta de De Ruta)
   // Se elige el día al bajarlo (Cesar, 17/11: «no todos los clientes de golpe»): la ventanita marca el del filtro de la
@@ -283,7 +290,28 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     {conBultos && <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span>} {f.nombre}
                   </span>
                   <span className="cob-kpi-detalle">{k.detalle}</span>
-                  <EstadoFoco o={o} meta={k.meta} vol={k.vol} anterior={anteriorCorto} conTendencia={sesion.rol !== 'operario'} enCurso={enCurso} />
+                  {esDueno ? (
+                    <button
+                      type="button"
+                      className={o || k.meta || k.vol ? 'cob-kpi-editar' : 'cob-kpi-editar sin-estado'}
+                      title={f.medida === 'vol' ? `Editar los objetivos de ${f.nombre}` : `Editar la meta y los objetivos de ${f.nombre}`}
+                      aria-haspopup="dialog"
+                      aria-expanded={editando?.foco.idFoco === f.idFoco}
+                      onClick={(e) => {
+                        const ancla = e.currentTarget.getBoundingClientRect()
+                        setEditando((x) => (x?.foco.idFoco === f.idFoco ? null : { foco: f, ancla }))
+                      }}
+                    >
+                      {o || k.meta || k.vol ? (
+                        <EstadoFoco o={o} meta={k.meta} vol={k.vol} anterior={anteriorCorto} conTendencia enCurso={enCurso} />
+                      ) : (
+                        <span className="cob-kpi-estado">{f.medida === 'vol' ? 'Poner objetivos' : 'Poner meta'}</span>
+                      )}
+                      <span className="icono icono-chico cob-kpi-editar-lapiz" aria-hidden>edit</span>
+                    </button>
+                  ) : (
+                    <EstadoFoco o={o} meta={k.meta} vol={k.vol} anterior={anteriorCorto} conTendencia={sesion.rol !== 'operario'} enCurso={enCurso} />
+                  )}
                   <span
                     className={k.vol ? `cob-kpi-barra cob-kpi-barra-vol${superado ? ' superado' : ''}` : 'cob-kpi-barra'}
                     role="progressbar"
@@ -369,6 +397,11 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
         <p className="aviso aviso-error foco-pdf-error" role="alert">
           {pdf.error}
         </p>
+      )}
+      {editando && (
+        <Suspense fallback={null}>
+          <EditarFoco foco={editando.foco} ancla={editando.ancla} onCerrar={() => setEditando(null)} />
+        </Suspense>
       )}
 
       <div className="cob-cuerpo">
