@@ -246,6 +246,8 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
         consulta,
         vendedores: sesion.vendedores.filter((v) => !v.esCasa && (filtros.vendedor === null || v.id === filtros.vendedor)),
         dia,
+        conBultos,
+        comparacion: acumulado ? 'acumulado' : 'parcial',
         filtrosTexto: filtros.unidad ? unidadVisible(filtros.unidad) : null,
       })
       setPdf({ generando: false, error: null, eligeDia: false })
