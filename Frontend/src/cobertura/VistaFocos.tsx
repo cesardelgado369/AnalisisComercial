@@ -20,7 +20,7 @@ import { CeldaEstado } from './CeldaEstado'
 import { Tendencia } from '../admin/AnalisisFocos'
 import { diaDeHoy, ElegirDiaPdf } from '../focos/ElegirDiaPdf'
 
-/** La ventanita para editar la meta y los objetivos desde el resumen (solo el dueño): se carga recién al abrirla. */
+/** Los objetivos por vendedor desde el resumen (solo el dueño): se cargan recién al abrirlos. */
 const EditarFoco = lazy(() => import('../focos/EditarFoco'))
 import { DIAS_VISITA, sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
@@ -39,8 +39,11 @@ type Indicador = {
   vol: { actual: number; base: number } | null
 }
 
-/** El objetivo de clientes del vendedor que se mira, o de todo el equipo (Cesar, 12/11). */
-type ObjetivoVisto = { objetivo: number; actual: number; vol: boolean; equipo: boolean; tendencia: number | null }
+/**
+ * El objetivo de clientes del vendedor que se mira, o de todo el equipo (Cesar, 12/11). `completo`: es de todos los que
+ * se miran (el elegido, o todos los vendedores tienen el suyo); si no, es de una parte.
+ */
+type ObjetivoVisto = { objetivo: number; actual: number; vol: boolean; equipo: boolean; tendencia: number | null; completo: boolean }
 
 /** VOL: la barra va hasta 150 % (o más si lo pasó), con la marca del mes anterior en el 100 %. */
 const escalaVol = (valor: number | null) => Math.max(150, Math.ceil((valor ?? 0) / 10) * 10)
@@ -223,13 +226,14 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       equipo: equipo && sesion.rol !== 'operario',
       // De uno, la suya; de varios, la del equipo que calcula la API
       tendencia: de.length === 1 ? (de[0].tendencia ?? null) : vendedorVisto === null ? (f.objetivoEquipo?.tendencia ?? null) : null,
+      completo: vendedorVisto !== null || de.length >= sesion.vendedores.filter((v) => !v.esCasa).length,
     }
   }
   const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
-  // El dueño edita la meta y los objetivos desde el renglón de cada foco (Cesar, 17/11: «al posicionarme por encima de
-  // la meta, que me permita editar»)
+  // El dueño pone los objetivos de cada vendedor desde el renglón de cada foco (Cesar, 17/11: «al tocar sobre editar,
+  // que aparezca el total de clientes de cada uno de los vendedores y vos pongas el objetivo de cada uno»)
   const esDueno = sesion.rol === 'admin'
-  const [editando, setEditando] = useState<{ foco: Foco; ancla: DOMRect } | null>(null)
+  const [editando, setEditando] = useState<Foco | null>(null)
 
   // El PDF por vendedor (Cesar, 17/11: «la app es muy compleja para los choferes»; como las hojas de ruta de De Ruta)
   // Se elige el día al bajarlo (Cesar, 17/11: «no todos los clientes de golpe»): la ventanita marca el del filtro de la
@@ -278,9 +282,19 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
           </div>
           <ul className="cob-kpis" aria-label={`Focos de ${nombreMes(mes)}`}>
             {lista.map((f, i) => {
-              const k = armado.indicadores[i]
-              const pct = k.valor === null ? '—' : formatoPorcentaje(k.valor)
               const o = objetivoDe(f)
+              // Un CCC con objetivo se cuenta contra el objetivo, no contra la cartera (Cesar, 17/11: «al seleccionar a
+              // Franco, que diga 23 de 40»); sin objetivo, contra la cartera. Todo el equipo, solo si todos tienen el suyo
+              const contraObjetivo = !!o && !o.vol && o.completo && o.objetivo > 0
+              const k: Indicador = contraObjetivo
+                ? {
+                    valor: (o.actual / o.objetivo) * 100,
+                    detalle: `${formatoEntero(o.actual)} de ${formatoEntero(o.objetivo)}`,
+                    meta: null,
+                    vol: null,
+                  }
+                : armado.indicadores[i]
+              const pct = k.valor === null ? '—' : formatoPorcentaje(k.valor)
               const escala = k.vol ? escalaVol(k.valor) : 100
               const superado = !!k.vol && k.vol.actual >= k.vol.base
               return (
@@ -294,18 +308,15 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     <button
                       type="button"
                       className={o || k.meta || k.vol ? 'cob-kpi-editar' : 'cob-kpi-editar sin-estado'}
-                      title={f.medida === 'vol' ? `Editar los objetivos de ${f.nombre}` : `Editar la meta y los objetivos de ${f.nombre}`}
+                      title={`Objetivos de cada vendedor en ${f.nombre}`}
                       aria-haspopup="dialog"
-                      aria-expanded={editando?.foco.idFoco === f.idFoco}
-                      onClick={(e) => {
-                        const ancla = e.currentTarget.getBoundingClientRect()
-                        setEditando((x) => (x?.foco.idFoco === f.idFoco ? null : { foco: f, ancla }))
-                      }}
+                      aria-expanded={editando?.idFoco === f.idFoco}
+                      onClick={() => setEditando(f)}
                     >
                       {o || k.meta || k.vol ? (
                         <EstadoFoco o={o} meta={k.meta} vol={k.vol} anterior={anteriorCorto} conTendencia enCurso={enCurso} />
                       ) : (
-                        <span className="cob-kpi-estado">{f.medida === 'vol' ? 'Poner objetivos' : 'Poner meta'}</span>
+                        <span className="cob-kpi-estado">Poner objetivos</span>
                       )}
                       <span className="icono icono-chico cob-kpi-editar-lapiz" aria-hidden>edit</span>
                     </button>
@@ -321,7 +332,9 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     aria-label={
                       f.medida === 'vol'
                         ? `${f.nombre}: ${pct} de los bultos de ${nombreMes(sumarMes(mes, -1))} a esta altura`
-                        : `${f.nombre}: ${pct} de los clientes compraron`
+                        : contraObjetivo
+                          ? `${f.nombre}: ${pct} del objetivo de clientes`
+                          : `${f.nombre}: ${pct} de los clientes compraron`
                     }
                     title={
                       k.vol
@@ -400,7 +413,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       )}
       {editando && (
         <Suspense fallback={null}>
-          <EditarFoco foco={editando.foco} ancla={editando.ancla} onCerrar={() => setEditando(null)} />
+          <EditarFoco foco={editando} vendedor={filtros.vendedor} onCerrar={() => setEditando(null)} />
         </Suspense>
       )}
 

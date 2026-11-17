@@ -303,6 +303,8 @@
 .foco-objetivos-resumen:hover { background: var(--superficie-baja); }
 /* El modal de objetivos: un renglón por vendedor con su cartera y el objetivo */
 .objetivos-explicacion { margin: 0 0 6px; font-size: 14px; color: var(--texto-2); }
+/* El vendedor elegido en la pantalla, cuando se abre desde la sección Focos */
+.objetivos-fila.elegido { padding-left: 10px; padding-right: 8px; background: var(--superficie-baja); box-shadow: inset 3px 0 0 var(--acento); }
 .objetivos-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .objetivos-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--superficie-media); }
 .objetivos-vendedor { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 14px; cursor: pointer; }

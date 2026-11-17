@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { avisarCambio } from '../api/cambios'
 import { ApiError, api } from '../api/client'
 import type { CoberturaFoco, Foco, FocoAnalizado } from '../api/types'
@@ -27,10 +27,12 @@ export function ModalObjetivos(props: {
   foco: Foco
   /** El foco en el análisis del mes (cartera y lo de cada vendedor); null en un mes que no empezó. */
   analizado: FocoAnalizado | null
+  /** El vendedor en el que arranca (el elegido en la pantalla), resaltado. */
+  enfocar?: number | null
   onCerrar: () => void
   onGuardado: (texto: string) => void
 }) {
-  const { foco, analizado, onCerrar, onGuardado } = props
+  const { foco, analizado, enfocar = null, onCerrar, onGuardado } = props
   const sesion = useSesionApp()
   const vol = foco.medida === 'vol'
   const anterior = nombreMes(sumarMes(foco.mes, -1))
@@ -49,6 +51,13 @@ export function ModalObjetivos(props: {
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const total = vendedores.reduce((s, v) => s + (numero(valores[v.id]) ?? 0), 0)
+  // Con un vendedor elegido, arranca en el suyo
+  useEffect(() => {
+    if (enfocar === null) return
+    const campo = document.querySelector<HTMLInputElement>(`#form-objetivos [data-vendedor="${enfocar}"]`)
+    campo?.scrollIntoView({ block: 'center' })
+    campo?.focus()
+  }, [enfocar])
   const unidad = (n: number) => (vol ? (n === 1 ? 'bulto' : 'bultos') : n === 1 ? 'cliente' : 'clientes')
 
   async function guardar(e: FormEvent) {
@@ -137,7 +146,7 @@ export function ModalObjetivos(props: {
             const compraron = o?.clientesConCompra ?? clientesDe(analizado?.vendedores.find((x) => x.idPersonal === v.id)).clientesConCompra ?? null
             const sugerido = vol && o?.sugerido && valores[v.id] === inicial(v.id)
             return (
-              <li key={v.id} className="objetivos-fila">
+              <li key={v.id} className={v.id === enfocar ? 'objetivos-fila elegido' : 'objetivos-fila'}>
                 <label htmlFor={`objetivo-${v.id}`} className="objetivos-vendedor">
                   <strong>{nombrePropio(v.nombre)}</strong>
                   <span className="objetivos-dato">
