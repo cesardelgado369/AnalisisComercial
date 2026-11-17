@@ -14,6 +14,10 @@
 .cob-col-foco { width: 110px; line-height: 1.25; }
 .cob-referencias { display: flex; align-items: center; gap: 6px 18px; flex-wrap: wrap; margin: 0 0 0 auto; font-size: 13px; font-weight: 600; color: var(--texto-2); }
 .cob-referencia { display: inline-flex; align-items: center; gap: 6px; }
+/* Focos: la comparativa de los VOL y el PDF por vendedor (Cesar, 17/11), a la derecha de la barra */
+.foco-seccion-acciones { display: flex; align-items: center; justify-content: flex-end; gap: 10px 14px; flex-wrap: wrap; }
+.foco-pdf { min-height: 40px; }
+.foco-pdf-error { margin: 0 20px 12px; }
 /* En el celular (A03 a iPhone, 11/11): dos columnas, la marca y el nombre entero del foco al lado */
 .cob-tarjeta-focos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 8px; }
 .cob-tarjeta-foco-item { display: flex; align-items: center; gap: 8px; min-width: 0; }

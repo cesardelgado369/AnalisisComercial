@@ -1,10 +1,12 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETA_MEDIDA } from '../admin/medidas'
 import { enParalelo } from '../api/enParalelo'
 import type { ClienteCobertura, Cobertura, EstadoMes, Foco, Volumen } from '../api/types'
 import { useConsulta } from '../api/useConsulta'
-import type { Filtros } from '../comercial/filtros'
+import { ApiError } from '../api/client'
+import { deLista, unidadVisible, type Filtros } from '../comercial/filtros'
+import { Segmentado } from '../components/Segmentado'
 import { TituloTarjeta } from '../comercial/TituloTarjeta'
 import { CabeceraOrden, FilaCliente, SinClientes, TarjetaCliente, useAbrirFicha } from '../comercial/lista'
 import { rutaFocos } from '../comercial/mesReferencia'
@@ -15,7 +17,7 @@ import { useMedia } from '../utils/useMedia'
 import { TarjetasPorTandas } from '../comercial/Tandas'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
-import { sumarMes } from './estados'
+import { DIAS_VISITA, sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
 
 /** Lo de un cliente en un foco: CCC, si compró (el estado de Cobertura); VOL, sus bultos contra el mes anterior. */
@@ -67,6 +69,12 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
     [focos.datos, conBultos],
   )
 
+  // Los VOL se comparan, por defecto, contra el mes anterior al mismo día hábil (mes parcial); el dueño y el supervisor
+  // pueden elegir todo el mes anterior (mes acumulado), como en Volumen. El vendedor no ve bultos; en un mes cerrado
+  // es mes entero contra mes entero (Cesar, 17/11)
+  const eligeComparativa = conBultos && sesion.rol !== 'operario' && mes === sesion.mesEnCurso
+  const acumulado = eligeComparativa && deLista(filtros.params.get('comparacion'), ['parcial', 'acumulado'] as const, 'parcial') === 'acumulado'
+
   const rutas = useMemo(() => {
     if (!lista?.length) return null
     const base = new URLSearchParams(filtros.consulta)
@@ -78,6 +86,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
         p.set('foco', String(f.idFoco))
         if (f.medida === 'vol') {
           p.set('mes', mes)
+          if (acumulado) p.set('comparacion', 'acumulado')
           return `/volumen?${p}`
         }
         p.set('mesDesde', mes)
@@ -85,7 +94,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
         return `/cobertura?${p}`
       })
       .join('\n')
-  }, [lista, filtros.consulta, busqueda, mes])
+  }, [lista, filtros.consulta, busqueda, mes, acumulado])
   const consulta = useConsulta<(Cobertura | Volumen)[]>(rutas, 'No pudimos cargar los focos. Probá de nuevo.', enParalelo)
   // Las respuestas tienen que ser de estos focos (al cambiar de mes llegan otros)
   const respuestas = consulta.errores.length || !lista || consulta.datos?.length !== lista.length ? null : consulta.datos
@@ -152,6 +161,33 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
     }
   }
   const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
+
+  // El PDF por vendedor (Cesar, 17/11: «la app es muy compleja para los choferes»; como las hojas de ruta de De Ruta)
+  const [pdf, setPdf] = useState<{ generando: boolean; error: string | null }>({ generando: false, error: null })
+  const deUnVendedor = filtros.vendedor !== null || sesion.vendedores.filter((v) => !v.esCasa).length === 1
+  async function bajarPdf() {
+    if (!focos.datos?.length || pdf.generando) return
+    setPdf({ generando: true, error: null })
+    try {
+      const { descargarFocosPdf } = await import('../focos/pdfFocos')
+      // Los filtros de la pantalla, sin foco ni búsqueda; tampoco la categoría A, B o C (el PDF va a los choferes y la
+      // clasificación es solo del dueño)
+      const consulta = new URLSearchParams(filtros.consulta)
+      for (const clave of ['foco', 'abc', 'busqueda']) consulta.delete(clave)
+      const dia = DIAS_VISITA.find((d) => d.codigo === filtros.dia)?.nombre
+      const filtrosTexto = [dia, filtros.unidad ? unidadVisible(filtros.unidad) : null].filter(Boolean).join(' · ') || null
+      await descargarFocosPdf({
+        mes,
+        focos: focos.datos,
+        consulta,
+        vendedores: sesion.vendedores.filter((v) => !v.esCasa && (filtros.vendedor === null || v.id === filtros.vendedor)),
+        filtrosTexto,
+      })
+      setPdf({ generando: false, error: null })
+    } catch (e) {
+      setPdf({ generando: false, error: textoFallaPdf(e) })
+    }
+  }
   const enCurso = !!respuestas?.some((r) => ('kpis' in r ? r.kpis.at(-1)?.mesEnCurso : (r as Volumen).comparacion.tipo === 'mismoDiaHabil'))
 
   return (
@@ -245,7 +281,34 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
       <div className="cob-barra">
         <BuscadorCobertura busqueda={busqueda} onBuscar={buscar} />
         <Referencias mes={mes} enCurso={enCurso} conVol={hayVol} />
+        <div className="foco-seccion-acciones">
+          {eligeComparativa && hayVol && (
+            <span className="vol-comparativa" title={`Los focos VOL: contra ${nombreMes(sumarMes(mes, -1))} al mismo día hábil (parcial) o contra todo ${nombreMes(sumarMes(mes, -1))} (acumulado)`}>
+              <span className="vol-comparativa-nombre">Comparativa</span>
+              <Segmentado
+                etiqueta="Comparativa de los focos VOL"
+                valor={acumulado ? 'acumulado' : 'parcial'}
+                opciones={[
+                  { valor: 'parcial', texto: 'Mes parcial' },
+                  { valor: 'acumulado', texto: 'Mes acumulado' },
+                ]}
+                onCambio={(v) => filtros.cambiar('comparacion', v === 'acumulado' ? v : null)}
+              />
+            </span>
+          )}
+          {!!lista?.length && (
+            <button type="button" className="btn foco-pdf" onClick={() => void bajarPdf()} disabled={pdf.generando}>
+              <span className="icono icono-chico" aria-hidden>picture_as_pdf</span>
+              {pdf.generando ? 'Armando el PDF…' : deUnVendedor ? 'Descargar PDF' : 'PDF por vendedor'}
+            </button>
+          )}
+        </div>
       </div>
+      {pdf.error && (
+        <p className="aviso aviso-error foco-pdf-error" role="alert">
+          {pdf.error}
+        </p>
+      )}
 
       <div className="cob-cuerpo">
         {focos.errores.length > 0 ? (
@@ -300,26 +363,46 @@ function Referencias({ mes, enCurso, conVol }: { mes: string; enCurso: boolean; 
       {conVol && (
         <span className="cob-referencia">
           <span className="cob-vol sube" aria-hidden>
-            12<span className="icono">arrow_upward</span>
+            +3<span className="icono">arrow_upward</span>
           </span>
-          Bultos (VOL)
+          Bultos contra el mes anterior (VOL)
         </span>
       )}
     </p>
   )
 }
 
-/** Una celda VOL: los bultos del mes y la flecha contra el mes anterior al mismo día hábil. */
+/**
+ * Una celda VOL: cuántos bultos más o menos que el mes anterior (Checho, 17/11: «cuando sea por menos del mes anterior
+ * que sea negativo»), con la flecha; los bultos del mes, en el globito. Un cliente nuevo (sin mes anterior) cuenta
+ * contra cero.
+ */
 function CeldaVolumen({ c, etiqueta }: { c: Extract<Celda, { medida: 'vol' }>; etiqueta: string }) {
   const base = c.bultosBase
-  const sentido = base === null || c.bultosActual === base ? null : c.bultosActual > base ? 'sube' : 'baja'
-  const texto = `${etiqueta}: ${formatoBultos(c.bultosActual)} bultos${base === null ? '' : `; ${formatoBultos(base)} el mes anterior a esta altura`}`
+  const dif = c.bultosActual - (base ?? 0)
+  const sentido = dif === 0 ? null : dif > 0 ? 'sube' : 'baja'
+  const texto =
+    base === null
+      ? `${etiqueta}: ${formatoBultos(c.bultosActual)} bultos; cliente nuevo, sin mes anterior para comparar`
+      : `${etiqueta}: ${formatoBultos(c.bultosActual)} bultos contra ${formatoBultos(base)} del mes anterior (${dif > 0 ? '+' : dif < 0 ? '−' : ''}${formatoBultos(Math.abs(dif))})`
   return (
-    <span className={`cob-vol${sentido ? ` ${sentido}` : ''}${c.bultosActual <= 0 ? ' cero' : ''}`} role="img" aria-label={texto} title={texto}>
-      {formatoBultos(c.bultosActual)}
+    <span className={`cob-vol${sentido ? ` ${sentido}` : ''}${dif === 0 ? ' cero' : ''}`} role="img" aria-label={texto} title={texto}>
+      {dif > 0 ? '+' : dif < 0 ? '−' : ''}
+      {formatoBultos(Math.abs(dif))}
       {sentido && <span className="icono" aria-hidden>{sentido === 'sube' ? 'arrow_upward' : 'arrow_downward'}</span>}
     </span>
   )
+}
+
+/** El aviso de un PDF que no salió: qué pasó y qué hacer; lo técnico, a la consola. */
+function textoFallaPdf(error: unknown) {
+  console.error('PDF de focos', error)
+  if (error instanceof Error && error.name === 'SinClientesPdf') return 'No hay clientes con estos filtros para armar el PDF. Sacá algún filtro y probá de nuevo.'
+  if (error instanceof ApiError) return `No se pudo armar el PDF: ${error.mensajes.join(' ')}`
+  const texto = error instanceof Error ? error.message : String(error)
+  if (/dynamically imported module|importing a module script failed|failed to fetch/i.test(texto))
+    return 'No se pudo armar el PDF porque la app se actualizó mientras tenías la página abierta. Recargá la página (F5) y bajalo de nuevo.'
+  return 'No se pudo armar el PDF. Probá de nuevo; si vuelve a fallar, recargá la página (F5).'
 }
 
 function Marca({ c, foco, mes }: { c: Celda; foco: Foco; mes: string }) {
