@@ -60,6 +60,15 @@ containerd al cargar un blob: `failed to ingest … no such file or directory`) 
 anduvo. Verificado: `/api/sesion` 401, la página 200, los tres contenedores en `1.4.1`, la API sin errores,
 `X-Robots-Tag: noindex`.
 
+**Versión `1.7.0`, publicada el 17/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`; imágenes desde `git archive` del tag `v1.7.0` = `e5d02fd`, que tiene el back `1d4ae3c`; backup antes:
+`AnalisisComercial_20261117_1751.bak.gz`). Junta la 1.5.0 y la 1.6.0, que no se publicaron: objetivos por vendedor
+en cada foco (CCC en clientes, VOL en bultos con el mes anterior como sugerido), tendencia a fin de mes, totales del
+equipo y ranking, como el Excel de Checho; Focos como sección con PDF por vendedor y por día de visita; la línea de
+tiempo en la ficha; el pase desde el portal para el Dueño; los textos de Devoluciones con cambios. Migraciones
+`FocoObjetivos` y `FocoObjetivosBultos` (solo agregan), aplicadas al arrancar. Verificado: `/api/sesion` 401, la
+página 200, los tres contenedores en `1.7.0`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
