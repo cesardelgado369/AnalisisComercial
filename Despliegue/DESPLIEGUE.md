@@ -69,6 +69,13 @@ tiempo en la ficha; el pase desde el portal para el Dueño; los textos de Devolu
 `FocoObjetivos` y `FocoObjetivosBultos` (solo agregan), aplicadas al arrancar. Verificado: `/api/sesion` 401, la
 página 200, los tres contenedores en `1.7.0`, la API sin errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.7.1`, publicada el 17/11** (OK de Cesar en el chat del back, como minor; la publicó la sesión del back
+con `publicar.sh`; imágenes desde `git archive` del tag `v1.7.1` = `238dffa`, que es el `v1.8.0` = `100330f` del front
+con la versión cambiada; el tag `v1.8.0` no se publicó; backup antes: `AnalisisComercial_20261117_1810.bak.gz`). El
+Admin edita la meta y los objetivos por vendedor de cada foco desde el resumen de Focos (lápiz al pasar el mouse;
+**Poner meta** si no tiene). Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en
+`1.7.1`, los tres contenedores en `1.7.1`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
