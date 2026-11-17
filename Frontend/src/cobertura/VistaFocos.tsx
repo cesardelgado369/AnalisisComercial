@@ -18,6 +18,7 @@ import { TarjetasPorTandas } from '../comercial/Tandas'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
 import { Tendencia } from '../admin/AnalisisFocos'
+import { diaDeHoy, ElegirDiaPdf } from '../focos/ElegirDiaPdf'
 import { DIAS_VISITA, sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
 
@@ -49,6 +50,60 @@ function metaCcc(meta: number, conCompra: number, cartera: number, enCurso: bool
   const faltan = Math.ceil((meta * cartera) / 100) - conCompra
   if (faltan <= 0) return { meta, cumplida: true, texto: 'cumplida' }
   return { meta, cumplida: false, texto: enCurso ? (faltan === 1 ? 'falta 1 cliente' : `faltan ${formatoEntero(faltan)} clientes`) : 'no se cumplió' }
+}
+
+/**
+ * Un solo renglón por foco (Cesar, 17/11: «esto es una barbaridad de información»), lo primero que haya de esto:
+ * - el objetivo de Checho, con la tendencia (el vendedor, en cambio, cuántos le faltan);
+ * - la meta del CCC, cumplida o cuántos faltan;
+ * - en un VOL, cuánto falta para el mes anterior o por cuánto lo pasó.
+ * El resto (lo que lleva, cuánto falta, la meta cuando hay objetivo) queda en el globito y en la rayita de la barra.
+ */
+function EstadoFoco(props: {
+  o: ObjetivoVisto | null
+  meta: EstadoMeta | null
+  vol: Indicador['vol']
+  anterior: string
+  conTendencia: boolean
+  enCurso: boolean
+}) {
+  const { o, meta, vol, anterior, conTendencia, enCurso } = props
+  if (o) {
+    const faltan = o.objetivo - o.actual
+    const cumplido = faltan <= 0
+    const cantidad = (n: number) => (o.vol ? `${formatoBultos(n)} ${n === 1 ? 'bulto' : 'bultos'}` : `${formatoEntero(n)} ${n === 1 ? 'cliente' : 'clientes'}`)
+    const falta = cumplido ? 'cumplido' : `${faltan === 1 ? 'falta' : 'faltan'} ${o.vol ? formatoBultos(faltan) : formatoEntero(faltan)}`
+    const globito = `${o.equipo ? 'Objetivo del equipo' : 'Objetivo'}: ${cantidad(o.objetivo)}. ${o.vol ? 'Lleva' : 'Compraron'} ${
+      o.vol ? formatoBultos(o.actual) : formatoEntero(o.actual)
+    }; ${cumplido ? 'cumplido' : `${faltan === 1 ? 'falta' : 'faltan'} ${cantidad(faltan)}`}.`
+    const tendencia = conTendencia && o.tendencia !== null
+    return (
+      <span className={cumplido && !tendencia ? 'cob-kpi-estado cumplida' : 'cob-kpi-estado'} title={globito}>
+        <span className="icono icono-chico" aria-hidden>{cumplido ? 'check_circle' : 'flag'}</span>
+        Objetivo {o.vol ? `${formatoBultos(o.objetivo)} b.` : formatoEntero(o.objetivo)}
+        {tendencia ? <Tendencia valor={o.tendencia} enCurso={enCurso} /> : <span className="cob-kpi-estado-dato"> · {falta}</span>}
+        <span className="sr-solo"> {globito}</span>
+      </span>
+    )
+  }
+  if (meta)
+    return (
+      <span className={meta.cumplida ? 'cob-kpi-estado cumplida' : 'cob-kpi-estado'}>
+        <span className="icono icono-chico" aria-hidden>{meta.cumplida ? 'check_circle' : 'flag'}</span>
+        Meta {formatoEntero(meta.meta)} %<span className="cob-kpi-estado-dato"> · {meta.cumplida ? 'cumplida' : meta.texto.replace(/ clientes?$/, '')}</span>
+      </span>
+    )
+  if (vol) {
+    const superado = vol.actual >= vol.base
+    return (
+      <span className={superado ? 'cob-kpi-estado cumplida' : 'cob-kpi-estado'}>
+        <span className="cob-kpi-estado-dato">
+          {superado ? `pasó ${anterior} por ${formatoBultos(vol.actual - vol.base)}` : `faltan ${formatoBultos(vol.base - vol.actual)} para ${anterior}`}
+        </span>
+      </span>
+    )
+  }
+  return null
 }
 
 /**
@@ -170,29 +225,32 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
   const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
 
   // El PDF por vendedor (Cesar, 17/11: «la app es muy compleja para los choferes»; como las hojas de ruta de De Ruta)
-  const [pdf, setPdf] = useState<{ generando: boolean; error: string | null }>({ generando: false, error: null })
+  // Se elige el día al bajarlo (Cesar, 17/11: «no todos los clientes de golpe»): la ventanita marca el del filtro de la
+  // pantalla o, si no hay, el de hoy
+  const [pdf, setPdf] = useState<{ generando: boolean; error: string | null; eligeDia: boolean }>({ generando: false, error: null, eligeDia: false })
   const deUnVendedor = filtros.vendedor !== null || sesion.vendedores.filter((v) => !v.esCasa).length === 1
-  async function bajarPdf() {
+  async function bajarPdf(codigoDia: number | null) {
     if (!focos.datos?.length || pdf.generando) return
-    setPdf({ generando: true, error: null })
+    setPdf({ generando: true, error: null, eligeDia: false })
+    const dia = DIAS_VISITA.find((d) => d.codigo === codigoDia)?.nombre ?? null
     try {
       const { descargarFocosPdf } = await import('../focos/pdfFocos')
       // Los filtros de la pantalla, sin foco ni búsqueda; tampoco la categoría A, B o C (el PDF va a los choferes y la
-      // clasificación es solo del dueño)
+      // clasificación es solo del dueño). El día, el elegido en la ventanita
       const consulta = new URLSearchParams(filtros.consulta)
-      for (const clave of ['foco', 'abc', 'busqueda']) consulta.delete(clave)
-      const dia = DIAS_VISITA.find((d) => d.codigo === filtros.dia)?.nombre
-      const filtrosTexto = [dia, filtros.unidad ? unidadVisible(filtros.unidad) : null].filter(Boolean).join(' · ') || null
+      for (const clave of ['foco', 'abc', 'busqueda', 'dia']) consulta.delete(clave)
+      if (codigoDia !== null) consulta.set('dia', String(codigoDia))
       await descargarFocosPdf({
         mes,
         focos: focos.datos,
         consulta,
         vendedores: sesion.vendedores.filter((v) => !v.esCasa && (filtros.vendedor === null || v.id === filtros.vendedor)),
-        filtrosTexto,
+        dia,
+        filtrosTexto: filtros.unidad ? unidadVisible(filtros.unidad) : null,
       })
-      setPdf({ generando: false, error: null })
+      setPdf({ generando: false, error: null, eligeDia: false })
     } catch (e) {
-      setPdf({ generando: false, error: textoFallaPdf(e) })
+      setPdf({ generando: false, error: textoFallaPdf(e, dia), eligeDia: false })
     }
   }
   const enCurso = !!respuestas?.some((r) => ('kpis' in r ? r.kpis.at(-1)?.mesEnCurso : (r as Volumen).comparacion.tipo === 'mismoDiaHabil'))
@@ -214,7 +272,6 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
               const k = armado.indicadores[i]
               const pct = k.valor === null ? '—' : formatoPorcentaje(k.valor)
               const o = objetivoDe(f)
-              const faltan = o ? o.objetivo - o.actual : 0
               const escala = k.vol ? escalaVol(k.valor) : 100
               const superado = !!k.vol && k.vol.actual >= k.vol.base
               return (
@@ -224,49 +281,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     {conBultos && <span className={`foco-medida ${f.medida}`}>{ETIQUETA_MEDIDA[f.medida]}</span>} {f.nombre}
                   </span>
                   <span className="cob-kpi-detalle">{k.detalle}</span>
-                  {k.meta && (
-                    // En dos renglones, para que entre en el teléfono más chico (A03): la meta y cómo va
-                    <span className={k.meta.cumplida ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
-                      <span className="cob-kpi-meta-valor">
-                        <span className="icono icono-chico" aria-hidden>{k.meta.cumplida ? 'check_circle' : 'flag'}</span>
-                        Meta {formatoEntero(k.meta.meta)} %
-                      </span>
-                      <span className="cob-kpi-meta-estado">{k.meta.texto}</span>
-                    </span>
-                  )}
-                  {o && (
-                    // El objetivo de clientes que puso Checho (Cesar, 12/11), como la meta: en dos renglones
-                    <span className={faltan <= 0 ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
-                      <span className="cob-kpi-meta-valor">
-                        <span className="icono icono-chico" aria-hidden>{faltan <= 0 ? 'check_circle' : 'flag'}</span>
-                        {o.equipo ? 'Objetivo del equipo' : 'Objetivo'} {o.vol ? `${formatoBultos(o.objetivo)} b.` : formatoEntero(o.objetivo)}
-                      </span>
-                      <span className="cob-kpi-meta-estado">
-                        {faltan <= 0
-                          ? 'cumplido'
-                          : o.vol
-                            ? `faltan ${formatoBultos(faltan)} bultos`
-                            : faltan === 1
-                              ? 'falta 1 cliente'
-                              : `faltan ${formatoEntero(faltan)} clientes`}
-                      </span>
-                      {o.tendencia !== null && (
-                        <span className="cob-kpi-tendencia">
-                          tendencia <Tendencia valor={o.tendencia} enCurso={enCurso} />
-                        </span>
-                      )}
-                    </span>
-                  )}
-                  {k.vol && (
-                    // VOL (Cesar, 12/11): el objetivo es vender más que el mes anterior
-                    <span className={superado ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
-                      <span className="cob-kpi-meta-estado">
-                        {superado
-                          ? `pasó ${anteriorCorto} por ${formatoBultos(k.vol.actual - k.vol.base)}`
-                          : `faltan ${formatoBultos(k.vol.base - k.vol.actual)} para ${anteriorCorto}`}
-                      </span>
-                    </span>
-                  )}
+                  <EstadoFoco o={o} meta={k.meta} vol={k.vol} anterior={anteriorCorto} conTendencia={sesion.rol !== 'operario'} enCurso={enCurso} />
                   <span
                     className={k.vol ? `cob-kpi-barra cob-kpi-barra-vol${superado ? ' superado' : ''}` : 'cob-kpi-barra'}
                     role="progressbar"
@@ -277,6 +292,15 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                       f.medida === 'vol'
                         ? `${f.nombre}: ${pct} de los bultos de ${nombreMes(sumarMes(mes, -1))} a esta altura`
                         : `${f.nombre}: ${pct} de los clientes compraron`
+                    }
+                    title={
+                      k.vol
+                        ? `La rayita es lo de ${nombreMes(sumarMes(mes, -1))}: ${
+                            superado ? `lo pasó por ${formatoBultos(k.vol.actual - k.vol.base)} bultos` : `faltan ${formatoBultos(k.vol.base - k.vol.actual)} bultos para igualarlo`
+                          }.`
+                        : k.meta
+                          ? `La rayita es la meta del ${formatoEntero(k.meta.meta)} %: ${k.meta.cumplida ? 'cumplida' : k.meta.texto}.`
+                          : undefined
                     }
                   >
                     <span style={{ width: `${Math.min(100, (Math.max(0, k.valor ?? 0) / escala) * 100)}%` }} />
@@ -315,10 +339,27 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
             </span>
           )}
           {!!lista?.length && (
-            <button type="button" className="btn foco-pdf" onClick={() => void bajarPdf()} disabled={pdf.generando}>
-              <span className="icono icono-chico" aria-hidden>picture_as_pdf</span>
-              {pdf.generando ? 'Armando el PDF…' : deUnVendedor ? 'Descargar PDF' : 'PDF por vendedor'}
-            </button>
+            <span className="foco-pdf-caja">
+              <button
+                type="button"
+                className="btn foco-pdf"
+                aria-haspopup="dialog"
+                aria-expanded={pdf.eligeDia}
+                onClick={() => setPdf((x) => ({ ...x, error: null, eligeDia: !x.eligeDia }))}
+                disabled={pdf.generando}
+              >
+                <span className="icono icono-chico" aria-hidden>picture_as_pdf</span>
+                {pdf.generando ? 'Armando el PDF…' : deUnVendedor ? 'Descargar PDF' : 'PDF por vendedor'}
+                {!pdf.generando && <span className="icono icono-chico" aria-hidden>expand_more</span>}
+              </button>
+              {pdf.eligeDia && (
+                <ElegirDiaPdf
+                  sugerido={filtros.dia ?? diaDeHoy()}
+                  onElegir={(d) => void bajarPdf(d)}
+                  onCerrar={() => setPdf((x) => ({ ...x, eligeDia: false }))}
+                />
+              )}
+            </span>
           )}
         </div>
       </div>
@@ -413,9 +454,12 @@ function CeldaVolumen({ c, etiqueta }: { c: Extract<Celda, { medida: 'vol' }>; e
 }
 
 /** El aviso de un PDF que no salió: qué pasó y qué hacer; lo técnico, a la consola. */
-function textoFallaPdf(error: unknown) {
+function textoFallaPdf(error: unknown, dia: string | null) {
   console.error('PDF de focos', error)
-  if (error instanceof Error && error.name === 'SinClientesPdf') return 'No hay clientes con estos filtros para armar el PDF. Sacá algún filtro y probá de nuevo.'
+  if (error instanceof Error && error.name === 'SinClientesPdf')
+    return dia
+      ? `No hay clientes que se visiten los ${dia.toLowerCase()}${dia.endsWith('s') ? '' : 's'} con estos filtros. Elegí otro día o sacá algún filtro.`
+      : 'No hay clientes con estos filtros para armar el PDF. Sacá algún filtro y probá de nuevo.'
   if (error instanceof ApiError) return `No se pudo armar el PDF: ${error.mensajes.join(' ')}`
   const texto = error instanceof Error ? error.message : String(error)
   if (/dynamically imported module|importing a module script failed|failed to fetch/i.test(texto))

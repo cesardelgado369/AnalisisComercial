@@ -14,15 +14,17 @@ const VERDE: [number, number, number] = [5, 150, 105]
 export interface PedidoPdfFocos {
   mes: string
   focos: Foco[]
-  /** Los filtros de la pantalla (vendedor, día, tipo de producto, categoría), sin foco ni búsqueda. */
+  /** Los filtros de la pantalla (vendedor, tipo de producto), sin foco, búsqueda ni categoría, y el día elegido. */
   consulta: URLSearchParams
   /** Una hoja (o más) por cada uno: el elegido, o todos los que ve la persona sin la casa. */
   vendedores: OpcionVendedor[]
-  /** «Lunes · Pastas frescas», si la pantalla está filtrada; null si no. */
+  /** El día de visita que se eligió al bajarlo (Cesar, 17/11: «no todos los clientes de golpe»); null, toda la semana. */
+  dia: string | null
+  /** «Pastas frescas», si la pantalla está filtrada; null si no. */
   filtrosTexto: string | null
 }
 
-/** No hay ningún cliente de esos vendedores con estos filtros: no se arma un PDF vacío. */
+/** No hay ningún cliente de esos vendedores con estos filtros (o ese día): no se arma un PDF vacío. */
 export class SinClientesPdf extends Error {
   name = 'SinClientesPdf'
 }
@@ -99,14 +101,15 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
     }
     y += 12
 
-    // Cabecera: vendedor, mes, hasta cuándo, clientes
+    // Cabecera: vendedor, el día (si se eligió uno), mes, hasta cuándo, clientes
     const datos: [string, string][] = [
       ['VENDEDOR', nombre],
+      ...(p.dia ? [['DÍA', p.dia] as [string, string]] : []),
       ['MES', mesTexto],
       ['DATOS AL', corteAl ? formatoFechaCorta(corteAl) : 'mes cerrado'],
-      ['CLIENTES', formatoEntero(clientes.length)],
+      [p.dia ? 'CLIENTES DEL DÍA' : 'CLIENTES', formatoEntero(clientes.length)],
     ]
-    const anchos = [0.4, 0.24, 0.18, 0.18].map((f) => f * (ancho - 2 * MARGEN))
+    const anchos = (p.dia ? [0.3, 0.14, 0.24, 0.14, 0.18] : [0.4, 0.24, 0.18, 0.18]).map((f) => f * (ancho - 2 * MARGEN))
     doc.setDrawColor(LINEA)
     let x = MARGEN
     datos.forEach(([titulo, valor], k) => {
@@ -134,8 +137,14 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
       const del = f.medida === 'ccc' ? f.objetivos?.find((o) => o.idPersonal === v.id) : undefined
       const objetivo = del?.clientes ?? null
       const tendencia = del?.tendencia ?? null
-      const meta = objetivo ?? metaClientes
-      const faltan = meta === null ? null : Math.max(0, meta - compraron)
+      // El objetivo es de todo el mes con toda su cartera (la API manda cuántos compraron): un día o un tipo de producto
+      // no lo achican. La meta, en cambio, es un porcentaje de los clientes de la hoja
+      const faltan =
+        objetivo !== null && del
+          ? Math.max(0, objetivo - del.clientesConCompra)
+          : metaClientes === null
+            ? null
+            : Math.max(0, metaClientes - compraron)
       return [
         f.nombre,
         `${formatoEntero(compraron)} de ${formatoEntero(clientes.length)}`,
@@ -167,6 +176,11 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
       },
     })
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 9
+    if ((p.dia || p.filtrosTexto) && p.focos.some((f) => f.medida === 'ccc' && f.objetivos?.some((o) => o.idPersonal === v.id && o.clientes !== null))) {
+      doc.setFontSize(8).setTextColor(70)
+      doc.text(`El objetivo, lo que le falta para el objetivo y la tendencia son de todo el mes, con todos sus clientes${p.dia ? ` (no solo los del ${p.dia.toLowerCase()})` : ''}.`, MARGEN, y - 4)
+      y += 3
+    }
 
     // Sus clientes: un círculo por foco (lleno, ya compró; vacío, todavía no)
     doc.setFont('helvetica', 'bold').setFontSize(11).setTextColor(20).text('Sus clientes', MARGEN, y)
@@ -230,12 +244,16 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
   for (let n = 1; n <= total; n++) {
     doc.setPage(n)
     doc.setFontSize(7.5).setTextColor(GRIS)
-    doc.text(`${vendedorDePagina[n - 1] ?? ''} · Focos de ${nombreMes(p.mes)}${corteAl ? ` al ${formatoFechaCorta(corteAl)}` : ''}`, MARGEN, alto - 8)
+    doc.text(
+      `${vendedorDePagina[n - 1] ?? ''}${p.dia ? ` · Clientes del ${p.dia.toLowerCase()}` : ''} · Focos de ${nombreMes(p.mes)}${corteAl ? ` al ${formatoFechaCorta(corteAl)}` : ''}`,
+      MARGEN,
+      alto - 8,
+    )
     doc.text(`Página ${n} de ${total}`, ancho - MARGEN, alto - 8, { align: 'right' })
   }
 
   const quien = porVendedor.length === 1 ? nombreArchivo(porVendedor[0].v.nombre) : 'por-vendedor'
-  doc.save(`focos_${p.mes.slice(0, 7)}_${quien}.pdf`)
+  doc.save(`focos_${p.mes.slice(0, 7)}_${p.dia ? `${nombreArchivo(p.dia)}_` : ''}${quien}.pdf`)
 }
 
 /** El círculo de un foco: lleno (verde, con el tilde) si compró; vacío si todavía no. */
