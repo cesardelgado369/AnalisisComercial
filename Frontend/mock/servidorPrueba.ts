@@ -119,7 +119,12 @@ async function api(ruta: string, p: URLSearchParams, req: IncomingMessage, res: 
     if (ruta === '/api/cobertura/unidades') return responder(res, 200, UNIDADES)
     // Los objetivos de clientes, solo de los vendedores que la persona ve (el dueño, todos)
     if (ruta === '/api/cobertura/focos')
-      return responder(res, 200, focos.delMes(p, rol === 'admin' ? null : vendedoresVisibles(rol, vendedoresDelOperario(email)).map((v) => v.id)))
+      return responder(
+        res,
+        200,
+        // Los objetivos de volumen (en bultos), solo para quien ve bultos (el operario no)
+        focos.delMes(p, rol === 'admin' ? null : vendedoresVisibles(rol, vendedoresDelOperario(email)).map((v) => v.id), rol !== 'operario'),
+      )
     if (ruta === '/api/cobertura') {
       await demora(350)
       return responder(res, 200, cobertura(p, rol, vendedoresDelOperario(email), focos.deConsulta(p)))

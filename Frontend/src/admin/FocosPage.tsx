@@ -12,7 +12,7 @@ import { mesesDisponibles, nombrePropio, sumarMes } from '../cobertura/estados'
 import { Parrafo } from '../comercial/ayuda'
 import { Ayuda } from '../components/Ayuda'
 import { cantidad, formatoBultos, formatoEntero, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
-import { LeyendaFocos, MedicionFoco, useAnalisisFocos } from './AnalisisFocos'
+import { LeyendaFocos, MedicionFoco, Tendencia, useAnalisisFocos } from './AnalisisFocos'
 import { ETIQUETA_MEDIDA } from './medidas'
 import { VentanaVendedor, type ClaveVendedorFoco } from './VentanaVendedor'
 import type { ClaseAbc } from '../api/types'
@@ -191,6 +191,8 @@ export function FocosPage() {
           </div>
         </div>
 
+        {mes !== proximo && <RankingFocos focos={estos} enCurso={mes === mesEnCurso} />}
+
         {estos.length > 0 &&
           (mes === proximo ? (
             <p className="foco-analisis-espera">
@@ -262,7 +264,9 @@ export function FocosPage() {
                       {objetivosF.length > 0 && (
                         <button type="button" className="foco-meta foco-objetivos-resumen" onClick={() => setObjetivos(f)}>
                           <span className="icono icono-chico" aria-hidden>flag</span>
-                          Objetivo: {formatoEntero(objetivosF.reduce((s, o) => s + o.clientes, 0))} clientes entre {objetivosF.length} {objetivosF.length === 1 ? 'vendedor' : 'vendedores'}
+                          {f.medida === 'vol'
+                            ? `Objetivo: ${formatoBultos(objetivosF.reduce((s, o) => s + (o.bultos ?? 0), 0))} bultos`
+                            : `Objetivo: ${formatoEntero(objetivosF.reduce((s, o) => s + (o.clientes ?? 0), 0))} clientes entre ${objetivosF.length} ${objetivosF.length === 1 ? 'vendedor' : 'vendedores'}`}
                         </button>
                       )}
                     </p>
@@ -279,6 +283,7 @@ export function FocosPage() {
                       alPasar={ventanita.alPasar}
                       enfocado={ventanita.abierta?.clave.idFoco === f.idFoco ? ventanita.abierta.clave.idPersonal : null}
                       objetivos={objetivosF}
+                      equipo={f.objetivoEquipo ?? null}
                     />
                   ) : mes !== proximo && !analisis.errores.length ? (
                     <LoadingDefault texto="Armando cómo viene…" />
@@ -328,6 +333,44 @@ export function FocosPage() {
           }}
         />
       )}
+    </section>
+  )
+}
+
+/**
+ * El Ranking del Excel de Checho (17/11): cada vendedor por el promedio de sus tendencias en los focos con objetivo, del
+ * mejor al peor. Lo ve solo el dueño (compara a los vendedores entre sí).
+ */
+function RankingFocos({ focos, enCurso }: { focos: Foco[]; enCurso: boolean }) {
+  const porVendedor = new Map<number, { nombre: string; tendencias: number[] }>()
+  for (const f of focos)
+    for (const o of f.objetivos ?? []) {
+      if (o.tendencia === null || o.tendencia === undefined) continue
+      const v = porVendedor.get(o.idPersonal) ?? { nombre: o.nombre, tendencias: [] }
+      v.tendencias.push(o.tendencia)
+      porVendedor.set(o.idPersonal, v)
+    }
+  const filas = [...porVendedor.entries()]
+    .map(([id, v]) => ({ id, nombre: v.nombre, focos: v.tendencias.length, promedio: Math.round((v.tendencias.reduce((s, t) => s + t, 0) / v.tendencias.length) * 10) / 10 }))
+    .sort((a, b) => b.promedio - a.promedio || a.nombre.localeCompare(b.nombre, 'es'))
+  if (filas.length < 2) return null
+  return (
+    <section className="foco-ranking" aria-labelledby="foco-ranking-titulo">
+      <h3 id="foco-ranking-titulo" className="foco-ranking-titulo">
+        <span className="icono icono-chico" aria-hidden>leaderboard</span>
+        Ranking
+        <span className="foco-ranking-ayuda">promedio de la tendencia en los focos con objetivo</span>
+      </h3>
+      <ol className="foco-ranking-lista">
+        {filas.map((v, i) => (
+          <li key={v.id} className="foco-ranking-fila" style={{ ['--puesto' as string]: filas.length > 1 ? i / (filas.length - 1) : 0 }}>
+            <span className="foco-ranking-puesto">{i + 1}</span>
+            <span className="foco-ranking-nombre">{nombrePropio(v.nombre)}</span>
+            <Tendencia valor={v.promedio} enCurso={enCurso} />
+            <span className="foco-ranking-focos">{v.focos === 1 ? '1 foco' : `${v.focos} focos`}</span>
+          </li>
+        ))}
+      </ol>
     </section>
   )
 }

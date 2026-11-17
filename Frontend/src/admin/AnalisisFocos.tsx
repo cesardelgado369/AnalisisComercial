@@ -4,7 +4,7 @@ import { useConsulta } from '../api/useConsulta'
 import { useMesReferencia } from '../comercial/mesReferencia'
 import type { ClaveVendedorFoco } from './VentanaVendedor'
 import { nombrePropio } from '../cobertura/estados'
-import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesCorto } from '../utils/formato'
+import { formatoBultos, formatoEntero, formatoFechaCorta, formatoPorcentaje, formatoPorcentajeDecimal, nombreMes, nombreMesCorto } from '../utils/formato'
 
 /**
  * Un número del análisis, igual para las dos medidas: el porcentaje, su detalle, dónde va la rayita del mes anterior y
@@ -118,14 +118,40 @@ function AvanceVolumen({ v, escala, ctx }: { v: VolumenFoco; escala: number; ctx
   )
 }
 
-/** El objetivo de clientes de un vendedor (Cesar, 12/11): cuántos le faltan, o cumplido. */
-function Objetivo({ o }: { o: ObjetivoFoco }) {
-  const faltan = o.clientes - o.clientesConCompra
+/**
+ * La tendencia del Excel de Checho (17/11): si sigue a este ritmo, en qué % del objetivo termina el mes. Verde desde el
+ * 100 %, rojo abajo; el número dice cuánto, el color solo acompaña.
+ */
+export function Tendencia({ valor, enCurso }: { valor: number | null | undefined; enCurso: boolean }) {
+  if (valor === null || valor === undefined) return null
+  const explicacion = enCurso
+    ? `Tendencia: si sigue a este ritmo, termina el mes en el ${formatoPorcentajeDecimal(valor)} del objetivo.`
+    : `Terminó el mes en el ${formatoPorcentajeDecimal(valor)} del objetivo.`
+  return (
+    <span className={valor >= 100 ? 'foco-tendencia buena' : 'foco-tendencia mala'} title={explicacion}>
+      {formatoPorcentajeDecimal(valor)}
+      <span className="sr-solo"> {explicacion}</span>
+    </span>
+  )
+}
+
+/**
+ * El objetivo de un vendedor, como lo sigue Checho en su Excel (12/11 y 17/11): el objetivo (clientes en CCC, bultos en
+ * VOL; el de lo del mes anterior si nadie lo cambió), cuánto le falta y la tendencia.
+ */
+function Objetivo({ o, vol, ctx }: { o: ObjetivoFoco; vol: boolean; ctx: ContextoAnalisis }) {
+  const objetivo = vol ? (o.bultos ?? null) : o.clientes
+  if (objetivo === null) return null
+  const actual = vol ? (o.bultosActual ?? 0) : o.clientesConCompra
+  const faltan = objetivo - actual
+  const cuanto = (n: number) => (vol ? formatoBultos(n) : formatoEntero(n))
   return (
     <span className={faltan <= 0 ? 'foco-objetivo cumplido' : 'foco-objetivo'}>
       <span className="icono icono-chico" aria-hidden>{faltan <= 0 ? 'check_circle' : 'flag'}</span>
-      Objetivo {formatoEntero(o.clientes)}
-      {faltan > 0 ? ` · ${faltan === 1 ? 'falta 1' : `faltan ${formatoEntero(faltan)}`}` : ' · cumplido'}
+      Objetivo {cuanto(objetivo)}
+      {vol ? (o.sugerido ? ` b. (${ctx.anteriorCorto})` : ' b.') : ''}
+      {faltan > 0 ? ` · ${!vol && faltan === 1 ? 'falta 1' : `faltan ${cuanto(faltan)}`}` : ' · cumplido'}
+      <Tendencia valor={o.tendencia} enCurso={ctx.enCurso} />
     </span>
   )
 }
@@ -196,10 +222,12 @@ export function MedicionFoco(props: {
   alPasar?: (clave: ClaveVendedorFoco | null, fila?: HTMLElement) => void
   /** El vendedor de la ventanita abierta en este foco, resaltado. */
   enfocado?: number | null
-  /** Los objetivos de clientes de cada vendedor (Cesar, 12/11), con sus compras sin filtros. */
+  /** Los objetivos de cada vendedor (Cesar, 12/11 y 17/11), con lo que llevan sin filtros y su tendencia. */
   objetivos?: ObjetivoFoco[]
+  /** La fila Totales del Excel: el objetivo del equipo, lo que lleva y su tendencia. */
+  equipo?: { objetivo: number; actual: number; tendencia: number | null } | null
 }) {
-  const { f, ctx, alPasar, enfocado, objetivos = [] } = props
+  const { f, ctx, alPasar, enfocado, objetivos = [], equipo = null } = props
   const referencia = useMesReferencia()
   const contra = f.medida === 'vol' ? ctx.vol : ctx.ccc
   const total = f.medida === 'vol' ? deVol(f.total) : deCcc(f.total, true)
@@ -234,6 +262,16 @@ export function MedicionFoco(props: {
         )}
       </div>
       {f.medida === 'vol' ? <AvanceVolumen v={f.total} escala={escala} ctx={ctx} /> : <Barra m={total} meta={metaBarra} escala={escala} />}
+      {equipo && (
+        // La fila Totales del Excel de Checho (17/11)
+        <p className="foco-equipo">
+          <span className="icono icono-chico" aria-hidden>groups</span>
+          Objetivo del equipo: <strong>{f.medida === 'vol' ? `${formatoBultos(equipo.objetivo)} bultos` : `${formatoEntero(equipo.objetivo)} clientes`}</strong>
+          {' · '}
+          {f.medida === 'vol' ? `lleva ${formatoBultos(equipo.actual)}` : `compraron ${formatoEntero(equipo.actual)}`}
+          <Tendencia valor={equipo.tendencia} enCurso={ctx.enCurso} />
+        </p>
+      )}
       <ul className="foco-analisis-vendedores" aria-label={`${f.nombre} por vendedor`}>
         {vendedores.map((v) => (
           <li key={v.idPersonal}>
@@ -248,16 +286,15 @@ export function MedicionFoco(props: {
               onClick={() => referencia.elegir(ctx.enCurso ? null : ctx.mes)}
               title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, metaBarra)}`}
             >
-              <span className="foco-vendedor-quien">
-                <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
-                {objetivoDe(v.idPersonal) && <Objetivo o={objetivoDe(v.idPersonal)!} />}
-              </span>
+              <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
               <Barra m={v.m} meta={metaBarra} escala={escala} superado={f.medida === 'vol' && (v.m.valor ?? 0) >= 100} />
               <span className="foco-vendedor-numeros">
                 <strong>{v.m.valor === null ? '—' : formatoPorcentaje(v.m.valor)}</strong>
                 <span className="foco-analisis-detalle">{v.m.detalle}</span>
               </span>
               <Diferencia m={v.m} contra={contra} corto={ctx.anteriorCorto} />
+              {/* El objetivo y su tendencia, en su renglón a todo el ancho (17/11) */}
+              {objetivoDe(v.idPersonal) && <Objetivo o={objetivoDe(v.idPersonal)!} vol={f.medida === 'vol'} ctx={ctx} />}
               {metaBarra !== null && <span className="sr-solo">{textoMeta(v.m, metaBarra)}</span>}
             </Link>
           </li>

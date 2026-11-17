@@ -34,7 +34,7 @@ interface FocoMock {
   nombre: string
   medida: Medida
   meta: number | null
-  /** El objetivo de clientes de cada vendedor (idPersonal → clientes; Cesar, 12/11). */
+  /** El objetivo de cada vendedor (idPersonal → clientes en un CCC, bultos en un VOL; Cesar, 12/11 y 17/11). */
   objetivos: Map<number, number>
   idsArticulo: number[]
   actualizadoPor: string
@@ -103,37 +103,98 @@ const focos: FocoMock[] = [
   nuevo(ANTERIOR, 'Pan rallado', PAN, 33, 'vol', 400),
   nuevo(DOS_ANTES, 'Dulce de leche', DULCE, 64),
 ]
-// Los objetivos de clientes de Dulce de leche de noviembre (para probar: Nicolás cumple, los demás no todavía)
+// Los objetivos de clientes de Dulce de leche de noviembre (para probar: Nicolás cumple, los demás no todavía), y en
+// Tapas (VOL, en bultos) uno guardado para Franco; los demás quedan con el del mes anterior
 focos[2].objetivos = new Map([[1, 10], [2, 20], [3, 15], [4, 12], [5, 25]])
+focos[0].objetivos = new Map([[2, 150]])
 
 const descripcionDe = (idArt: number) => (idArt === ANULADO.idArticulo ? ANULADO.descripcion : articuloDe(idArt).descripcion)
+/** Qué parte del mes pasó, en días hábiles (como Volumen): 1 en un mes cerrado, null en uno que no empezó. */
+function fraccionDelMes(mes: string) {
+  if (mes > MES) return null
+  if (mes < MES) return 1
+  try {
+    const c = comparacion('admin', mes).publica
+    return c.diasHabilesMes ? c.diaHabil / c.diasHabilesMes : null
+  } catch {
+    return null
+  }
+}
+const uno = (n: number) => Math.round(n * 10) / 10
+/** La tendencia del Excel de Checho: lo de hoy llevado a fin de mes, contra el objetivo. */
+const tendencia = (actual: number, objetivo: number, fraccion: number | null) =>
+  fraccion === null || fraccion <= 0 || objetivo <= 0 ? null : uno((actual / fraccion / objetivo) * 100)
+
 /**
- * Los objetivos de clientes del foco (Cesar, 12/11), de los vendedores que se ven (null = todos, el dueño), con cuántos
- * clientes de su cartera compraron algún artículo del foco en el mes (la regla de `/api/cobertura?foco=`, sin filtros).
+ * Los objetivos del foco (Cesar, 12/11 y 17/11), de los vendedores que se ven (null = todos, el dueño), con lo que llevan
+ * y la tendencia. CCC: los guardados, en clientes. VOL (solo con `conBultos`): todos los vendedores con cartera, en
+ * bultos; sin uno guardado, lo de todo el mes anterior (`sugerido`).
  */
-function objetivosDe(f: FocoMock, visibles: number[] | null) {
+function objetivosDe(f: FocoMock, visibles: number[] | null, conBultos: boolean) {
   const m = f.mes > MES ? -1 : indiceMes(f.mes)
   const filtro = filtroCompra(null, comoConsulta(f))
-  return VENDEDORES.filter((v) => f.objetivos.has(v.id) && (!visibles || visibles.includes(v.id))).map((v) => ({
-    idPersonal: v.id,
-    nombre: v.nombre,
-    clientes: f.objetivos.get(v.id)!,
-    clientesConCompra:
-      m < 0 ? 0 : datos().filter((c) => !excluidos.has(c.idCliente) && c.ruta.idPersonal === v.id && enCartera(c, m) && compro(c, m, filtro)).length,
-  }))
+  const fraccion = fraccionDelMes(f.mes)
+  const cartera = (id: number, mes: number) => datos().filter((c) => !excluidos.has(c.idCliente) && c.ruta.idPersonal === id && enCartera(c, mes))
+  const conCompra = (id: number) => (m < 0 ? 0 : cartera(id, m).filter((c) => compro(c, m, filtro)).length)
+  const visibleEs = (id: number) => !visibles || visibles.includes(id)
+  if (f.medida === 'ccc')
+    return VENDEDORES.filter((v) => f.objetivos.has(v.id) && visibleEs(v.id)).map((v) => {
+      const clientes = f.objetivos.get(v.id)!
+      const actual = conCompra(v.id)
+      return { idPersonal: v.id, nombre: v.nombre, clientes, bultos: null, clientesConCompra: actual, bultosActual: null, tendencia: tendencia(actual, clientes, fraccion), sugerido: false }
+    })
+  if (!conBultos) return []
+  // VOL: los bultos del mes y los de todo el mes anterior, como /api/volumen?foco= del admin
+  const bultosDe = (id: number) => {
+    if (m <= 0) return { actual: 0, anterior: 0 }
+    const q = new URLSearchParams({ mes: f.mes, vendedor: String(id), comparacion: 'acumulado' })
+    try {
+      const { total } = volumen(q, 'admin', [], comoConsulta(f))
+      return { actual: total.bultosActual ?? 0, anterior: total.bultosBase ?? 0 }
+    } catch {
+      return { actual: 0, anterior: 0 }
+    }
+  }
+  return VENDEDORES.filter((v) => !v.esCasa && visibleEs(v.id) && (m < 0 ? true : cartera(v.id, m).length > 0)).map((v) => {
+    const b = bultosDe(v.id)
+    const guardado = f.objetivos.get(v.id)
+    const objetivo = guardado ?? b.anterior
+    return {
+      idPersonal: v.id,
+      nombre: v.nombre,
+      clientes: null,
+      bultos: objetivo,
+      clientesConCompra: conCompra(v.id),
+      bultosActual: b.actual,
+      tendencia: tendencia(b.actual, objetivo, fraccion),
+      sugerido: guardado === undefined,
+    }
+  })
 }
 
-const respuesta = (f: FocoMock, visibles: number[] | null = null) => ({
+/** La fila Totales del Excel: la suma de los objetivos que se ven, lo que llevan y su tendencia. */
+function equipoDe(f: FocoMock, objetivos: ReturnType<typeof objetivosDe>) {
+  if (!objetivos.length) return null
+  const objetivo = objetivos.reduce((s, o) => s + (o.clientes ?? o.bultos ?? 0), 0)
+  const actual = objetivos.reduce((s, o) => s + (f.medida === 'ccc' ? o.clientesConCompra : (o.bultosActual ?? 0)), 0)
+  return { objetivo: uno(objetivo), actual: uno(actual), tendencia: tendencia(actual, objetivo, fraccionDelMes(f.mes)) }
+}
+
+const respuesta = (f: FocoMock, visibles: number[] | null = null, conBultos = true) => {
+  const objetivos = objetivosDe(f, visibles, conBultos)
+  return {
   idFoco: f.idFoco,
   mes: f.mes,
   nombre: f.nombre,
   medida: f.medida,
   meta: f.meta,
-  objetivos: objetivosDe(f, visibles),
+  objetivos,
+  objetivoEquipo: equipoDe(f, objetivos),
   articulos: f.idsArticulo.map((a) => ({ idArticulo: a, descripcion: descripcionDe(a) })),
   actualizadoPor: f.actualizadoPor,
   actualizado: f.actualizado,
-})
+  }
+}
 const porNombre = (a: FocoMock, b: FocoMock) => a.nombre.localeCompare(b.nombre, 'es')
 
 /** Un `mes` del contrato: día 1, desde el primer mes con datos hasta el que viene. */
@@ -148,9 +209,9 @@ function mesValido(texto: unknown, campo = 'mes') {
  * `GET /api/cobertura/focos?mes=`: los de ese mes, por nombre. Sin mes, el en curso. Los objetivos, solo de los
  * vendedores que la persona ve (`visibles`; null = el dueño, todos).
  */
-export function delMes(p: URLSearchParams, visibles: number[] | null = null) {
+export function delMes(p: URLSearchParams, visibles: number[] | null = null, conBultos = true) {
   const mes = p.get('mes') ? mesValido(p.get('mes')) : MES
-  return focos.filter((f) => f.mes === mes).sort(porNombre).map((f) => respuesta(f, visibles))
+  return focos.filter((f) => f.mes === mes).sort(porNombre).map((f) => respuesta(f, visibles, conBultos))
 }
 
 /** `GET /api/admin/focos`: los de todos los meses, el más nuevo primero y por nombre. */
@@ -233,12 +294,20 @@ export function guardarObjetivos(idFoco: number, cuerpo: Record<string, unknown>
   if (!lista) throw mal('Mandá la lista de objetivos.')
   for (const o of lista) {
     const id = o.idPersonal
-    const clientes = o.clientes
     if (typeof id !== 'number' || !VENDEDORES.some((v) => v.id === id && !v.esCasa)) throw mal('Hay un vendedor que no existe.')
     if (nuevos.has(id)) throw mal('Hay un vendedor repetido.')
-    if (typeof clientes !== 'number' || !Number.isInteger(clientes) || clientes < 1 || clientes > 10_000)
-      throw mal('Cada objetivo va de 1 a 10.000 clientes.')
-    nuevos.set(id, clientes)
+    // CCC en clientes; VOL en bultos (17/11): el que no viene vuelve a lo del mes anterior
+    if (foco.medida === 'vol') {
+      const bultos = o.bultos
+      if (typeof bultos !== 'number' || bultos < 0.5 || bultos > 1_000_000 || Math.round(bultos * 10) !== bultos * 10)
+        throw mal('Cada objetivo de volumen va de 0,5 a 1.000.000 bultos.')
+      nuevos.set(id, bultos)
+    } else {
+      const clientes = o.clientes
+      if (typeof clientes !== 'number' || !Number.isInteger(clientes) || clientes < 1 || clientes > 10_000)
+        throw mal('Cada objetivo va de 1 a 10.000 clientes.')
+      nuevos.set(id, clientes)
+    }
   }
   Object.assign(foco, { objetivos: nuevos, actualizadoPor: email, actualizado: new Date().toISOString() })
   return respuesta(foco)

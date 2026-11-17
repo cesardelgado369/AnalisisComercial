@@ -17,6 +17,7 @@ import { useMedia } from '../utils/useMedia'
 import { TarjetasPorTandas } from '../comercial/Tandas'
 import { BuscadorCobertura } from './BuscadorCobertura'
 import { CeldaEstado } from './CeldaEstado'
+import { Tendencia } from '../admin/AnalisisFocos'
 import { DIAS_VISITA, sumarMes } from './estados'
 import { ordenar, type Orden } from './TablaCobertura'
 
@@ -35,7 +36,7 @@ type Indicador = {
 }
 
 /** El objetivo de clientes del vendedor que se mira, o de todo el equipo (Cesar, 12/11). */
-type ObjetivoVisto = { clientes: number; conCompra: number; equipo: boolean }
+type ObjetivoVisto = { objetivo: number; actual: number; vol: boolean; equipo: boolean; tendencia: number | null }
 
 /** VOL: la barra va hasta 150 % (o más si lo pasó), con la marca del mes anterior en el 100 %. */
 const escalaVol = (valor: number | null) => Math.max(150, Math.ceil((valor ?? 0) / 10) * 10)
@@ -152,12 +153,18 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
   const vendedorVisto = filtros.vendedor
   const objetivoDe = (f: Foco): ObjetivoVisto | null => {
     // `?? []`: una API anterior a los objetivos no los manda
-    const de = (f.objetivos ?? []).filter((o) => vendedorVisto === null || o.idPersonal === vendedorVisto)
+    // CCC en clientes; VOL en bultos (17/11; solo llegan a quien ve bultos)
+    const vol = f.medida === 'vol'
+    const de = (f.objetivos ?? []).filter((o) => (vendedorVisto === null || o.idPersonal === vendedorVisto) && (vol ? o.bultos != null : o.clientes != null))
     if (!de.length) return null
+    const equipo = vendedorVisto === null && de.length > 1
     return {
-      clientes: de.reduce((s, o) => s + o.clientes, 0),
-      conCompra: de.reduce((s, o) => s + o.clientesConCompra, 0),
-      equipo: vendedorVisto === null && sesion.rol !== 'operario' && de.length > 1,
+      objetivo: de.reduce((s, o) => s + ((vol ? o.bultos : o.clientes) ?? 0), 0),
+      actual: de.reduce((s, o) => s + (vol ? (o.bultosActual ?? 0) : o.clientesConCompra), 0),
+      vol,
+      equipo: equipo && sesion.rol !== 'operario',
+      // De uno, la suya; de varios, la del equipo que calcula la API
+      tendencia: de.length === 1 ? (de[0].tendencia ?? null) : vendedorVisto === null ? (f.objetivoEquipo?.tendencia ?? null) : null,
     }
   }
   const anteriorCorto = `${nombreMesCorto(sumarMes(mes, -1))}.`
@@ -207,7 +214,7 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
               const k = armado.indicadores[i]
               const pct = k.valor === null ? '—' : formatoPorcentaje(k.valor)
               const o = objetivoDe(f)
-              const faltan = o ? o.clientes - o.conCompra : 0
+              const faltan = o ? o.objetivo - o.actual : 0
               const escala = k.vol ? escalaVol(k.valor) : 100
               const superado = !!k.vol && k.vol.actual >= k.vol.base
               return (
@@ -232,11 +239,22 @@ export function VistaFocos(props: { filtros: Filtros; mes: string; orden: Orden;
                     <span className={faltan <= 0 ? 'cob-kpi-meta cumplida' : 'cob-kpi-meta'}>
                       <span className="cob-kpi-meta-valor">
                         <span className="icono icono-chico" aria-hidden>{faltan <= 0 ? 'check_circle' : 'flag'}</span>
-                        {o.equipo ? 'Objetivo del equipo' : 'Objetivo'} {formatoEntero(o.clientes)}
+                        {o.equipo ? 'Objetivo del equipo' : 'Objetivo'} {o.vol ? `${formatoBultos(o.objetivo)} b.` : formatoEntero(o.objetivo)}
                       </span>
                       <span className="cob-kpi-meta-estado">
-                        {faltan <= 0 ? 'cumplido' : faltan === 1 ? 'falta 1 cliente' : `faltan ${formatoEntero(faltan)} clientes`}
+                        {faltan <= 0
+                          ? 'cumplido'
+                          : o.vol
+                            ? `faltan ${formatoBultos(faltan)} bultos`
+                            : faltan === 1
+                              ? 'falta 1 cliente'
+                              : `faltan ${formatoEntero(faltan)} clientes`}
                       </span>
+                      {o.tendencia !== null && (
+                        <span className="cob-kpi-tendencia">
+                          tendencia <Tendencia valor={o.tendencia} enCurso={enCurso} />
+                        </span>
+                      )}
                     </span>
                   )}
                   {k.vol && (

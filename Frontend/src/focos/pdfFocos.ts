@@ -2,7 +2,7 @@ import { api } from '../api/client'
 import type { ClienteCobertura, Cobertura, Foco, OpcionVendedor } from '../api/types'
 import { nombrePropio } from '../cobertura/estados'
 import logoMadomi from '../images/madomi-color.png'
-import { formatoEntero, formatoFechaCorta, formatoPorcentaje, nombreMes, nombreMesTitulo } from '../utils/formato'
+import { formatoEntero, formatoFechaCorta, formatoPorcentaje, formatoPorcentajeDecimal, nombreMes, nombreMesTitulo } from '../utils/formato'
 
 const MARGEN = 12
 const GRIS = 110
@@ -131,7 +131,9 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
       const pct = clientes.length ? (compraron / clientes.length) * 100 : 0
       // La meta de un CCC es un porcentaje de la cartera; la de un VOL es de bultos del foco entero: acá no va
       const metaClientes = f.medida === 'ccc' && f.meta !== null ? Math.ceil((f.meta * clientes.length) / 100) : null
-      const objetivo = f.objetivos?.find((o) => o.idPersonal === v.id)?.clientes ?? null
+      const del = f.medida === 'ccc' ? f.objetivos?.find((o) => o.idPersonal === v.id) : undefined
+      const objetivo = del?.clientes ?? null
+      const tendencia = del?.tendencia ?? null
       const meta = objetivo ?? metaClientes
       const faltan = meta === null ? null : Math.max(0, meta - compraron)
       return [
@@ -141,19 +143,27 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
         metaClientes === null ? '—' : `${formatoEntero(f.meta!)} % (${formatoEntero(metaClientes)} clientes)`,
         objetivo === null ? '—' : `${formatoEntero(objetivo)} clientes`,
         faltan === null ? '—' : faltan === 0 ? 'Cumplido' : `${formatoEntero(faltan)} ${faltan === 1 ? 'cliente' : 'clientes'}`,
+        tendencia === null ? '—' : `${formatoPorcentajeDecimal(tendencia)}`,
       ]
     })
     autoTable(doc, {
       startY: y + 5,
       margin: { left: MARGEN, right: MARGEN, top: MARGEN + 8, bottom: 16 },
-      head: [['Foco', 'Compraron', '%', 'Meta', 'Objetivo', 'Le faltan']],
+      head: [['Foco', 'Compraron', '%', 'Meta', 'Objetivo', 'Le faltan', 'Tendencia']],
       body: resumen,
       theme: 'grid',
       styles: { font: 'helvetica', fontSize: 9, cellPadding: 1.8, lineColor: LINEA, lineWidth: 0.2, textColor: 20 },
       headStyles: { fillColor: VIOLETA, textColor: 255, fontStyle: 'bold' },
-      columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 5: { fontStyle: 'bold' } },
+      columnStyles: { 0: { fontStyle: 'bold' }, 2: { halign: 'right' }, 5: { fontStyle: 'bold' }, 6: { halign: 'right', fontStyle: 'bold' } },
       didParseCell: (d) => {
-        if (d.section === 'body' && d.column.index === 5 && d.cell.raw === 'Cumplido') d.cell.styles.textColor = VERDE
+        if (d.section !== 'body') return
+        if (d.column.index === 5 && d.cell.raw === 'Cumplido') d.cell.styles.textColor = VERDE
+        // La tendencia como en el Excel de Checho: verde desde el 100 %, roja abajo
+        if (d.column.index === 6 && d.cell.raw !== '—') {
+          const t = Number(String(d.cell.raw).replace('%', '').replace(/\./g, '').replace(',', '.'))
+          d.cell.styles.fillColor = t >= 100 ? [209, 250, 229] : [254, 226, 226]
+          d.cell.styles.textColor = t >= 100 ? VERDE : [185, 28, 28]
+        }
       },
     })
     y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 9

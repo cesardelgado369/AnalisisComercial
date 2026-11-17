@@ -629,19 +629,36 @@ export interface Foco {
    * supervisor, los suyos; el vendedor, el propio. Vacío si no hay.
    */
   objetivos: ObjetivoFoco[]
+  /** La fila Totales del Excel de Checho (17/11): la suma de los objetivos que se ven, lo que llevan y su tendencia. */
+  objetivoEquipo?: { objetivo: number; actual: number; tendencia: number | null } | null
   articulos: ArticuloFoco[]
   actualizadoPor: string
   actualizado: string
 }
 
-/** El objetivo de un vendedor en un foco (`PUT /api/admin/focos/{id}/objetivos`, solo el dueño). */
+/**
+ * El objetivo de un vendedor en un foco (`PUT /api/admin/focos/{id}/objetivos`, solo el dueño). CCC: en clientes, solo
+ * los guardados. VOL (17/11): en bultos, uno por vendedor con cartera; sin uno guardado, lo de todo el mes anterior
+ * (`sugerido`); solo para quien ve bultos.
+ */
 export interface ObjetivoFoco {
   idPersonal: number
   nombre: string
-  /** Cuántos clientes de su cartera tienen que comprar algún artículo del foco en el mes. */
-  clientes: number
+  /** CCC: cuántos clientes de su cartera tienen que comprar algún artículo del foco en el mes. null en un VOL. */
+  clientes: number | null
+  /** VOL: cuántos bultos tiene que vender en el mes. null en un CCC. */
+  bultos?: number | null
   /** Cuántos compraron hasta ahora (la regla de `/api/cobertura?foco=`, sin filtros); 0 en un mes que no empezó. */
   clientesConCompra: number
+  /** VOL: los bultos netos del mes hasta ahora. */
+  bultosActual?: number | null
+  /**
+   * La tendencia del Excel de Checho: lo de hoy llevado a fin de mes (por días hábiles) contra el objetivo, en %, un
+   * decimal. Mes cerrado: lo del mes contra el objetivo; mes que no empezó: null.
+   */
+  tendencia?: number | null
+  /** VOL: el objetivo es lo del mes anterior (nadie lo cambió). */
+  sugerido?: boolean
 }
 
 /**

@@ -29,6 +29,12 @@
 .cob-kpi-meta-valor { display: inline-flex; align-items: center; gap: 3px; font-weight: 700; color: var(--texto); }
 .cob-kpi-meta-valor .icono { font-size: 15px; color: var(--acento); }
 .cob-kpi-meta-estado { font-weight: 600; }
+/* La tendencia (17/11; la usan la sección Focos y Focos del mes), como las celdas del Excel de Checho: verde desde el 100 %, roja abajo */
+.foco-tendencia { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 4px; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.foco-tendencia.buena { color: #047857; background: #d1fae5; }
+.foco-tendencia.mala { color: #b91c1c; background: #fee2e2; }
+.cob-kpi-tendencia { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 600; }
+.cob-kpi-tendencia .foco-tendencia { margin-left: 2px; }
 .cob-kpi-meta.cumplida .cob-kpi-meta-estado, .cob-kpi-meta.cumplida .icono { color: var(--ok); font-weight: 700; }
 .cob-kpi-foco .cob-kpi-barra { position: relative; margin-top: auto; }
 .cob-kpi-barra > .cob-kpi-barra-meta { position: absolute; top: 0; bottom: 0; width: 2px; height: auto; margin-left: -1px; background: var(--texto); border-radius: 1px; }
