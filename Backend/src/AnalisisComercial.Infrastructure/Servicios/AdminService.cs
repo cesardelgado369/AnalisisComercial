@@ -62,6 +62,16 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         return Dto(acceso, ingresos);
     }
 
+    public async Task BorrarAccesoAsync(int idAcceso, CancellationToken ct = default)
+    {
+        await AdminAsync("admin-usuarios", ct);
+        var acceso = await db.Accesos.Include(a => a.Vendedores).FirstOrDefaultAsync(a => a.IdAcceso == idAcceso, ct)
+                     ?? throw new NoEncontradoException("No existe ese acceso.");
+        db.Accesos.Remove(acceso);
+        await db.GuardarAsync(ct);
+        await alcance.RegistrarAsync("admin-usuarios", $"borrado={acceso.Email}", denegado: false, ct);
+    }
+
     /// <summary>
     /// El acceso se enlaza a la cuenta de la plataforma cuando el Admin lo guarda, nunca al entrar (ver AlcanceUsuario):
     /// la cuenta cuyo usuario es el email, si existe. Si todavía no existe, queda pendiente y no deja entrar a nadie
@@ -93,18 +103,28 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         if (dto.Rol is not { } rol || !Enum.IsDefined(rol))
             throw new ValidacionException("rol", "Elegí supervisor u operario.");
 
+        // El supervisor de todos (Checho, 19/11/2026) no lleva vendedores: ve a todas las personas, también las que
+        // Chess sume después (ver AlcanceUsuario). El operario siempre tiene los suyos.
+        var todos = dto.TodosLosVendedores == true;
+        if (todos && rol != RolAcceso.Supervisor)
+            throw new ValidacionException("todosLosVendedores", "Solo un supervisor puede ver a todos los vendedores.");
+
         // Operario y supervisor: al menos un vendedor, todos personas (la casa la ve solo el Admin). El operario puede
         // tener varios: el mismo vendedor con su idPersonal viejo y el nuevo, si Chess lo renombró.
-        var personas = await db.Vendedores.Where(v => v.EsPersona).Select(v => v.IdPersonal).ToListAsync(ct);
-        var ids = (dto.IdsPersonal ?? []).Distinct().ToList();
-        if (ids.Count == 0)
-            throw new ValidacionException("idsPersonal", rol == RolAcceso.Operario ? "Elegí su vendedor de Chess." : "Elegí al menos un vendedor.");
-        if (ids.Any(id => !personas.Contains(id)))
-            throw new ValidacionException("idsPersonal", "Hay un vendedor que no existe o no es una persona.");
+        List<int> ids = todos ? [] : (dto.IdsPersonal ?? []).Distinct().ToList();
+        if (!todos)
+        {
+            var personas = await db.Vendedores.Where(v => v.EsPersona).Select(v => v.IdPersonal).ToListAsync(ct);
+            if (ids.Count == 0)
+                throw new ValidacionException("idsPersonal", rol == RolAcceso.Operario ? "Elegí su vendedor de Chess." : "Elegí al menos un vendedor.");
+            if (ids.Any(id => !personas.Contains(id)))
+                throw new ValidacionException("idsPersonal", "Hay un vendedor que no existe o no es una persona.");
+        }
         // Diferencia (no borrar y volver a agregar la misma clave: EF no lo admite en un mismo guardado).
         acceso.Vendedores.RemoveAll(v => !ids.Contains(v.IdPersonal));
         acceso.Vendedores.AddRange(ids.Where(id => acceso.Vendedores.All(v => v.IdPersonal != id))
             .Select(id => new AccesoVendedor { IdAcceso = acceso.IdAcceso, IdPersonal = id }));
+        acceso.TodosLosVendedores = todos;
         acceso.Email = email;
         acceso.Nombre = nombre;
         acceso.Rol = rol;
@@ -122,13 +142,13 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
     private static AccesoDto Dto(AccesoUsuario a, Dictionary<Guid, DateTimeOffset> ingresos)
         => new(a.IdAcceso, a.Email, a.Nombre, a.Rol, a.Vendedores.Select(v => v.IdPersonal).Order().ToList(), a.Activo, a.IdUsuario is { } e && ingresos.ContainsKey(e), a.IdUsuario is { } u && ingresos.TryGetValue(u, out var f) ? f : null,
             a.ActualizadoPor, a.Actualizado, a.Version.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            Enlazado: a.IdUsuario is not null);
+            Enlazado: a.IdUsuario is not null, a.TodosLosVendedores);
 
     // ---- cuentas de la plataforma (30/10/2026: la API de cuentas de la central, con el token de quien entra)
 
     public async Task<IReadOnlyList<CuentaMadomiDto>> CuentasAsync(CancellationToken ct = default)
     {
-        await AdminAsync("admin-cuentas", ct);
+        var admin = await AdminAsync("admin-cuentas", ct);
         var cuentas = await plataforma.CuentasAsync(ct);
         var accesos = await db.Accesos.AsNoTracking().Include(a => a.Vendedores).ToListAsync(ct);
 
@@ -140,14 +160,18 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         foreach (var c in cuentas)
         {
             var acceso = porCuenta.GetValueOrDefault(c.Id) ?? porEmail.GetValueOrDefault(c.Usuario.Trim().ToLowerInvariant());
+            // Una cuenta dada de baja y sin acceso es una borrada (19/11/2026): no se lista.
+            if (!c.Activa && acceso is null)
+                continue;
             if (acceso is not null)
                 usados.Add(acceso.IdAcceso);
-            filas.Add(Cuenta(c, acceso));
+            filas.Add(Cuenta(c, acceso, admin));
         }
-        // Accesos sin cuenta en la plataforma (se dieron por email antes de que la persona tuviera cuenta).
+        // Accesos sin cuenta en la plataforma (se dieron por email antes de que la persona tuviera cuenta). Se borran con
+        // DELETE /usuarios/{idAcceso} (los que no tienen idUsuario) o /cuentas/{idUsuario}.
         filas.AddRange(accesos.Where(a => !usados.Contains(a.IdAcceso))
             .Select(a => new CuentaMadomiDto(a.IdUsuario, a.Email, a.Nombre, false, null, RolDe(a.Rol), a.IdAcceso,
-                IdsPersonal(a), a.Activo, Version(a), false, AccesoEnlazado: false)));
+                IdsPersonal(a), a.Activo, Version(a), false, AccesoEnlazado: false, a.TodosLosVendedores, SeBorra: true)));
         return filas.OrderBy(f => f.Nombre ?? f.Usuario, StringComparer.Create(System.Globalization.CultureInfo.GetCultureInfo("es-AR"), true))
             .ThenBy(f => f.Usuario, StringComparer.Ordinal)
             .ToList();
@@ -160,7 +184,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         var acceso = new AccesoUsuario();
         try
         {
-            await AplicarAsync(acceso, new GuardarAccesoDto(dto.Usuario, dto.Nombre, dto.Rol, dto.IdsPersonal), admin, ct);
+            await AplicarAsync(acceso, new GuardarAccesoDto(dto.Usuario, dto.Nombre, dto.Rol, dto.IdsPersonal,
+                TodosLosVendedores: dto.TodosLosVendedores), admin, ct);
         }
         catch (ValidacionException e) when (e.Campo == "email")
         {
@@ -185,19 +210,63 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
         db.Accesos.Add(acceso);
         await db.GuardarAsync(ct);
         await alcance.RegistrarAsync("admin-cuentas", $"alta={acceso.Email};rol={acceso.Rol}", denegado: false, ct);
-        return Cuenta(cuenta, acceso);
+        return Cuenta(cuenta, acceso, admin);
     }
 
-    private static CuentaMadomiDto Cuenta(CuentaPlataforma c, AccesoUsuario? acceso)
+    /// <summary>
+    /// Borrar una cuenta (Checho, 19/11/2026): la plataforma no borra cuentas, la da de baja en Madomi (no entra más y se
+    /// le cierran las sesiones), y acá se borra su acceso; así sale de la lista. No se borran la propia, las de
+    /// administrador (Administrador comercial o Dueño: pasan por Vignoli) ni las que entran con De Ruta (se dan de baja
+    /// en De Ruta). Primero la plataforma: si no deja, no se toca nada de acá. Repetirlo no hace daño.
+    /// </summary>
+    public async Task BorrarCuentaAsync(Guid idUsuario, CancellationToken ct = default)
     {
-        var esAdmin = c.Roles.Any(r => r.Nombre == RolesPlataforma.Administrador);
+        var admin = await AdminAsync("admin-cuentas", ct);
+        if (idUsuario == admin.IdUsuario)
+            throw new ValidacionException("cuenta", "Tu propia cuenta no se borra.");
+        var cuenta = (await plataforma.CuentasAsync(ct)).FirstOrDefault(c => c.Id == idUsuario);
+        var usuario = cuenta?.Usuario.Trim().ToLowerInvariant();
+        var accesos = await db.Accesos.Include(a => a.Vendedores)
+            .Where(a => a.IdUsuario == idUsuario || (usuario != null && a.IdUsuario == null && a.Email == usuario))
+            .ToListAsync(ct);
+        if (cuenta is null && accesos.Count == 0)
+            throw new NoEncontradoException("No existe esa cuenta.");
+
+        if (cuenta is not null)
+        {
+            if (RolesPlataforma.EsAdmin(cuenta.Roles))
+                throw new ValidacionException("cuenta", "Las cuentas de administrador no se borran desde acá. Pedíselo a Vignoli.");
+            if (cuenta.Federada)
+                throw new ValidacionException("cuenta", "Esa cuenta entra con De Ruta: se da de baja en De Ruta.");
+            if (cuenta.Activa)
+            {
+                try
+                {
+                    await plataforma.DarDeBajaAsync(cuenta.Id, ct);
+                }
+                catch (ValidacionException e)
+                {
+                    throw new ValidacionException("cuenta", e.Message);
+                }
+            }
+        }
+
+        db.Accesos.RemoveRange(accesos);
+        await db.GuardarAsync(ct);
+        await alcance.RegistrarAsync("admin-cuentas", $"baja={usuario ?? accesos[0].Email}", denegado: false, ct);
+    }
+
+    private static CuentaMadomiDto Cuenta(CuentaPlataforma c, AccesoUsuario? acceso, Alcance admin)
+    {
+        var esAdmin = RolesPlataforma.EsAdmin(c.Roles);
         DateTimeOffset? ingreso = c.UltimoIngreso is { } u
             ? TimeZoneInfo.ConvertTime(new DateTimeOffset(DateTime.SpecifyKind(u, DateTimeKind.Utc)), Calendario.Argentina)
             : null;
         return new CuentaMadomiDto(c.Id, c.Usuario, c.Nombre, c.Activa, ingreso,
             esAdmin ? RolApp.Admin : acceso is null ? null : RolDe(acceso.Rol), acceso?.IdAcceso,
             acceso is null ? [] : IdsPersonal(acceso), acceso?.Activo ?? false, acceso is null ? null : Version(acceso), c.Federada,
-            AccesoEnlazado: acceso?.IdUsuario == c.Id);
+            AccesoEnlazado: acceso?.IdUsuario == c.Id, acceso?.TodosLosVendedores ?? false,
+            SeBorra: !esAdmin && !c.Federada && c.Id != admin.IdUsuario);
     }
 
     private static RolApp RolDe(RolAcceso rol) => rol == RolAcceso.Supervisor ? RolApp.Supervisor : RolApp.Operario;

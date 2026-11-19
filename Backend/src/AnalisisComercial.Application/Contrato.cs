@@ -296,14 +296,17 @@ public interface IResumenService
 
 // ---- Administración (solo Admin) -------------------------------------------------------------------------------
 
-/// <param name="IdsPersonal">Los vendedores que ve: los del operario (uno o varios) o los del equipo del supervisor.</param>
+/// <param name="IdsPersonal">Los vendedores que ve: los del operario (uno o varios) o los del equipo del supervisor; vacío
+/// para el supervisor de todos.</param>
+/// <param name="TodosLosVendedores">Supervisor de todos los vendedores (también los que Chess sume después).</param>
 public record AccesoDto(int IdAcceso, string Email, string? Nombre, RolAcceso Rol, IReadOnlyList<int> IdsPersonal, bool Activo,
     bool Entro, DateTimeOffset? UltimoIngreso, string ActualizadoPor, DateTimeOffset Actualizado, string Version,
-    bool Enlazado);
+    bool Enlazado, bool TodosLosVendedores = false);
 
 /// <summary>Alta (sin Activo ni Version) o edición (con Version obligatoria).</summary>
+/// <param name="TodosLosVendedores">Solo supervisor: ve a todos y no lleva IdsPersonal.</param>
 public record GuardarAccesoDto(string? Email, string? Nombre, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal,
-    bool? Activo = null, string? Version = null);
+    bool? Activo = null, string? Version = null, bool? TodosLosVendedores = null);
 
 /// <summary>Un vendedor de Chess para Administración: también los dados de baja (para enlazar el viejo y el nuevo).</summary>
 public record VendedorAdminDto(int Id, string Nombre, bool Activo, bool EsCasa);
@@ -345,20 +348,26 @@ public record SincronizacionesDto(SolicitudSincronizacionDto? Pendiente, IReadOn
 
 /// <summary>Una cuenta de Madomi en la plataforma cruzada con su acceso a esta app (o un acceso sin cuenta todavía).</summary>
 /// <param name="IdUsuario">La cuenta de la plataforma; null = acceso por email de alguien que todavía no tiene cuenta.</param>
-/// <param name="Rol">Admin si tiene el rol «Administrador comercial» de la plataforma; si no, el de su acceso; null = no entra.</param>
+/// <param name="Rol">Admin si tiene el rol «Administrador comercial» o «Dueño» de la plataforma; si no, el de su acceso;
+/// null = no entra.</param>
 /// <param name="Federada">Entra con su usuario de De Ruta: no tiene clave en la plataforma.</param>
+/// <param name="SeBorra">El Admin la puede borrar desde acá: no es la suya, ni un administrador, ni una de De Ruta.</param>
 public record CuentaMadomiDto(Guid? IdUsuario, string Usuario, string? Nombre, bool CuentaActiva, DateTimeOffset? UltimoIngreso,
     RolApp? Rol, int? IdAcceso, IReadOnlyList<int> IdsPersonal, bool AccesoActivo, string? Version, bool Federada,
-    bool AccesoEnlazado);
+    bool AccesoEnlazado, bool TodosLosVendedores = false, bool SeBorra = false);
 
 /// <summary>Alta en un paso: la cuenta en la plataforma (rol «Comercial») y su acceso a esta app.</summary>
-public record NuevaCuentaDto(string? Usuario, string? Nombre, string? Password, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal);
+public record NuevaCuentaDto(string? Usuario, string? Nombre, string? Password, RolAcceso? Rol, IReadOnlyList<int>? IdsPersonal,
+    bool? TodosLosVendedores = null);
 
 public interface IAdminService
 {
     Task<IReadOnlyList<AccesoDto>> AccesosAsync(CancellationToken ct = default);
     Task<AccesoDto> CrearAccesoAsync(GuardarAccesoDto dto, CancellationToken ct = default);
     Task<AccesoDto> ActualizarAccesoAsync(int idAcceso, GuardarAccesoDto dto, CancellationToken ct = default);
+
+    /// <summary>Borra el acceso a esta app (la cuenta de la plataforma, si tiene, sigue como estaba).</summary>
+    Task BorrarAccesoAsync(int idAcceso, CancellationToken ct = default);
 
     Task<IReadOnlyList<VendedorAdminDto>> VendedoresAsync(CancellationToken ct = default);
 
@@ -367,6 +376,9 @@ public interface IAdminService
 
     /// <summary>Crea la cuenta en la plataforma y su acceso; valida lo de acá antes, para no dejar una cuenta suelta.</summary>
     Task<CuentaMadomiDto> CrearCuentaAsync(NuevaCuentaDto dto, CancellationToken ct = default);
+
+    /// <summary>Da de baja la cuenta en la plataforma y borra su acceso: no entra más y sale de la lista.</summary>
+    Task BorrarCuentaAsync(Guid idUsuario, CancellationToken ct = default);
 
     Task<IReadOnlyList<ExclusionDto>> ExclusionesAsync(CancellationToken ct = default);
     Task<ExclusionDto> ExcluirClienteAsync(NuevaExclusionDto dto, CancellationToken ct = default);

@@ -101,6 +101,9 @@ namespace AnalisisComercial.Infrastructure.Datos.Migraciones
                     b.Property<byte>("Rol")
                         .HasColumnType("tinyint");
 
+                    b.Property<bool>("TodosLosVendedores")
+                        .HasColumnType("bit");
+
                     b.Property<int>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("int");

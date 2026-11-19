@@ -42,6 +42,13 @@ public class PlataformaClient(HttpClient http, IUsuarioActual usuario, IOptions<
         return EnviarAsync<CuentaPlataforma>(pedido, ct);
     }
 
+    public async Task DarDeBajaAsync(Guid idCuenta, CancellationToken ct)
+    {
+        var pedido = Pedido(HttpMethod.Put, $"api/cuentas/{idCuenta}");
+        pedido.Content = JsonContent.Create(new { activa = false }, options: Json);
+        await EnviarAsync<JsonElement>(pedido, ct);
+    }
+
     private HttpRequestMessage Pedido(HttpMethod metodo, string ruta)
     {
         if (string.IsNullOrWhiteSpace(opciones.Value.Url))

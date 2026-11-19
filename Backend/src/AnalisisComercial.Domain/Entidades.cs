@@ -153,6 +153,11 @@ public class AccesoUsuario
     /// clientes. Supervisor: los de su equipo.
     /// </summary>
     public List<AccesoVendedor> Vendedores { get; set; } = [];
+    /// <summary>
+    /// Supervisor de todos los vendedores (Checho, 19/11/2026): ve a todos los que son personas, también los que Chess dé
+    /// de alta después, y <see cref="Vendedores"/> queda vacío. Nunca la casa (esa la ve solo el Admin). Solo supervisor.
+    /// </summary>
+    public bool TodosLosVendedores { get; set; }
     public bool Activo { get; set; } = true;
     /// <summary>La cuenta de la plataforma; null hasta que la persona entra por primera vez.</summary>
     /// <remarks>El último ingreso sale de AccesoLog: guardarlo acá le cambiaría la versión en cada request y el Admin

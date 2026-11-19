@@ -44,13 +44,28 @@ public sealed class PlataformaFalsa : IPlataforma
         return Task.FromResult(cuenta);
     }
 
+    /// <summary>Cuántas cuentas se dieron de baja (para ver que un borrado que no va no llega a la plataforma).</summary>
+    public int Bajas { get; private set; }
+
+    public Task DarDeBajaAsync(Guid idCuenta, CancellationToken ct)
+    {
+        var i = _cuentas.FindIndex(c => c.Id == idCuenta);
+        if (i < 0)
+            throw new NoEncontradoException("La gestión de cuentas de la plataforma no está disponible acá.");
+        _cuentas[i] = _cuentas[i] with { Activa = false };
+        Bajas++;
+        return Task.CompletedTask;
+    }
+
+    public CuentaPlataforma? Cuenta(string usuario) => _cuentas.FirstOrDefault(c => c.Usuario == usuario);
+
     public void Quitar(string usuario) => _cuentas.RemoveAll(c => c.Usuario == usuario);
 
-    /// <summary>Una cuenta Comercial creada en la plataforma (no desde esta app), con el id de <see cref="Entorno.IdDe"/>.</summary>
-    public Guid Agregar(string usuario)
+    /// <summary>Una cuenta creada en la plataforma (no desde esta app), con el id de <see cref="Entorno.IdDe"/>; Comercial si no se dice.</summary>
+    public Guid Agregar(string usuario, RolPlataforma? rol = null)
     {
         var id = Entorno.IdDe(usuario);
-        _cuentas.Add(new CuentaPlataforma(id, usuario, usuario, true, [Comercial], false, null));
+        _cuentas.Add(new CuentaPlataforma(id, usuario, usuario, true, [rol ?? Comercial], false, null));
         return id;
     }
 }

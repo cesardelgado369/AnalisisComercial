@@ -65,6 +65,24 @@ public class PlataformaClientTests
     }
 
     [Fact]
+    public async Task La_baja_es_un_PUT_con_activa_false()
+    {
+        var id = Guid.Parse("0b8f1c3e-2a4d-4e5f-8a9b-0c1d2e3f4a5b");
+        var r = new Respuesta(HttpStatusCode.OK, UnaCuenta.Replace("\"activa\": true", "\"activa\": false"));
+        await Cliente(r).DarDeBajaAsync(id, CancellationToken.None);
+        Assert.Equal(HttpMethod.Put, r.Pedido!.Method);
+        Assert.Equal($"http://plataforma:8080/api/cuentas/{id}", r.Pedido.RequestUri!.ToString());
+        Assert.Equal("Bearer token-de-checho", r.Pedido.Headers.Authorization!.ToString());
+        Assert.Equal("""{"activa":false}""", r.Enviado);
+
+        // La empresa no se queda sin Dueño: vuelve con su campo.
+        var sinDueno = new Respuesta(HttpStatusCode.BadRequest,
+            """{ "status": 400, "title": "Revisá los datos.", "errors": { "activa": ["La empresa no puede quedar sin un Dueño activo."] } }""");
+        var e = await Assert.ThrowsAsync<ValidacionException>(() => Cliente(sinDueno).DarDeBajaAsync(id, CancellationToken.None));
+        Assert.Equal("activa", e.Campo);
+    }
+
+    [Fact]
     public async Task Los_errores_de_la_plataforma_llegan_con_su_campo()
     {
         var repetido = new Respuesta(HttpStatusCode.BadRequest,

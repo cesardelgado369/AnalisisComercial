@@ -23,7 +23,7 @@ codificarlo. Reemplaza a la sección 8 de `CONTEXTO_BACKEND.md` (y la 9 de `CONT
   | Rol | Quién | Ve |
   |---|---|---|
   | `admin` | tiene `analisis-comercial.admin` o es SuperAdmin | todo, incluidas las **cuentas de la casa** (Deposito, id 6, y rutas sin vendedor) |
-  | `supervisor` | cargado en Administración con sus vendedores | los clientes de esos vendedores |
+  | `supervisor` | cargado en Administración con sus vendedores, o con **todos** | los clientes de esos vendedores (de todos: de todas las personas, también las que Chess sume después; nunca la casa) |
   | `operario` | cargado en Administración con **un** vendedor de Chess | solo los clientes de las rutas vigentes de su vendedor |
 
   Supervisor y operario se dan **por email** (o usuario sin dominio, como `jimena`: el que use para entrar a la
@@ -475,7 +475,9 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
 // GET /api/admin/usuarios
 [{ "idAcceso": 7, "email": "franco@madomi", "nombre": "Franco" | null,
    "rol": "supervisor" | "operario",
-   "idsPersonal": [2, 9],           // los vendedores que ve: el operario los suyos (uno o varios), el supervisor su equipo
+   "idsPersonal": [2, 9],           // los vendedores que ve: el operario los suyos (uno o varios), el supervisor su equipo;
+                                    // [] en el supervisor de todos
+   "todosLosVendedores": false,     // true = supervisor de todos los vendedores
    "activo": true,
    "entro": true,                   // false = esa persona todavía no entró nunca
    "ultimoIngreso": "2026-10-26T09:12:00-03:00" | null,
@@ -486,9 +488,17 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
   de alta con otro `idPersonal`; el acceso del operario puede tener los dos y ve la **unión** de sus clientes. En
   `/api/cobertura` sin `vendedor`, el operario ve todos los suyos y el `titulo` son sus nombres (`"UNO / UNO BIS"`).
   `idPersonal` ya no existe en los accesos: va todo en `idsPersonal`.
-- `POST /api/admin/usuarios` → el acceso (201). Body: `{ email, nombre?, rol, idsPersonal }`.
+- **Supervisor de todos los vendedores** (Checho, 19/11/2026): `todosLosVendedores: true`, solo con `rol: "supervisor"`
+  (si no, 400 en `errors.todosLosVendedores` «Solo un supervisor puede ver a todos los vendedores.»). No lleva
+  `idsPersonal` (se ignoran y quedan vacíos): ve a todos los vendedores que son personas, también los que Chess dé de
+  alta después, sin tocar el acceso. Nunca la casa. Sigue siendo supervisor: ventana de 4 meses, sin ABC ni
+  Administración. Con `false` (o sin el campo) vuelve a un equipo fijo y `idsPersonal` es obligatorio.
+- `POST /api/admin/usuarios` → el acceso (201). Body: `{ email, nombre?, rol, idsPersonal, todosLosVendedores? }`.
 - `PUT /api/admin/usuarios/{idAcceso}` → el acceso. Mismo body + `activo` + `version`.
-- No se borra: `activo: false`. Corta el acceso en el próximo request de esa persona.
+- `activo: false` corta el acceso en el próximo request de esa persona y lo deja para volver a darlo.
+- `DELETE /api/admin/usuarios/{idAcceso}` → 204 (19/11/2026): borra el acceso a esta app; la cuenta de la plataforma, si
+  tiene, sigue como estaba. 404 si no existe. Es el borrar de los accesos sin cuenta (`idUsuario` null en
+  `/api/admin/cuentas`); para una cuenta, `DELETE /api/admin/cuentas/{idUsuario}`.
 - `version` es un texto opaco: la manda el GET, el PUT la exige (400 si falta) y responde 409 si otro guardó en el
   medio. Que la persona entre **no** la cambia.
 - Al guardar, el acceso se enlaza a la cuenta de la plataforma cuyo usuario es el email, si existe (si no, queda
@@ -506,8 +516,8 @@ Una fila por vendedor visible, por nombre. La casa va al final (`esCasa: true`, 
 **Cuentas de la plataforma** (30/10/2026, con la API de cuentas de la central, script 034): el admin ve las cuentas de
 Madomi y da de alta a un vendedor o supervisor en un paso. La API reenvía a la plataforma el token de quien entra
 (nunca uno de servicio): la plataforma decide con sus permisos (`cuentas.administrar`, que tiene el «Administrador
-comercial») y solo dentro de Madomi. Editar, dar de baja o cambiar la clave de una cuenta todavía no existen (pasan por
-Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
+comercial» y el «Dueño») y solo dentro de Madomi. Borrar, desde el 19/11/2026; editar la cuenta o cambiarle la clave
+todavía no (pasan por Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
 
 ```jsonc
 // GET /api/admin/cuentas → por nombre
@@ -515,21 +525,36 @@ Vignoli); editar el acceso sigue siendo `PUT /api/admin/usuarios/{idAcceso}`.
    "usuario": "franco@madomi", "nombre": "Franco" | null,
    "cuentaActiva": true,              // false también para los accesos sin cuenta
    "ultimoIngreso": "2026-10-30T09:12:00-03:00" | null,   // último login en la plataforma
-   "rol": "admin" | "supervisor" | "operario" | null,     // admin = rol «Administrador comercial» de la plataforma;
-                                                          // si no, el de su acceso; null = no entra a esta app
+   "rol": "admin" | "supervisor" | "operario" | null,     // admin = rol «Administrador comercial» o «Dueño» de la
+                                                          // plataforma; si no, el de su acceso; null = no entra a esta app
    "idAcceso": 7 | null, "idsPersonal": [2], "accesoActivo": true, "version": "3" | null,   // los de su acceso
-   "federada": false }]               // entra con su usuario de De Ruta: no tiene clave en la plataforma
+   "todosLosVendedores": false,       // el de su acceso: supervisor de todos
+   "federada": false,                 // entra con su usuario de De Ruta: no tiene clave en la plataforma
+   "seBorra": true }]                 // el Admin la puede borrar desde acá (ver DELETE)
 ```
 
 - Cada cuenta va con su acceso: el enlazado a ella o, si no, el pendiente con su usuario/email. `accesoEnlazado`
   = el acceso está atado a esa cuenta; false con `idAcceso` = pendiente (la persona recibe 403 hasta que el Admin
   guarde el acceso de nuevo con `PUT /api/admin/usuarios/{idAcceso}`); también false si no hay acceso o no hay cuenta.
-- `POST /api/admin/cuentas` `{ usuario, nombre, password, rol: "operario" | "supervisor", idsPersonal }` → 201 con la
-  fila como en el GET. Crea la cuenta con el rol «Comercial» de la plataforma y el acceso con el rol y los vendedores
+- Las cuentas **borradas** (dadas de baja en la plataforma y sin acceso) no se listan. Una dada de baja que todavía
+  tiene acceso sí, con `cuentaActiva: false`.
+- `POST /api/admin/cuentas` `{ usuario, nombre, password, rol: "operario" | "supervisor", idsPersonal,
+  todosLosVendedores? }` → 201 con la fila como en el GET (el supervisor de todos, como en los accesos). Crea la cuenta con el rol «Comercial» de la plataforma y el acceso con el rol y los vendedores
   pedidos, ya enlazado a la cuenta nueva. Valida primero lo de esta app (usuario sin acceso, rol,
   vendedores) para no dejar una cuenta suelta. 400 en `errors.usuario` (también «Ya existe una cuenta con ese
   usuario.»), `errors.nombre`, `errors.password` (mínimo 8, máximo 64), `errors.rol`, `errors.idsPersonal`; 403 con
   `title` si la plataforma no lo permite.
+- `DELETE /api/admin/cuentas/{idUsuario}` → 204 (Checho, 19/11/2026). La plataforma no borra cuentas: la **da de
+  baja** en Madomi (`PUT /api/cuentas/{id}` con `activa: false`: no entra más y se le cierran las sesiones) y acá se
+  borra su acceso, así que sale de la lista. El nombre de usuario queda tomado en la plataforma: para volver a darle
+  entrada, Vignoli la reactiva. Primero la plataforma: si no deja, no se toca nada de acá. Repetirlo da 204 y no
+  vuelve a llamar a la plataforma.
+  - 400 en `errors.cuenta` (con `title` igual): «Tu propia cuenta no se borra.»; «Las cuentas de administrador no se
+    borran desde acá. Pedíselo a Vignoli.» (Administrador comercial o Dueño); «Esa cuenta entra con De Ruta: se da de
+    baja en De Ruta.» (federada); o lo que diga la plataforma (por ejemplo, si dejaría a Madomi sin Dueño).
+  - 403 con `title` si la plataforma no lo permite; 404 si no es una cuenta de Madomi ni tiene acceso acá.
+  - `seBorra` en el GET dice cuáles se pueden: el front muestra el botón solo ahí. Fila con `idUsuario` → este DELETE;
+    sin `idUsuario` (acceso sin cuenta) → `DELETE /api/admin/usuarios/{idAcceso}`.
 - Sin la plataforma (en desarrollo no corre: `Plataforma:Url` vacío o sin token) → **404**, y el front muestra los
   accesos de `/api/admin/usuarios`.
 
@@ -692,6 +717,10 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 19/11: **borrar cuentas** (`DELETE /api/admin/cuentas/{idUsuario}`: baja en la plataforma y sin acceso acá, `seBorra`
+  en el listado) y accesos (`DELETE /api/admin/usuarios/{idAcceso}`), y el **supervisor de todos los vendedores**
+  (`todosLosVendedores`), pedidos de Checho. El rol Dueño de la plataforma cuenta como admin en las cuentas. Migración
+  `AccesoTodosLosVendedores` (una columna; solo agrega).
 - 17/11: objetivos **VOL en bultos** por vendedor (con sugerido = el mes anterior entero), **tendencia** a fin de mes
   y `objetivoEquipo` (Checho). Migración `FocoObjetivosBultos` (Clientes nullable y Bultos; solo agrega).
 - 12/11: **objetivos de clientes por vendedor** en cada foco (`objetivos` en los focos y

@@ -8,6 +8,11 @@ public static class RolesPlataforma
 
     /// <summary>analisis-comercial.ver: el que se da a vendedores y supervisores (lo que ven sale de su acceso acá).</summary>
     public const string Comercial = "Comercial";
+
+    /// <summary>Todo De Ruta y Análisis Comercial (y cuentas.administrar, script 051): Checho. Admin acá, como el Administrador.</summary>
+    public const string Dueno = "Dueño";
+
+    public static bool EsAdmin(IEnumerable<RolPlataforma> roles) => roles.Any(r => r.Nombre is Administrador or Dueno);
 }
 
 /// <summary>Una cuenta de la empresa en la plataforma (<c>GET /api/cuentas</c> de la plataforma).</summary>
@@ -19,10 +24,10 @@ public record RolPlataforma(int Id, string Nombre);
 
 /// <summary>
 /// La API de cuentas de la plataforma (30/10/2026), siempre con el token de la persona logueada y nunca con uno de
-/// servicio: la plataforma mira los permisos de esa persona (cuentas.administrar) y la empresa de su sesión. Solo
-/// listar y crear: editar, dar de baja o cambiar la clave no existen todavía.
+/// servicio: la plataforma mira los permisos de esa persona (cuentas.administrar) y la empresa de su sesión. Listar,
+/// crear y dar de baja (19/11/2026); editar o cambiar la clave, todavía no desde acá.
 /// Errores: NoEncontradoException si no está configurada en este entorno (en desarrollo no corre), ValidacionException
-/// con el campo de la plataforma (usuario, nombre, clave, idRol) y AccesoDenegadoException si no lo permite.
+/// con el campo de la plataforma (usuario, nombre, clave, idRol, activa) y AccesoDenegadoException si no lo permite.
 /// </summary>
 public interface IPlataforma
 {
@@ -32,4 +37,10 @@ public interface IPlataforma
     Task<IReadOnlyList<RolPlataforma>> RolesAsync(CancellationToken ct);
 
     Task<CuentaPlataforma> CrearCuentaAsync(string usuario, string nombre, string clave, int idRol, CancellationToken ct);
+
+    /// <summary>
+    /// Da de baja la cuenta en la empresa (<c>PUT /api/cuentas/{id}</c> con <c>activa: false</c>): no entra más y cierra
+    /// sus sesiones. La plataforma no borra cuentas: queda inactiva, con su historia.
+    /// </summary>
+    Task DarDeBajaAsync(Guid idCuenta, CancellationToken ct);
 }

@@ -109,6 +109,13 @@ public class AdminController(IAdminService admin) : ControllerBase
     public Task<AccesoDto> ActualizarAcceso(int idAcceso, GuardarAccesoDto dto, CancellationToken ct)
         => admin.ActualizarAccesoAsync(idAcceso, dto, ct);
 
+    [HttpDelete("usuarios/{idAcceso:int}")]
+    public async Task<IActionResult> BorrarAcceso(int idAcceso, CancellationToken ct)
+    {
+        await admin.BorrarAccesoAsync(idAcceso, ct);
+        return NoContent();
+    }
+
     [HttpGet("exclusiones")]
     public Task<IReadOnlyList<ExclusionDto>> Exclusiones(CancellationToken ct) => admin.ExclusionesAsync(ct);
 
@@ -132,6 +139,13 @@ public class AdminController(IAdminService admin) : ControllerBase
     [HttpPost("cuentas")]
     public async Task<ActionResult<CuentaMadomiDto>> CrearCuenta(NuevaCuentaDto dto, CancellationToken ct)
         => StatusCode(StatusCodes.Status201Created, await admin.CrearCuentaAsync(dto, ct));
+
+    [HttpDelete("cuentas/{idUsuario:guid}")]
+    public async Task<IActionResult> BorrarCuenta(Guid idUsuario, CancellationToken ct)
+    {
+        await admin.BorrarCuentaAsync(idUsuario, ct);
+        return NoContent();
+    }
 
     [HttpGet("clientes/resumen")]
     public Task<IReadOnlyList<GrupoClientesDto>> ResumenClientes(CancellationToken ct) => admin.ResumenClientesAsync(ct);

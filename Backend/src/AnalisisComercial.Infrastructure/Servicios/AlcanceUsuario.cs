@@ -38,8 +38,11 @@ public class AlcanceUsuario(ComercialDbContext db, IUsuarioActual usuario, IRelo
         if (acceso is null || !acceso.Activo)
             throw new AccesoDenegadoException(AccesoDenegadoException.SinAcceso);
 
-        // Operario y supervisor ven los vendedores de su acceso (el operario, uno o varios). Sin ninguno, nada.
-        var vendedores = acceso.Vendedores.Select(v => v.IdPersonal).ToHashSet();
+        // Operario y supervisor ven los vendedores de su acceso (el operario, uno o varios). Sin ninguno, nada. El supervisor
+        // de todos ve a todas las personas de hoy (las que Chess sume mañana, también), nunca la casa.
+        var vendedores = acceso is { Rol: RolAcceso.Supervisor, TodosLosVendedores: true }
+            ? (await db.Vendedores.Where(v => v.EsPersona).Select(v => v.IdPersonal).ToListAsync(ct)).ToHashSet()
+            : acceso.Vendedores.Select(v => v.IdPersonal).ToHashSet();
         if (vendedores.Count == 0)
             throw new AccesoDenegadoException(AccesoDenegadoException.SinAcceso);
         var rol = acceso.Rol switch
