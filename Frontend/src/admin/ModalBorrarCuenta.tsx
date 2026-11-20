@@ -49,7 +49,6 @@ export function ModalBorrarCuenta(props: {
       onCerrar={onCerrar}
       cerrable={!borrando}
       titulo={soloAcceso ? 'Borrar el acceso' : 'Borrar la cuenta'}
-      subtitulo={c.nombre ? `${c.nombre} · ${c.usuario}` : c.usuario}
       tamano="chico"
       pie={
         <>
@@ -68,22 +67,9 @@ export function ModalBorrarCuenta(props: {
         </>
       }
     >
+      {/* Solo la pregunta, sin subtítulo (Cesar, 20/11: «así nomás») */}
       <div className="adm-borrar-texto">
-        {soloAcceso ? (
-          <p>
-            <strong>{quien}</strong> deja de tener acceso a Análisis Comercial. Si después lo necesita, se le vuelve a dar.
-          </p>
-        ) : (
-          <>
-            <p>
-              <strong>{quien}</strong> no va a poder entrar más a Análisis Comercial y se le cierran las sesiones abiertas.
-            </p>
-            <p>
-              Sus clientes y ventas no se tocan: siguen en los informes mientras Chess se los tenga asignados. Para volver a
-              darle entrada, pedíselo a Vignoli.
-            </p>
-          </>
-        )}
+        <p>¿Desea eliminar a {quien}?</p>
       </div>
     </Modal>
   )
