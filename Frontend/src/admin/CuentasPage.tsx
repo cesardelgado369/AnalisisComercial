@@ -6,6 +6,7 @@ import { ErrorCarga } from '../components/ErrorCarga'
 import { LoadingDefault } from '../components/loading/LoadingDefault'
 import { nombrePropio } from '../cobertura/estados'
 import { fechaUtc, formatoEntero, haceCuanto } from '../utils/formato'
+import { ModalBorrarCuenta } from './ModalBorrarCuenta'
 import { ModalCuenta, type ModoCuenta } from './ModalCuenta'
 import './admin.css'
 
@@ -47,6 +48,9 @@ const cuentaDeAcceso = (a: AccesoUsuario): CuentaMadomi => ({
   accesoActivo: a.activo,
   accesoEnlazado: a.enlazado,
   version: a.version,
+  todosLosVendedores: a.todosLosVendedores,
+  // Sin el listado de cuentas, cada fila es un acceso: se borra el acceso
+  seBorra: true,
 })
 
 /**
@@ -70,6 +74,8 @@ export function CuentasPage() {
   /** El acceso que se está habilitando (`idAcceso`) y cómo salió el último. */
   const [habilitando, setHabilitando] = useState<number | null>(null)
   const [habilitado, setHabilitado] = useState<{ ok: boolean; texto: string } | null>(null)
+  /** La cuenta que se está por borrar (Checho, 19/11: «necesito eliminar cuenta»). */
+  const [borrar, setBorrar] = useState<CuentaMadomi | null>(null)
 
   const porId = useMemo(() => new Map((vendedores.datos ?? []).map((v) => [v.id, v])), [vendedores.datos])
   const lista = useMemo(
@@ -113,6 +119,7 @@ export function CuentasPage() {
         nombre: c.nombre,
         rol: c.rol,
         idsPersonal: c.idsPersonal,
+        todosLosVendedores: c.todosLosVendedores ?? false,
         activo: c.accesoActivo,
         version: c.version ?? undefined,
       }
@@ -201,7 +208,7 @@ export function CuentasPage() {
           <p className="vacio">{lista.length ? 'No hay cuentas con ese filtro.' : 'Todavía no hay accesos cargados.'}</p>
         ) : (
           <div className="adm-tabla-scroll">
-            <table className="tabla adm-tabla">
+            <table className="tabla adm-tabla adm-tabla-cuentas">
               <thead>
                 <tr>
                   <th>Cuenta</th>
@@ -258,6 +265,21 @@ export function CuentasPage() {
                           {c.idAcceso === null ? 'Dar acceso' : 'Editar'}
                         </button>
                       )}
+                      {c.seBorra && (
+                        <button
+                          type="button"
+                          className="btn adm-borrar"
+                          title={`Borrar la cuenta de ${c.nombre ?? c.usuario}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setHabilitado(null)
+                            setBorrar(c)
+                          }}
+                        >
+                          <span className="icono icono-chico" aria-hidden>delete</span>
+                          Borrar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -270,6 +292,18 @@ export function CuentasPage() {
       {modal && vendedores.datos && (
         <ModalCuenta estado={modal} vendedores={vendedores.datos} onCerrar={() => setModal(null)} onGuardado={recargar} releer={releer} />
       )}
+      {borrar && (
+        <ModalBorrarCuenta
+          cuenta={borrar}
+          soloAcceso={soloAccesos || borrar.idUsuario === null}
+          onCerrar={() => setBorrar(null)}
+          onBorrada={(texto) => {
+            setBorrar(null)
+            setHabilitado({ ok: true, texto })
+            recargar()
+          }}
+        />
+      )}
     </section>
   )
 }
@@ -277,6 +311,7 @@ export function CuentasPage() {
 /** Los vendedores de la cuenta por nombre; uno dado de baja en Chess lo dice (sigue valiendo: es el caso del renombre). */
 function VendedoresDeCuenta({ cuenta, porId }: { cuenta: CuentaMadomi; porId: Map<number, VendedorChess> }) {
   if (cuenta.rol === 'admin') return <span className="apagado">Todos</span>
+  if (cuenta.todosLosVendedores) return <span>Todos los vendedores</span>
   if (!cuenta.idsPersonal.length) return <span className="apagado">—</span>
   return (
     <ul className="adm-lista-vendedores">

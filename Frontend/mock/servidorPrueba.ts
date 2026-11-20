@@ -166,7 +166,16 @@ async function admin(ruta: string, p: URLSearchParams, req: IncomingMessage, res
   const objetivos = ruta.match(/^\/api\/admin\/focos\/(\d+)\/objetivos$/)
   // Con «sincuentas» en el usuario, /admin/cuentas responde 404 sin cuerpo, como la API real de hoy (sin ese endpoint)
   if (ruta.startsWith('/api/admin/cuentas') && /sincuentas/i.test(email)) return responder(res, 404)
-  if (metodo === 'GET' && ruta === '/api/admin/cuentas') return responder(res, 200, admi.listarCuentas())
+  if (metodo === 'GET' && ruta === '/api/admin/cuentas') return responder(res, 200, admi.listarCuentas(email))
+  const cuentaBorrar = ruta.match(/^\/api\/admin\/cuentas\/([^/]+)$/)
+  if (metodo === 'DELETE' && cuentaBorrar) {
+    admi.borrarCuenta(decodeURIComponent(cuentaBorrar[1]), email)
+    return responder(res, 204)
+  }
+  if (metodo === 'DELETE' && acceso) {
+    admi.borrarAcceso(Number(acceso[1]))
+    return responder(res, 204)
+  }
   if (metodo === 'GET' && ruta === '/api/admin/usuarios') return responder(res, 200, admi.listarAccesos())
   // TODO testing: simula que otra persona guardó el acceso (para ver el 409 en la pantalla)
   const tocar = ruta.match(/^\/api\/admin\/usuarios\/(\d+)\/tocar$/)

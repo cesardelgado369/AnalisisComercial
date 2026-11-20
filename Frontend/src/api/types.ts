@@ -413,6 +413,8 @@ export interface AccesoUsuario {
   rol: Exclude<Rol, 'admin'>
   /** Operario y supervisor: sus vendedores, uno o más (desde el 29/10 el operario también puede tener varios). */
   idsPersonal: number[]
+  /** Supervisor de todos los vendedores (Checho, 19/11): `idsPersonal` vacío; ve también los que Chess sume después. */
+  todosLosVendedores?: boolean
   activo: boolean
   /** false = todavía no entró nunca. */
   entro: boolean
@@ -434,6 +436,8 @@ export interface AccesoUsuarioEnvio {
   nombre?: string | null
   rol: Exclude<Rol, 'admin'>
   idsPersonal: number[]
+  /** Siempre, también en false: si no viene, la API lo toma como false y un supervisor de todos pasa a equipo fijo. */
+  todosLosVendedores: boolean
   activo?: boolean
   version?: string
 }
@@ -481,8 +485,16 @@ export interface CuentaMadomi {
    */
   accesoEnlazado?: boolean
   version: string | null
+  /** El de su acceso: supervisor de todos los vendedores (Checho, 19/11). */
+  todosLosVendedores?: boolean
   /** Entra con su usuario de De Ruta: no tiene clave en la plataforma. */
   federada?: boolean
+  /**
+   * El Admin la puede borrar desde acá (Checho, 19/11): no la propia, ni administradores, ni las que entran con De Ruta.
+   * Con `idUsuario`, `DELETE /api/admin/cuentas/{idUsuario}` (baja en la plataforma y sin acceso acá); sin, `DELETE
+   * /api/admin/usuarios/{idAcceso}`.
+   */
+  seBorra?: boolean
 }
 
 /** `POST /api/admin/cuentas`: crea la cuenta en la plataforma y su acceso de operario, en un paso. */

@@ -407,6 +407,13 @@
 .foco-btn-borrar-abrir { color: var(--rojo); }
 .foco-borrar { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: 600; }
 .foco-btn-borrar { background: var(--rojo); border-color: var(--rojo); color: #fff; }
+/* Gestión de cuentas: borrar una cuenta (Checho, 19/11) */
+.adm-borrar { margin-left: 6px; color: var(--rojo); }
+/* El supervisor de todos los vendedores (19/11) */
+.adm-todos { align-items: flex-start; padding: 10px 12px; border: 1px solid var(--borde); border-radius: var(--radio); }
+.adm-todos input { margin-top: 3px; }
+.adm-borrar-texto p { margin: 0 0 10px; font-size: 14px; line-height: 1.45; color: var(--texto); }
+.adm-borrar-texto p:last-child { margin-bottom: 0; color: var(--texto-2); }
 
 /* Celular: las tablas pasan a tarjetas (sin scroll horizontal) y todo lo que se toca mide 44 px */
 @media (max-width: 720px) {
@@ -421,6 +428,9 @@
   /* Todo en una columna; el botón arriba a la derecha */
   .adm-tabla td:not(.adm-col-accion) { grid-column: 1; }
   .adm-tabla td.adm-col-accion { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+  /* Cuentas (19/11, con Borrar): los botones al pie de la tarjeta, a lo ancho, así el nombre tiene todo el renglón */
+  .adm-tabla-cuentas td.adm-col-accion { grid-column: 1 / -1; grid-row: auto; display: flex; gap: 8px; margin-top: 6px; text-align: left; }
+  .adm-tabla-cuentas td.adm-col-accion .btn { flex: 1; justify-content: center; margin-left: 0; }
   .adm-tabla-clientes td.adm-col-codigo { font-size: 12px; }
   .adm-mes-inicial { display: block; }
   .adm-rotulo-movil { display: inline; }

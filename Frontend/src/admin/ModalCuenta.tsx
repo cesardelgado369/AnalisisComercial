@@ -35,8 +35,8 @@ function generarPassword() {
 /** Los campos que dibuja cada modo: un error de otro campo (p. ej. `version`) va arriba del pie, nunca se pierde. */
 const CAMPOS: Record<ModoCuenta['modo'], string[]> = {
   nueva: ['nombre', 'usuario', 'password', 'idspersonal', 'idpersonal'],
-  acceso: ['email', 'idspersonal', 'idpersonal'],
-  editar: ['idspersonal', 'idpersonal'],
+  acceso: ['email', 'idspersonal', 'idpersonal', 'todoslosvendedores'],
+  editar: ['idspersonal', 'idpersonal', 'todoslosvendedores'],
 }
 
 /**
@@ -89,6 +89,9 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
   const [verPassword, setVerPassword] = useState(true)
   const [rol, setRol] = useState<'operario' | 'supervisor'>(cuenta?.rol === 'supervisor' ? 'supervisor' : 'operario')
   const [ids, setIds] = useState<number[]>(cuenta?.idsPersonal ?? [])
+  // El supervisor de todos los vendedores (Checho, 19/11: «que él pueda verlos de todo»)
+  const [todos, setTodos] = useState(cuenta?.todosLosVendedores ?? false)
+  const deTodos = rol === 'supervisor' && todos
   const [activo, setActivo] = useState(cuenta?.accesoActivo ?? true)
   const [version, setVersion] = useState(cuenta?.version ?? null)
   const [errores, setErrores] = useState<Record<string, string>>({})
@@ -116,7 +119,7 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
       if (password.length < 8) faltan.password = 'La contraseña tiene que tener al menos 8 caracteres.'
     }
     if (escribeUsuario && !usuario.trim()) faltan[estado.modo === 'nueva' ? 'usuario' : 'email'] = 'Poné el usuario o el email con el que entra.'
-    if (!ids.length) faltan.idsPersonal = 'Elegí al menos un vendedor de Chess.'
+    if (!deTodos && !ids.length) faltan.idsPersonal = 'Elegí al menos un vendedor de Chess.'
     setErrores(faltan)
     setGeneral(null)
     if (Object.keys(faltan).length) {
@@ -137,7 +140,8 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
         email: cuenta ? cuenta.usuario : conDominio(usuario),
         nombre: cuenta ? cuenta.nombre : null,
         rol,
-        idsPersonal: ids,
+        idsPersonal: deTodos ? [] : ids,
+        todosLosVendedores: deTodos,
       }
       if (estado.modo === 'acceso') await api.post('/admin/usuarios', cuerpo)
       else await api.put(`/admin/usuarios/${estado.cuenta.idAcceso}`, { ...cuerpo, activo, version })
@@ -338,20 +342,44 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
               <button type="button" aria-pressed={rol === 'supervisor'} onClick={() => setRol('supervisor')}>Supervisor</button>
             </div>
             <span className="campo-ayuda">
-              {rol === 'operario' ? 'Ve solo los clientes de sus vendedores.' : 'Ve los clientes de los vendedores que tenga a cargo y el resumen.'}
+              {rol === 'operario'
+                ? 'Ve solo los clientes de sus vendedores.'
+                : deTodos
+                  ? 'Ve los clientes de todos los vendedores y el resumen.'
+                  : 'Ve los clientes de los vendedores que tenga a cargo y el resumen.'}
             </span>
           </div>
         )}
 
-        <SelectorVendedores
-          vendedores={vendedores}
-          elegidos={ids}
-          onCambio={(nuevos) => {
-            setIds(nuevos)
-            limpiar('idsPersonal', 'idPersonal')
-          }}
-          error={errorDe('idsPersonal') ?? errorDe('idPersonal')}
-        />
+        {rol === 'supervisor' && estado.modo !== 'nueva' && (
+          <label className="check-linea adm-todos">
+            <input
+              type="checkbox"
+              checked={todos}
+              onChange={(e) => {
+                setTodos(e.target.checked)
+                limpiar('idsPersonal', 'idPersonal', 'todosLosVendedores')
+              }}
+            />
+            <span>
+              <strong>Todos los vendedores</strong>
+              <span className="campo-ayuda"> También los que Chess sume después. Nunca la casa (Depósito).</span>
+            </span>
+          </label>
+        )}
+        {errorDe('todosLosVendedores') && <span className="campo-error">{errorDe('todosLosVendedores')}</span>}
+
+        {!deTodos && (
+          <SelectorVendedores
+            vendedores={vendedores}
+            elegidos={ids}
+            onCambio={(nuevos) => {
+              setIds(nuevos)
+              limpiar('idsPersonal', 'idPersonal')
+            }}
+            error={errorDe('idsPersonal') ?? errorDe('idPersonal')}
+          />
+        )}
 
         {estado.modo === 'editar' && (
           <label className="check-linea adm-activo">

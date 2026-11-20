@@ -31,6 +31,8 @@ interface Cuenta {
   /** El acceso está atado a esta cuenta (se ata al guardarlo con la cuenta ya creada, nunca al entrar). */
   accesoEnlazado: boolean
   version: string | null
+  /** Supervisor de todos los vendedores (19/11): `idsPersonal` vacío. */
+  todosLosVendedores?: boolean
   /** Entra con su usuario de De Ruta (sin clave en la plataforma). */
   federada?: boolean
 }
@@ -52,7 +54,38 @@ const cuentas: Cuenta[] = [
   { idUsuario: 'u-mateo', usuario: 'mateo.rojas', nombre: 'Mateo Rojas', cuentaActiva: true, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null },
 ]
 
-export const listarCuentas = () => [...cuentas].sort((a, b) => (a.nombre ?? a.usuario).localeCompare(b.nombre ?? b.usuario, 'es'))
+const ordenadas = () => [...cuentas].sort((a, b) => (a.nombre ?? a.usuario).localeCompare(b.nombre ?? b.usuario, 'es'))
+
+/**
+ * `GET /api/admin/cuentas`, con `seBorra` como la API (19/11): no la propia, ni administradores, ni las que entran con
+ * De Ruta.
+ */
+export const listarCuentas = (propio = '') =>
+  ordenadas().map((c) => ({ ...c, todosLosVendedores: c.todosLosVendedores ?? false, seBorra: c.rol !== 'admin' && !c.federada && c.usuario !== propio }))
+
+/**
+ * `DELETE /api/admin/cuentas/{idUsuario}` (19/11): como la API, la baja en la plataforma y sin acceso acá, así que sale
+ * de la lista. Las mismas negativas que el backend.
+ */
+export function borrarCuenta(idUsuario: string, propio: string) {
+  const i = cuentas.findIndex((c) => c.idUsuario === idUsuario)
+  if (i < 0) throw new ErrorMock(404, 'Esa cuenta no es de Madomi.')
+  const c = cuentas[i]
+  const no = (texto: string) => new ErrorMock(400, texto, { cuenta: [texto] })
+  if (c.usuario === propio) throw no('Tu propia cuenta no se borra.')
+  if (c.rol === 'admin') throw no('Las cuentas de administrador no se borran desde acá. Pedíselo a Vignoli.')
+  if (c.federada) throw no('Esa cuenta entra con De Ruta: se da de baja en De Ruta.')
+  cuentas.splice(i, 1)
+}
+
+/** `DELETE /api/admin/usuarios/{idAcceso}` (19/11): borra el acceso; la cuenta, si tiene, queda sin acceso. */
+export function borrarAcceso(idAcceso: number) {
+  const i = cuentas.findIndex((c) => c.idAcceso === idAcceso)
+  if (i < 0) throw new ErrorMock(404, 'No existe ese acceso.')
+  const c = cuentas[i]
+  if (c.idUsuario === null) cuentas.splice(i, 1)
+  else Object.assign(c, { rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null, todosLosVendedores: false })
+}
 
 /** Vendedores válidos para un acceso: que existan y no sean la casa (la casa la ve solo el admin). */
 function validarVendedores(ids: unknown, errores: Record<string, string[]>) {
@@ -78,6 +111,7 @@ export function crearCuenta(cuerpo: Record<string, unknown>) {
   if (password.length < 8) errores.password = ['La contraseña tiene que tener al menos 8 caracteres.']
   const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá los datos de la cuenta.', errores)
+  // (el front crea solo vendedores)
   const cuenta: Cuenta = {
     idUsuario: `u-${usuario}`, usuario, nombre, cuentaActiva: true, ultimoIngreso: null, rol: 'operario',
     idAcceso: siguienteAcceso++, idsPersonal, accesoActivo: true, accesoEnlazado: true, version: nuevaVersion(),
@@ -93,6 +127,7 @@ const acceso = (c: Cuenta) => ({
   nombre: c.nombre,
   rol: c.rol as 'supervisor' | 'operario',
   idsPersonal: c.idsPersonal,
+  todosLosVendedores: c.todosLosVendedores ?? false,
   activo: c.accesoActivo,
   entro: c.ultimoIngreso !== null,
   enlazado: c.accesoEnlazado,
@@ -103,7 +138,16 @@ const acceso = (c: Cuenta) => ({
 })
 
 /** `GET /api/admin/usuarios`: los accesos cargados (supervisores y operarios). */
-export const listarAccesos = () => listarCuentas().filter((c) => c.idAcceso !== null).map(acceso)
+export const listarAccesos = () => ordenadas().filter((c) => c.idAcceso !== null).map(acceso)
+
+/** El supervisor de todos (19/11): solo supervisor; sin `idsPersonal`. Si no, los vendedores elegidos. */
+function vendedoresDelAcceso(cuerpo: Record<string, unknown>, rol: 'supervisor' | 'operario', errores: Record<string, string[]>) {
+  if (cuerpo.todosLosVendedores === true) {
+    if (rol !== 'supervisor') errores.todosLosVendedores = ['Solo un supervisor puede ver a todos los vendedores.']
+    return { idsPersonal: [] as number[], todosLosVendedores: true }
+  }
+  return { idsPersonal: validarVendedores(cuerpo.idsPersonal, errores), todosLosVendedores: false }
+}
 
 /**
  * `POST /api/admin/usuarios`: da acceso a un usuario. Como la API real, no hace falta que la cuenta ya esté en la lista:
@@ -116,14 +160,14 @@ export function darAcceso(cuerpo: Record<string, unknown>) {
   let cuenta = cuentas.find((c) => c.usuario === usuario)
   if (cuenta && (cuenta.idAcceso !== null || cuenta.rol === 'admin')) errores.email = ['Ese usuario ya tiene acceso.']
   const rol = cuerpo.rol === 'supervisor' ? 'supervisor' : 'operario'
-  const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
+  const vendedores = vendedoresDelAcceso(cuerpo, rol, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el acceso.', errores)
   if (!cuenta) {
     // Como la API: el acceso queda a la espera de que la plataforma tenga la cuenta
     cuenta = { idUsuario: null, usuario, nombre: null, cuentaActiva: false, ultimoIngreso: null, rol: null, idAcceso: null, idsPersonal: [], accesoActivo: false, accesoEnlazado: false, version: null }
     cuentas.push(cuenta)
   }
-  Object.assign(cuenta, { rol, idsPersonal, idAcceso: siguienteAcceso++, accesoActivo: true, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
+  Object.assign(cuenta, { rol, ...vendedores, idAcceso: siguienteAcceso++, accesoActivo: true, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
   return acceso(cuenta)
 }
 
@@ -138,9 +182,9 @@ export function editarAcceso(idAcceso: number, cuerpo: Record<string, unknown>) 
   if (cuerpo.version !== cuenta.version) throw new ErrorMock(409, 'Otra persona cambió este acceso mientras lo editabas. Se volvió a leer: revisalo y guardá de nuevo.')
   const errores: Record<string, string[]> = {}
   const rol = cuerpo.rol === 'supervisor' ? 'supervisor' : 'operario'
-  const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
+  const vendedores = vendedoresDelAcceso(cuerpo, rol, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el acceso.', errores)
-  Object.assign(cuenta, { rol, idsPersonal, accesoActivo: cuerpo.activo !== false, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
+  Object.assign(cuenta, { rol, ...vendedores, accesoActivo: cuerpo.activo !== false, accesoEnlazado: cuenta.idUsuario !== null, version: nuevaVersion() })
   return acceso(cuenta)
 }
 
