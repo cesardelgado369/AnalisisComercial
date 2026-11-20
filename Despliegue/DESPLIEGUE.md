@@ -91,6 +91,16 @@ un CCC con objetivo se cuenta contra el objetivo y no contra la cartera (en Todo
 el suyo). Solo front, sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.7.3`, los tres
 contenedores en `1.7.3`, la API sin errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.8.0`, publicada el 20/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`; imágenes desde `git archive` del tag `v1.8.0` = `7de8a7c`; backup antes:
+`AnalisisComercial_20261120_1835.bak.gz`). Pedidos de Checho del 19/11: borrar cuentas (baja en la plataforma y sin
+acceso acá; no la propia, ni administradores, ni las de De Ruta), el supervisor de todos los vendedores (también desde
+Nueva cuenta) y, en el PDF de focos, la dirección de cada cliente en lugar de la zona (`direccion` en
+`/api/cobertura`). Migración `AccesoTodosLosVendedores` (una columna; solo agrega), aplicada al arrancar. El tag
+`v1.8.0` viejo (`100330f`, que salió como 1.7.1) y el `v1.9.0` del front (`fa47290`) se borraron: esta es la 1.8.0.
+Verificado: `/api/sesion` y `DELETE /api/admin/cuentas` sin sesión 401, la página 200 con el bundle en `1.8.0`, los
+tres contenedores en `1.8.0`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
