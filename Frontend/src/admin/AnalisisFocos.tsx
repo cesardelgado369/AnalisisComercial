@@ -27,6 +27,15 @@ const deCcc = (c: CoberturaFoco, conClientes = false): Medicion => ({
   unidadDif: 'pts',
 })
 
+/** Contra el objetivo de clientes (20/11): lo que compraron sobre el objetivo, sin comparación con el mes anterior. */
+const deObjetivo = (actual: number, objetivo: number, conClientes = false): Medicion => ({
+  valor: (actual / objetivo) * 100,
+  detalle: `${formatoEntero(actual)} de ${formatoEntero(objetivo)}${conClientes ? ' clientes' : ''}`,
+  antes: null,
+  dif: null,
+  unidadDif: 'pts',
+})
+
 const deVol = (c: VolumenFoco): Medicion => ({
   valor: c.porcentaje,
   detalle:
@@ -230,18 +239,33 @@ export function MedicionFoco(props: {
   const { f, ctx, alPasar, enfocado, objetivos = [], equipo = null } = props
   const referencia = useMesReferencia()
   const contra = f.medida === 'vol' ? ctx.vol : ctx.ccc
-  const total = f.medida === 'vol' ? deVol(f.total) : deCcc(f.total, true)
+  const objetivoDe = (idPersonal: number) => objetivos.find((o) => o.idPersonal === idPersonal)
+  // Un CCC con el objetivo de todos sus vendedores se cuenta contra el objetivo, no contra la cartera (Cesar, 20/11: «está
+  // muy mal el indicador de progresión»: la barra iba al 15 % de 999 con un objetivo de 311). Cada vendedor, contra el
+  // suyo. Si a alguno le falta, todo sigue contra la cartera
+  const contraObjetivo =
+    f.medida === 'ccc' &&
+    !!equipo &&
+    equipo.objetivo > 0 &&
+    f.vendedores.length > 0 &&
+    f.vendedores.every((v) => (objetivoDe(v.idPersonal)?.clientes ?? 0) > 0)
+  const cartera = f.medida === 'ccc' ? deCcc(f.total, true) : null
+  const total = f.medida === 'vol' ? deVol(f.total) : contraObjetivo ? deObjetivo(equipo!.actual, equipo!.objetivo, true) : cartera!
   // La meta en porcentaje (la de CCC) se marca en las barras; la de VOL es en bultos y va como avance en el total
-  const metaBarra = f.medida === 'ccc' ? f.meta : null
+  const metaBarra = f.medida === 'ccc' && !contraObjetivo ? f.meta : null
   const avanceMeta =
     f.medida === 'vol' && f.meta ? (f.total.porcentajeMeta ?? Math.round((f.total.bultosActual / f.meta) * 1000) / 10) : null
-  const vendedores = (f.medida === 'vol' ? f.vendedores.map((v) => ({ ...v, m: deVol(v) })) : f.vendedores.map((v) => ({ ...v, m: deCcc(v) }))).sort(
-    (x, y) => (y.m.valor ?? -1) - (x.m.valor ?? -1) || x.nombre.localeCompare(y.nombre, 'es'),
-  )
+  const vendedores = (
+    f.medida === 'vol'
+      ? f.vendedores.map((v) => ({ ...v, m: deVol(v) }))
+      : f.vendedores.map((v) => {
+          const o = objetivoDe(v.idPersonal)
+          return { ...v, m: contraObjetivo && o?.clientes ? deObjetivo(o.clientesConCompra, o.clientes) : deCcc(v) }
+        })
+  ).sort((x, y) => (y.m.valor ?? -1) - (x.m.valor ?? -1) || x.nombre.localeCompare(y.nombre, 'es'))
   // CCC va de 0 a 100; VOL puede pasar el 100 % del mes anterior: la escala crece hasta el más alto
   const escala =
     f.medida === 'ccc' ? 100 : Math.max(120, Math.ceil(Math.max(total.valor ?? 0, ...vendedores.map((v) => v.m.valor ?? 0)) / 10) * 10)
-  const objetivoDe = (idPersonal: number) => objetivos.find((o) => o.idPersonal === idPersonal)
   const destino = (idPersonal: number) =>
     f.medida === 'vol' ? `/volumen?vendedor=${idPersonal}&foco=${f.idFoco}` : `/?vendedor=${idPersonal}&foco=${f.idFoco}`
 
@@ -251,9 +275,16 @@ export function MedicionFoco(props: {
         <span className="foco-analisis-numero">{total.valor === null ? '—' : formatoPorcentaje(total.valor)}</span>
         <span className="foco-analisis-detalle">
           {total.detalle}
+          {contraObjetivo ? ' del objetivo' : ''}
           {f.medida === 'ccc' && ctx.corteAl ? ` al ${formatoFechaCorta(ctx.corteAl)}` : ''}
         </span>
-        <Diferencia m={total} contra={contra} corto={ctx.anteriorCorto} />
+        {contraObjetivo ? (
+          <span className="foco-total-tendencia">
+            tendencia <Tendencia valor={equipo!.tendencia} enCurso={ctx.enCurso} />
+          </span>
+        ) : (
+          <Diferencia m={total} contra={contra} corto={ctx.anteriorCorto} />
+        )}
         {metaBarra !== null && <span className="sr-solo">{textoMeta(total, metaBarra)}</span>}
         {avanceMeta !== null && f.meta !== null && (
           <span className="foco-meta foco-avance-meta">
@@ -261,8 +292,19 @@ export function MedicionFoco(props: {
           </span>
         )}
       </div>
-      {f.medida === 'vol' ? <AvanceVolumen v={f.total} escala={escala} ctx={ctx} /> : <Barra m={total} meta={metaBarra} escala={escala} />}
-      {equipo && (
+      {f.medida === 'vol' ? (
+        <AvanceVolumen v={f.total} escala={escala} ctx={ctx} />
+      ) : (
+        <Barra m={total} meta={metaBarra} escala={escala} superado={contraObjetivo && (total.valor ?? 0) >= 100} />
+      )}
+      {contraObjetivo && cartera ? (
+        // Lo de toda la cartera queda abajo, chico, con la comparación con el mes anterior
+        <p className="foco-equipo foco-cartera">
+          <span className="icono icono-chico" aria-hidden>groups</span>
+          De toda la cartera: {cartera.valor === null ? '—' : formatoPorcentaje(cartera.valor)} ({cartera.detalle})
+          <Diferencia m={cartera} contra={contra} corto={ctx.anteriorCorto} />
+        </p>
+      ) : equipo && (
         // La fila Totales del Excel de Checho (17/11)
         <p className="foco-equipo">
           <span className="icono icono-chico" aria-hidden>groups</span>
@@ -287,14 +329,21 @@ export function MedicionFoco(props: {
               title={`${nombrePropio(v.nombre)} en ${f.medida === 'vol' ? 'Volumen' : 'Cobertura'}, con el foco ${f.nombre}.${textoMeta(v.m, metaBarra)}`}
             >
               <span className="foco-vendedor-nombre">{nombrePropio(v.nombre)}</span>
-              <Barra m={v.m} meta={metaBarra} escala={escala} superado={f.medida === 'vol' && (v.m.valor ?? 0) >= 100} />
+              <Barra m={v.m} meta={metaBarra} escala={escala} superado={(f.medida === 'vol' || contraObjetivo) && (v.m.valor ?? 0) >= 100} />
               <span className="foco-vendedor-numeros">
                 <strong>{v.m.valor === null ? '—' : formatoPorcentaje(v.m.valor)}</strong>
                 <span className="foco-analisis-detalle">{v.m.detalle}</span>
               </span>
-              <Diferencia m={v.m} contra={contra} corto={ctx.anteriorCorto} />
-              {/* El objetivo y su tendencia, en su renglón a todo el ancho (17/11) */}
-              {objetivoDe(v.idPersonal) && <Objetivo o={objetivoDe(v.idPersonal)!} vol={f.medida === 'vol'} ctx={ctx} />}
+              {contraObjetivo ? (
+                // Contra su objetivo: la barra ya dice cuánto lleva; al costado, su tendencia
+                <span className="foco-vendedor-tendencia">
+                  <Tendencia valor={objetivoDe(v.idPersonal)?.tendencia} enCurso={ctx.enCurso} />
+                </span>
+              ) : (
+                <Diferencia m={v.m} contra={contra} corto={ctx.anteriorCorto} />
+              )}
+              {/* El objetivo y su tendencia, en su renglón a todo el ancho (17/11); contra el objetivo, ya está en la fila */}
+              {!contraObjetivo && objetivoDe(v.idPersonal) && <Objetivo o={objetivoDe(v.idPersonal)!} vol={f.medida === 'vol'} ctx={ctx} />}
               {metaBarra !== null && <span className="sr-solo">{textoMeta(v.m, metaBarra)}</span>}
             </Link>
           </li>

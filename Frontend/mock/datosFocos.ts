@@ -255,9 +255,10 @@ function validar(cuerpo: Record<string, unknown>, idFoco: number | null) {
   const medida = cuerpo.medida ?? 'ccc'
   if (medida !== 'ccc' && medida !== 'vol') errores.medida = ['Elegí qué se mide: CCC o VOL.']
   const meta = cuerpo.meta ?? null
-  // CCC: porcentaje opcional. VOL: la cantidad de bultos del objetivo, obligatoria (Cesar, 10/11)
-  if (medida === 'vol' && (meta === null || typeof meta !== 'number' || meta <= 0 || meta > 1_000_000))
-    errores.meta = ['Poné la cantidad de bultos del objetivo.']
+  // CCC: porcentaje opcional; VOL: bultos
+  // Desde el 20/11 la meta es opcional también en un VOL (los objetivos van por vendedor)
+  if (medida === 'vol' && meta !== null && (typeof meta !== 'number' || meta <= 0 || meta > 1_000_000))
+    errores.meta = ['La cantidad de bultos va de 1 a 1.000.000.']
   else if (medida !== 'vol' && meta !== null && (typeof meta !== 'number' || meta < 1 || meta > 100)) errores.meta = ['La meta va de 1 a 100 %.']
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá el foco.', errores)
   return { mes, nombre, ids, medida: medida as Medida, meta: meta as number | null }
