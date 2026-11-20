@@ -206,7 +206,10 @@ public class FocosTests(Entorno e)
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "preventa" }, "medida");
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, meta = 0 }, "meta");
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "ccc", meta = 101 }, "meta");
-            await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol" }, "meta");
+            // VOL sin meta (Cesar, 20/11: la meta es opcional, como en CCC)
+            var volSinMeta = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Vol sin meta", idsArticulo = new[] { 900 }, medida = "vol" });
+            Assert.Equal("vol", (string?)volSinMeta["medida"]);
+            Assert.Null(volSinMeta["meta"]);
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol", meta = 1_000_001 }, "meta");
             await Error(admin, new { mes = "2026-10-01", nombre = "Otro", idsArticulo = new[] { 900 }, medida = "vol", meta = 2.25 }, "meta");
             var conMeta = await CrearAsync(admin, new { mes = "2026-10-01", nombre = "Tapas", idsArticulo = new[] { 900 }, medida = "vol", meta = 25000.5 });

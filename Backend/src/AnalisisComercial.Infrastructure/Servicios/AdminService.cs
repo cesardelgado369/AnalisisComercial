@@ -533,8 +533,8 @@ public class AdminService(ComercialDbContext db, IAlcanceUsuario alcance, IReloj
             _ => throw new ValidacionException("medida", "Elegí qué se mide: ccc (clientes) o vol (bultos)."),
         };
         // ccc: porcentaje de la cartera, opcional. vol: los bultos objetivo del mes, obligatoria (Cesar, 10/11/2026).
-        if (medida == MedidaFoco.Vol && dto.Meta is null)
-            throw new ValidacionException("meta", "Poné la cantidad de bultos del objetivo.");
+        // La meta es opcional también en VOL (Cesar, 20/11): con los objetivos por vendedor en bultos (sugerido = el mes
+        // anterior), el formulario de Nuevo foco ya no la pide. La que ya tenga un foco se respeta.
         if (dto.Meta is { } meta && (decimal.Round(meta, 1) != meta
                                      || (medida == MedidaFoco.Ccc ? meta < 1 || meta > 100 : meta <= 0 || meta > MetaMaximaBultos)))
             throw new ValidacionException("meta", medida == MedidaFoco.Ccc

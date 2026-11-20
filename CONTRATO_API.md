@@ -616,9 +616,10 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
   «Copiar los del mes anterior» = un POST por foco (con su medida y su meta).
   - `medida` (los objetivos de Checho: «CCC MANTECA», «VOL TAPAS»): `"ccc"` (por defecto) = qué parte de la cartera lo
     compró; `"vol"` = los bultos contra el mes anterior al mismo día hábil.
-  - `meta`, con hasta un decimal (Cesar, 10/11): ccc → opcional (null = sin meta), qué parte de la cartera tiene que
-    comprarlo, 1–100 %. vol → **obligatoria**, los **bultos objetivo del mes**, más de 0 y hasta 1.000.000; sin ella,
-    400 «Poné la cantidad de bultos del objetivo.».
+  - `meta`, con hasta un decimal (Cesar, 10/11), **opcional en los dos** (null = sin meta; en vol desde el 20/11: con los
+    objetivos por vendedor en bultos, el formulario ya no la pide). ccc → qué parte de la cartera tiene que comprarlo,
+    1–100 %. vol → los **bultos objetivo del mes**, más de 0 y hasta 1.000.000. Sin meta, el análisis trae
+    `porcentajeMeta` null.
 - `PUT /api/admin/focos/{idFoco}` mismo body → el foco (reemplaza todo). 404 si no existe.
 - `DELETE /api/admin/focos/{idFoco}` → 204; 404 si no existe (se van también sus objetivos).
 - `PUT /api/admin/focos/{idFoco}/objetivos` `{ objetivos: [{ idPersonal, clientes?, bultos? }] }` → 200 con el foco
@@ -718,6 +719,7 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 20/11: la `meta` de un foco **vol** es opcional, como en ccc (el formulario de Nuevo foco ya no la pide).
 - 20/11: `direccion` en cada cliente de `/api/cobertura` (Checho: en el PDF de focos va la dirección debajo de cada
   cliente, no la zona).
 - 19/11: **borrar cuentas** (`DELETE /api/admin/cuentas/{idUsuario}`: baja en la plataforma y sin acceso acá, `seBorra`
