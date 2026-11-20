@@ -101,6 +101,14 @@ Nueva cuenta) y, en el PDF de focos, la dirección de cada cliente en lugar de l
 Verificado: `/api/sesion` y `DELETE /api/admin/cuentas` sin sesión 401, la página 200 con el bundle en `1.8.0`, los
 tres contenedores en `1.8.0`, la API sin errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.8.1`, publicada el 20/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`; imágenes desde `git archive` del tag `v1.8.1` = `09a2369`; backup antes:
+`AnalisisComercial_20261120_1847.bak.gz`). La confirmación de borrar una cuenta, solo con la pregunta («¿Desea
+eliminar a …?»). Solo front, sin migraciones. El primer `publicar.sh` falló al subir las imágenes (el mismo error de
+containerd que en la 1.4.1: `failed to ingest … lease does not exist`) sin tocar lo que corría; el segundo anduvo.
+Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.8.1`, los tres contenedores en `1.8.1`, la API sin
+errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
