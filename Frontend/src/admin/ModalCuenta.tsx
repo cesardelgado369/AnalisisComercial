@@ -1,11 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { ApiError, api } from '../api/client'
-import type { AccesoUsuarioEnvio, CuentaMadomi, NuevaCuentaOperario, VendedorChess } from '../api/types'
+import type { AccesoUsuarioEnvio, CuentaMadomi, NuevaCuenta, VendedorChess } from '../api/types'
 import { Modal } from '../components/Modal'
 import { SelectorVendedores } from './SelectorVendedores'
 
 /**
- * `nueva`: crear la cuenta de un operario · `acceso`: darle acceso a una cuenta (con `cuenta: null`, a un usuario que
+ * `nueva`: crear la cuenta de un vendedor o un supervisor · `acceso`: darle acceso a una cuenta (con `cuenta: null`, a un usuario que
  * se escribe: es lo que se puede hacer con la API real mientras la plataforma no liste cuentas) · `editar`: cambiarlo.
  */
 export type ModoCuenta =
@@ -34,14 +34,15 @@ function generarPassword() {
 
 /** Los campos que dibuja cada modo: un error de otro campo (p. ej. `version`) va arriba del pie, nunca se pierde. */
 const CAMPOS: Record<ModoCuenta['modo'], string[]> = {
-  nueva: ['nombre', 'usuario', 'password', 'idspersonal', 'idpersonal'],
+  nueva: ['nombre', 'usuario', 'password', 'idspersonal', 'idpersonal', 'todoslosvendedores'],
   acceso: ['email', 'idspersonal', 'idpersonal', 'todoslosvendedores'],
   editar: ['idspersonal', 'idpersonal', 'todoslosvendedores'],
 }
 
 /**
- * Alta y edición de cuentas (Gestión de cuentas). Crear una cuenta de operario la da de alta en la plataforma con una
- * contraseña inicial y le asigna sus vendedores de Chess en un solo paso; al terminar se muestran el usuario y la
+ * Alta y edición de cuentas (Gestión de cuentas). Crear una cuenta (vendedor o supervisor, también el de todos los
+ * vendedores: Cesar, 20/11) la da de alta en la plataforma con una contraseña inicial y le asigna sus vendedores de
+ * Chess en un solo paso; al terminar se muestran el usuario y la
  * contraseña para pasárselos (la persona la cambia desde «Mi perfil»). Los errores de la API van debajo de cada campo;
  * los de un campo que el formulario no muestra, arriba del pie. Si otro guardó en el medio (409), se toma la versión
  * nueva y se puede guardar de nuevo sin perder lo elegido.
@@ -101,7 +102,7 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
   const [copiado, setCopiado] = useState(false)
   const formulario = useRef<HTMLFormElement>(null)
 
-  const titulo = estado.modo === 'nueva' ? 'Nueva cuenta de vendedor' : estado.modo === 'acceso' ? 'Dar acceso' : 'Editar acceso'
+  const titulo = estado.modo === 'nueva' ? 'Nueva cuenta' : estado.modo === 'acceso' ? 'Dar acceso' : 'Editar acceso'
   const errorDe = (campo: string) => errores[campo] ?? errores[campo.toLowerCase()]
   /** Al corregir un campo, su error se va. */
   const limpiar = (...campos: string[]) =>
@@ -130,7 +131,14 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
     setGuardando(true)
     try {
       if (estado.modo === 'nueva') {
-        const cuerpo: NuevaCuentaOperario = { usuario: conDominio(usuario), nombre: nombre.trim(), password, rol: 'operario', idsPersonal: ids }
+        const cuerpo: NuevaCuenta = {
+          usuario: conDominio(usuario),
+          nombre: nombre.trim(),
+          password,
+          rol,
+          idsPersonal: deTodos ? [] : ids,
+          todosLosVendedores: deTodos,
+        }
         await api.post<CuentaMadomi>('/admin/cuentas', cuerpo)
         setCreada({ usuario: conDominio(usuario).toLowerCase(), password })
         onGuardado()
@@ -334,8 +342,8 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
           </label>
         )}
 
-        {estado.modo !== 'nueva' && (
-          <div className="adm-campo">
+        {/* El rol también en el alta (Cesar, 20/11: Checho crea supervisores, también el de todos los vendedores) */}
+        <div className="adm-campo">
             <span className="adm-campo-titulo" id="rol-cuenta">Rol</span>
             <div className="segmentado" role="group" aria-labelledby="rol-cuenta">
               <button type="button" aria-pressed={rol === 'operario'} onClick={() => setRol('operario')}>Vendedor (operario)</button>
@@ -348,10 +356,9 @@ export function ModalCuenta({ estado, vendedores, onCerrar, onGuardado, releer }
                   ? 'Ve los clientes de todos los vendedores y el resumen.'
                   : 'Ve los clientes de los vendedores que tenga a cargo y el resumen.'}
             </span>
-          </div>
-        )}
+        </div>
 
-        {rol === 'supervisor' && estado.modo !== 'nueva' && (
+        {rol === 'supervisor' && (
           <label className="check-linea adm-todos">
             <input
               type="checkbox"

@@ -56,7 +56,8 @@ const nombreArchivo = (t: string) =>
 /**
  * Los focos del mes en PDF, **una hoja por vendedor** (Cesar, 17/11: Checho dice que la app es compleja para los
  * choferes; como las hojas de ruta de De Ruta). Arriba, vendedor, mes, hasta cuándo hay datos y sus clientes; después
- * cómo va cada foco (cuántos compraron, a lo ancho) y la lista de sus clientes, por zona, con un círculo
+ * cómo va cada foco (cuántos compraron, a lo ancho) y la lista de sus clientes (por zona, con la dirección de cada
+ * uno debajo del nombre: Checho, 20/11), con un círculo
  * por foco: lleno si ya compró algún artículo, vacío si todavía no. Sin bultos: los VOL también cuentan clientes que
  * compraron (como los ve el vendedor). Una consulta por foco (`/cobertura?foco=` del mes, como la sección), sin la
  * búsqueda. jsPDF se carga recién acá.
@@ -205,7 +206,8 @@ export async function descargarFocosPdf(p: PedidoPdfFocos) {
       body: clientes.map((c: ClienteCobertura, k) => {
         return [
           String(k + 1),
-          c.ruta ? `${c.razonSocial}\n${nombrePropio(c.ruta)}` : c.razonSocial,
+          // Debajo del nombre, la dirección (Checho, 20/11: «no la zona»); sin dirección en Chess, solo el nombre
+          c.direccion ? `${c.razonSocial}\n${nombrePropio(c.direccion)}` : c.razonSocial,
           String(c.idCliente),
           // VOL con bultos: la diferencia con el mes anterior, con signo (en blanco y negro se lee igual)
           ...p.focos.map((_, i) => {

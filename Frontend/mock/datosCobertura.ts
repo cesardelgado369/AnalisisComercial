@@ -175,6 +175,19 @@ export const excluidos = new Map<number, { motivo: string; por: string; en: stri
 
 /** Para la administración de clientes (datosAdmin.ts). */
 export type { ClienteFake }
+const CALLES = ['AV. MATE DE LUNA', 'SAN JUAN', 'LAPRIDA', 'CRISOSTOMO ALVAREZ', 'AV. ACONQUIJA', 'MENDOZA', 'JUNIN', 'LAS HERAS', 'AV. SOLDATI', 'BOLIVAR']
+const LOCALIDADES: Record<string, string> = {
+  'YERBA BUENA': 'YERBA BUENA', 'SAN PABLO': 'SAN PABLO', ALDERETES: 'ALDERETES', 'BANDA DEL RIO SALI': 'BANDA DEL RIO SALI',
+  'LAS TALITAS': 'LAS TALITAS', 'TAFI VIEJO': 'TAFI VIEJO', LULES: 'LULES', FAMAILLA: 'FAMAILLA', CONCEPCION: 'CONCEPCION',
+}
+
+/** La dirección del cliente, la misma en la ficha y en Cobertura (como la API); null si no tiene ubicación. */
+export function direccionDe(c: { idCliente: number; lat: number | null; ruta: { nombre: string } }) {
+  if (c.lat === null) return null
+  const r = azar(c.idCliente * 7)
+  return `${CALLES[Math.floor(r() * CALLES.length)]} ${100 + Math.floor(r() * 2900)}, ${LOCALIDADES[c.ruta.nombre] ?? 'SAN MIGUEL DE TUCUMAN'}`
+}
+
 export { RUTAS, indiceMes, mesDe, PRIMER_MES, sumarMeses, estadoMes as estado, compro, enCartera, rango, alcance, azar, sinTildes }
 
 // ---- Reglas del contrato
@@ -333,6 +346,7 @@ export function cobertura(p: URLSearchParams, rol: RolPrueba, idsOperario: numbe
       idPersonal: c.ruta.idPersonal,
       lat: c.lat,
       lng: c.lng,
+      direccion: direccionDe(c),
       // La clase A, B o C, solo para el admin (Cesar, 10/11), según el último mes del rango
       ...(clases?.has(c.idCliente) ? { abc: clases.get(c.idCliente) } : {}),
     })),

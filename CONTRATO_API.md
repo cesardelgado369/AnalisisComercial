@@ -168,6 +168,7 @@ Todos los parámetros son opcionales.
                  "ruta": "ELENA WHITE" | null, "vendedor": "FRANCO BAIGORRIA" | null,   // null: rutas sin vendedor (solo admin)
                  "idPersonal": 2 | null,                    // el vendedor (de la cartera de mesHasta), para colorear el mapa
                  "lat": -26.8123 | null, "lng": -65.2101 | null,   // null si Chess no tiene la ubicación
+                 "direccion": "AV. BRIGIDO TERAN 1234, SAN MIGUEL DE TUCUMAN" | null,   // como en la ficha (20/11)
                  "meses": ["compro", "compro", "noCompro", "sinCompraAun"],   // uno por cada mes de `meses`
                  "dejoDeComprar": false,
                  "abc": "A" | "B" | "C" }] }   // solo admin, en mesHasta (ver Clientes A, B y C); al resto no le viaja
@@ -717,6 +718,8 @@ mes serán focos distintos», y solo los ve el Admin). Un foco es un grupo de ar
 - 10/11: `unidadesDevueltas`, `articulosDevueltos` y `abc` en los clientes de `/api/devoluciones`; `articulos` en los
   de `/api/volumen` (los íconos de lo que compró).
 - 10/11: `comparacion` y `abc` en `/api/admin/focos/analisis`; `volumen.tipo`.
+- 20/11: `direccion` en cada cliente de `/api/cobertura` (Checho: en el PDF de focos va la dirección debajo de cada
+  cliente, no la zona).
 - 19/11: **borrar cuentas** (`DELETE /api/admin/cuentas/{idUsuario}`: baja en la plataforma y sin acceso acá, `seBorra`
   en el listado) y accesos (`DELETE /api/admin/usuarios/{idAcceso}`), y el **supervisor de todos los vendedores**
   (`todosLosVendedores`), pedidos de Checho. El rol Dueño de la plataforma cuenta como admin en las cuentas. Migración

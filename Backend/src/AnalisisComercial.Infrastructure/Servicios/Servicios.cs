@@ -74,7 +74,7 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
 
         var ids = carteras[mesRef].Keys.ToList();
         var clientes = await db.Clientes.AsNoTracking().Where(c => ids.Contains(c.IdCliente))
-            .Select(c => new { c.IdCliente, c.RazonSocial, c.Lat, c.Lng })
+            .Select(c => new { c.IdCliente, c.RazonSocial, c.Lat, c.Lng, c.Calle, c.Altura, c.Localidad })
             .ToDictionaryAsync(c => c.IdCliente, ct);
 
         var filas = carteras[mesRef].Values.Select(c =>
@@ -84,7 +84,8 @@ public class CoberturaService(ComercialDbContext db, Lectura lectura) : ICobertu
             var cli = clientes.GetValueOrDefault(c.IdCliente);
             return new ClienteCoberturaDto(c.IdCliente, cli?.RazonSocial ?? $"Cliente {c.IdCliente}",
                 rutas.GetValueOrDefault(c.IdRuta), c.IdPersonal is { } p ? vendedores.GetValueOrDefault(p)?.Nombre : null,
-                c.IdPersonal, cli?.Lat, cli?.Lng, estados, dejo, abc is null ? null : GrupoAbc.De(abc, c.IdCliente));
+                c.IdPersonal, cli?.Lat, cli?.Lng, estados, dejo, abc is null ? null : GrupoAbc.De(abc, c.IdCliente),
+                cli is null ? null : Lectura.Direccion(new Cliente { Calle = cli.Calle, Altura = cli.Altura, Localidad = cli.Localidad }));
         }).ToList();
 
         var compraron = filas.Count(x => compras.Contains((x.IdCliente, mesRef)));

@@ -56,9 +56,11 @@ public record KpiMesDto(DateOnly Mes, int ClientesConCompra, int ClientesCartera
 
 /// <param name="IdPersonal">El vendedor de la cartera de mesHasta (null = ruta sin vendedor). Para colorear el mapa.</param>
 /// <param name="Abc">Su grupo ABC en mesHasta (<see cref="GrupoAbc"/>). Solo el Admin: para el resto no viaja.</param>
+/// <param name="Direccion">Calle y altura, localidad (como en la ficha); null si Chess no la tiene. Checho, 20/11: va
+/// debajo de cada cliente en el PDF de focos.</param>
 public record ClienteCoberturaDto(int IdCliente, string RazonSocial, string? Ruta, string? Vendedor, int? IdPersonal,
     decimal? Lat, decimal? Lng, IReadOnlyList<EstadoMes> Meses, bool DejoDeComprar,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Abc = null, string? Direccion = null);
 
 public record ChipsDto(int Todos, int CompraronMesActual, int SinCompraMesActual, int DejaronDeComprar);
 

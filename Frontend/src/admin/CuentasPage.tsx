@@ -152,7 +152,7 @@ export function CuentasPage() {
         ) : (
           <button type="button" className="btn btn-primario adm-nuevo" disabled={!vendedores.datos || !cuentas.datos} onClick={() => setModal({ modo: 'nueva' })}>
             <span className="icono icono-chico" aria-hidden>person_add</span>
-            Nueva cuenta de vendedor
+            Nueva cuenta
           </button>
         )}
       </header>

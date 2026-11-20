@@ -109,12 +109,13 @@ export function crearCuenta(cuerpo: Record<string, unknown>) {
   if (!nombre) errores.nombre = ['Poné el nombre de la persona.']
   else if (nombre.length > 100) errores.nombre = ['Máximo 100 caracteres.']
   if (password.length < 8) errores.password = ['La contraseña tiene que tener al menos 8 caracteres.']
-  const idsPersonal = validarVendedores(cuerpo.idsPersonal, errores)
+  if (cuerpo.rol !== 'operario' && cuerpo.rol !== 'supervisor') errores.rol = ['Elegí supervisor u operario.']
+  const rol = cuerpo.rol === 'supervisor' ? 'supervisor' : 'operario'
+  const vendedores = vendedoresDelAcceso(cuerpo, rol, errores)
   if (Object.keys(errores).length) throw new ErrorMock(400, 'Revisá los datos de la cuenta.', errores)
-  // (el front crea solo vendedores)
   const cuenta: Cuenta = {
-    idUsuario: `u-${usuario}`, usuario, nombre, cuentaActiva: true, ultimoIngreso: null, rol: 'operario',
-    idAcceso: siguienteAcceso++, idsPersonal, accesoActivo: true, accesoEnlazado: true, version: nuevaVersion(),
+    idUsuario: `u-${usuario}`, usuario, nombre, cuentaActiva: true, ultimoIngreso: null, rol,
+    idAcceso: siguienteAcceso++, ...vendedores, accesoActivo: true, accesoEnlazado: true, version: nuevaVersion(),
   }
   cuentas.push(cuenta)
   return cuenta

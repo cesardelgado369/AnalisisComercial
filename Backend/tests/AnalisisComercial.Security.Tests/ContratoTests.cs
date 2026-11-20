@@ -25,6 +25,8 @@ public class ContratoTests(Entorno e)
         Assert.Equal(1, (int?)filas[101]!["idPersonal"]);
         Assert.Equal(-26.8m, (decimal?)filas[101]!["lat"]);
         Assert.Equal(-65.2m, (decimal?)filas[101]!["lng"]);
+        // Como en la ficha (Checho, 20/11: va debajo de cada cliente en el PDF de focos).
+        Assert.Equal("CALLE 100, SAN MIGUEL DE TUCUMAN", (string?)filas[101]!["direccion"]);
 
         var oct = c["kpis"]!.AsArray()[^1]!;
         Assert.Equal(1, (int)oct["clientesConCompra"]!);

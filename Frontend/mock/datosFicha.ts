@@ -14,6 +14,7 @@ import {
   azar,
   compro,
   datos,
+  direccionDe,
   enCartera,
   estado,
   hoyArgentina,
@@ -25,11 +26,6 @@ import {
 } from './datosCobertura.ts'
 import { comparacion, medio, pct, porcentajeDevolucion } from './datosVolumen.ts'
 
-const CALLES = ['AV. MATE DE LUNA', 'SAN JUAN', 'LAPRIDA', 'CRISOSTOMO ALVAREZ', 'AV. ACONQUIJA', 'MENDOZA', 'JUNIN', 'LAS HERAS', 'AV. SOLDATI', 'BOLIVAR']
-const LOCALIDADES: Record<string, string> = {
-  'YERBA BUENA': 'YERBA BUENA', 'SAN PABLO': 'SAN PABLO', ALDERETES: 'ALDERETES', 'BANDA DEL RIO SALI': 'BANDA DEL RIO SALI',
-  'LAS TALITAS': 'LAS TALITAS', 'TAFI VIEJO': 'TAFI VIEJO', LULES: 'LULES', FAMAILLA: 'FAMAILLA', CONCEPCION: 'CONCEPCION',
-}
 const NOMBRE_DIA: Record<number, string> = { 2: 'lunes', 3: 'martes', 4: 'miércoles', 5: 'jueves', 6: 'viernes', 7: 'sábado' }
 
 function diasVisita(dias: number[]) {
@@ -90,8 +86,7 @@ export function ficha(idCliente: number, p: URLSearchParams, rol: RolPrueba, ids
   }
   const diasSinComprar = ultimaCompra ? Math.round((Date.parse(hoyArgentina()) - Date.parse(ultimaCompra)) / 86_400_000) : null
 
-  const r = azar(c.idCliente * 7)
-  const direccion = c.lat === null ? null : `${CALLES[Math.floor(r() * CALLES.length)]} ${100 + Math.floor(r() * 2900)}, ${LOCALIDADES[c.ruta.nombre] ?? 'SAN MIGUEL DE TUCUMAN'}`
+  const direccion = direccionDe(c)
   const vendedor = VENDEDORES.find((v) => v.id === c.ruta.idPersonal)!
 
   return {

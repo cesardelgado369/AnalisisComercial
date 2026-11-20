@@ -132,6 +132,8 @@ export interface ClienteCobertura {
   /** Ubicación de Chess (la misma de la ficha y de Mi ruta); null si no la tiene. */
   lat: number | null
   lng: number | null
+  /** Calle y altura, localidad (como en la ficha); null si Chess no la tiene. Va debajo de cada cliente en el PDF de focos. */
+  direccion?: string | null
   /** Solo el dueño (Cesar, 10/11): la clase A, B o C del cliente según el último mes del rango. Para los demás no viene. */
   abc?: ClaseAbc
 }
@@ -497,14 +499,17 @@ export interface CuentaMadomi {
   seBorra?: boolean
 }
 
-/** `POST /api/admin/cuentas`: crea la cuenta en la plataforma y su acceso de operario, en un paso. */
-export interface NuevaCuentaOperario {
+/** `POST /api/admin/cuentas`: crea la cuenta en la plataforma y su acceso (vendedor o supervisor), en un paso. */
+export interface NuevaCuenta {
   usuario: string
   nombre: string
   /** Contraseña inicial (mínimo 8, la regla de la plataforma); la persona la cambia desde «Mi perfil». */
   password: string
-  rol: 'operario'
+  rol: 'operario' | 'supervisor'
+  /** [] en el supervisor de todos. */
   idsPersonal: number[]
+  /** Solo supervisor (Checho, 19/11): ve a todos los vendedores, también los que Chess sume después. */
+  todosLosVendedores: boolean
 }
 
 /** `GET /api/admin/clientes/resumen`: un renglón por vendedor (por nombre, la casa y al final «sin vendedor»). */
