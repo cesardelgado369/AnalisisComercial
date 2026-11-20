@@ -109,6 +109,13 @@ containerd que en la 1.4.1: `failed to ingest … lease does not exist`) sin toc
 Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.8.1`, los tres contenedores en `1.8.1`, la API sin
 errores, `X-Robots-Tag: noindex`.
 
+**Versión `1.8.2`, publicada el 20/11** (OK de Cesar en el chat del back; la publicó la sesión del back con
+`publicar.sh`; imágenes desde `git archive` del tag `v1.8.2` = `abc1041`; backup antes:
+`AnalisisComercial_20261120_1906.bak.gz`). Focos del mes contra el objetivo (cada vendedor contra el suyo, con la
+tendencia) y sin el Ranking; Nuevo foco por pasos y sin meta (la meta de un foco vol pasa a ser opcional en la API,
+`da3fed6`). Sin migraciones. Verificado: `/api/sesion` 401, la página 200 con el bundle en `1.8.2`, los tres
+contenedores en `1.8.2`, la API sin errores, `X-Robots-Tag: noindex`.
+
 ```
 navegador ─ HTTPS ─ Nginx del host ─┬─ /plataforma/…  → portal de la plataforma (127.0.0.1:8090) → su API
                                     └─ todo lo demás  → analisis-prod-web (127.0.0.1:8098)
